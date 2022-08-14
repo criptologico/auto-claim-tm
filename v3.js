@@ -411,6 +411,7 @@
         }
     }
 
+
     let objectGenerator = {
         createPersistence: function() {
             const prefix = 'autoWeb_';
@@ -430,7 +431,6 @@
             };
         },
         createShared: function() {
-            let flowControl;
             let config = {};
             function initializeConfig() {
                 // Defaults:
@@ -483,7 +483,6 @@
                 }
 
                 config.version = GM_info.script.version;
-                // console.log('VERSION:', config.version);
             };
             function getConfig() {
                 return config;
@@ -532,40 +531,46 @@
                     return log;
                 }
             };
+
+            let runningSites = {}
+            let scheduleUuid = null;
             function isOpenedByManager() {
                 loadFlowControl();
-                if(!flowControl) {
+                if(!runningSites || runningSites == {}) {
                     return false;
                 }
 
-                shared.devlog(`Visit to: ${flowControl.url}`);
-                if (flowControl.type == K.WebType.CBG) {
-                    if (window.location.href.includes(flowControl.url) || window.location.href.includes(flowControl.host)) {
-                        shared.devlog(`Visit [CBG] returning true`);
-                        return true;
-                    } else {
-                        shared.devlog(`Visit [CBG] returning false`);
+                for (const sch in runningSites) {
+                    if (runningSites[sch].type == K.WebType.CBG) {
+                        if (window.location.href.includes(runningSites[sch].url) || window.location.href.includes(runningSites[sch].host)) {
+                            shared.devlog(`Visit [CBG] returning true`);
+                            scheduleUuid = sch;
+                            return true;
+                        } else {
+                            shared.devlog(`Visit [CBG] returning false`);
+                            return false;
+                        }
+                        // // Ignore if full domain
+                        // if(flowControl.host == window.location.host) {
+                        //     return false;
+                        // }
+                    } else if (runningSites[sch].host != window.location.host) {
                         return false;
                     }
-                    // // Ignore if full domain
-                    // if(flowControl.host == window.location.host) {
-                    //     return false;
-                    // }
-                } else if (flowControl.host != window.location.host) {
-                    return false;
+    
+                    if(runningSites[sch].opened && runningSites[sch].type != K.WebType.FAUCETPAY && runningSites[sch].type != K.WebType.BAGIKERAN) {
+                        return false;
+                    }
+                    if(runningSites[sch].type == K.WebType.BAGIKERAN && !window.location.href.includes(runningSites[sch].params.trackUrl)) {
+                        return false;
+                    }
+                    scheduleUuid = sch;
+                    return true;
                 }
-
-                if(flowControl.opened && flowControl.type != K.WebType.FAUCETPAY && flowControl.type != K.WebType.BAGIKERAN) {
-                    return false;
-                }
-                if(flowControl.type == K.WebType.BAGIKERAN && !window.location.href.includes(flowControl.params.trackUrl)) {
-                    return false;
-                }
-
-                return true;
+                // shared.devlog(`Visit to: ${flowControl.url}`);
             };
-            function setFlowControl(id, url, webType, params = null) {
-                flowControl = {
+            function setFlowControl(schedule, id, url, webType, params = null) {
+                runningSites[schedule] = {
                     id: id,
                     changedAt: Date.now(),
                     url: url,
@@ -575,23 +580,42 @@
                     error: false,
                     result: {}
                 };
+
                 if(params) {
-                    flowControl.params = params;
+                    runningSites[schedule].params = params;
+                } else {
+                    runningSites[schedule].params = {};
                 }
                 saveFlowControl();
             };
             function wasVisited(expectedId) {
                 loadFlowControl();
-                return flowControl.id == expectedId && flowControl.opened;
+                for(const sch in runningSites) {
+                    if (runningSites[sch].id == expectedId && runningSites[sch].opened) {
+                        return true;
+                    }
+                }
+                return false;
             };
             function hasErrors(expectedId) {
-                return flowControl.id == expectedId && flowControl.error;
+                for(const sch in runningSites) {
+                    if (runningSites[sch].id == expectedId && runningSites[sch].error) {
+                        return true;
+                    }
+                }
+                return false;
             };
-            function getResult() {
-                return flowControl.result;
+            function getResult(schedule) {
+                if (schedule) {
+                    return runningSites.hasOwnProperty(schedule) ? runningSites[schedule].result : {};
+                }
+                return runningSites.hasOwnProperty(scheduleUuid) ? runningSites[scheduleUuid].result : {};
             };
-            function getCurrent() {
-                return flowControl;
+            function getCurrent(schedule) {
+                if (schedule) {
+                    return runningSites.hasOwnProperty(schedule) ? runningSites[schedule] : {};
+                }
+                return runningSites.hasOwnProperty(scheduleUuid) ? runningSites[scheduleUuid] : {};
             };
             function saveAndclose(runDetails, delay = 0) {
                 markAsVisited(runDetails);
@@ -603,21 +627,31 @@
                 }
             };
             function loadFlowControl() {
-                flowControl = persistence.load('flowControl', true);
+                runningSites = persistence.load('runningSites', true);
             };
             function saveFlowControl() {
-                persistence.save('flowControl', flowControl, true);
+                persistence.save('runningSites', runningSites, true);
             };
-            function markAsVisited(runDetails) {
-                flowControl.opened = true;
-                flowControl.result = runDetails;
+            function markAsVisited(runDetails, schedule) {
+                if (schedule) {
+                    runningSites[schedule].opened = true;
+                    runningSites[schedule].result = runDetails;
+                } else {
+                    runningSites[scheduleUuid].opened = true;
+                    runningSites[scheduleUuid].result = runDetails;
+                }
                 saveFlowControl();
             };
-            function addError(errorType, errorMessage) {
-                flowControl.error = true;
-
-                flowControl.result.errorType = errorType;
-                flowControl.result.errorMessage = errorMessage;
+            function addError(errorType, errorMessage, schedule) {
+                if (schedule) {
+                    runningSites[schedule].error = true;
+                    runningSites[schedule].result.errorType = errorType;
+                    runningSites[schedule].result.errorMessage = errorMessage;
+                } else {
+                    runningSites[scheduleUuid].error = true;
+                    runningSites[scheduleUuid].result.errorType = errorType;
+                    runningSites[scheduleUuid].result.errorMessage = errorMessage;
+                }                
 
                 saveFlowControl();
             };
@@ -626,30 +660,32 @@
                 shared.devlog(`${window.location.href} closing with error msg`);
                 window.close();
             };
-            function clearFlowControl() {
-                flowControl = {};
-                saveFlowControl();
+            function clearFlowControl(schedule) {
+                if (schedule) {
+                    runningSites[schedule] = {};
+                    saveFlowControl();
+                }
             };
             function clearRetries() {
                 loadFlowControl();
-                flowControl.retrying = false;
+                runningSites[scheduleUuid].retrying = false;
                 saveFlowControl();
                 return false;
             };
             function isRetrying() {
-                if(flowControl.retrying) {
+                if(runningSites[scheduleUuid].retrying) {
                     return true;
                 }
-                flowControl.retrying = true;
+                runningSites[scheduleUuid].retrying = true;
                 saveFlowControl();
                 return false;
             };
             function setProp(key, val) {
-                flowControl[key] = val;
+                runningSites[scheduleUuid][key] = val;
                 saveFlowControl();
             };
             function getProp(key) {
-                return flowControl[key];
+                return runningSites[scheduleUuid][key];
             };
             initializeConfig();
             return {
@@ -676,6 +712,453 @@
             };
         },
         createManager: function() {
+            let schedules = [];
+            class Schedule {
+                constructor(params) {
+                    Object.assign(this, {
+                        uuid: '4a70e0',
+                        name: 'default_schedule',
+                        status: STATUS.INITIALIZING,
+                        currentSite: null,
+                        sites: [],
+                        tab: null,
+                        timer: null, // TBD
+                        timeWaiting: 0,
+                        timeUntilNext: null,
+                        worker: null
+                    }, params)
+                }
+        
+                addSite(site)     { this.sites.push(site) }
+                removeSite(siteId)  { this.sites.splice(this.sites.indexOf(x => x.id == siteId), 1) }
+
+                start() {
+                    this.worker = setTimeout(() => {
+                        this.checkNextRoll();
+                    }, 2000);
+                }
+
+                checkNextRoll() {
+                    console.log(`[${this.uuid}] Checking next roll...`)
+                    // timer.stopCheck(); TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    clearTimeout(this.worker);
+                    if(this.currentSite.nextRoll == null) {
+                        ui.log(`[${this.uuid}] All faucets in Schedule ${this.uuid} are disabled. Click edit and select those you want to run, or just hit the 'Run ASAP' link at the Actions column...`);
+                        this.status = STATUS.IDLE;
+                        return;
+                    }
+
+                    if(this.currentSite.nextRoll.getTime() < Date.now()) {
+                        // Open it!
+                        ui.log(`Opening ${this.currentSite.name}`);
+                        this.status = STATUS.CLAIMING;
+                        this.open();
+                        this.timeUntilNext = null;
+                        return;
+                    } else {
+                        this.timeUntilNext = this.currentSite.nextRoll.getTime() - Date.now() + helpers.randomMs(1000, 2000);
+    
+                        // TODO: add FORCE_CLOSED or other sites when time window available
+                        // PROCESSING AGAIN LAST 'FORCE CLOSED' IN CASE WE HAVE A WINDOW OF TIME (MORE THAN TIMEOUT/2):
+                        // if (this.timeUntilNext > (shared.getConfig()['defaults.timeout'] * 60 * 1000 / 2)) {
+                        //     let idx = -1;
+                        //     for (let i = this.sites.length - 1; i >= 0; i--) {
+                        //         if (this.sites[i].enabled && this.sites[i].stats && this.sites[i].stats.errors && this.sites[i].stats.errors.errorType == K.ErrorType.FORCE_CLOSED) {
+                        //             idx = i;
+                        //             break;
+                        //         }
+                        //     }
+                        //     if (idx > -1) {
+                        //         this.sites[idx].nextRoll = new Date(-20);
+                        //         // update(true); TODOOOOOOOOOOOOOOOOOOOOOOOOO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        //         // this.checkNextRoll();
+                        //         // return;
+                        //     }
+                        // }
+    
+                        ui.log(`[${this.uuid}] Waiting ${(this.timeUntilNext/1000/60).toFixed(2)} minutes...`);
+                        this.worker = setTimeout(() => {
+                            this.checkNextRoll();
+                        }, this.timeUntilNext);
+                        this.status = STATUS.IDLE;
+                    }
+                }
+
+                getCustomOrDefaultVal(param, useOverride = false) {
+                    let val;
+    
+                    if (useOverride) {
+                        if (this.currentSite.params && this.currentSite.params.hasOwnProperty(param)) {
+                            val = this.currentSite.params[param];
+                            if (val != -1) {
+                                return val;
+                            }
+                        }
+                    }
+    
+                    return shared.getConfig()[param];
+                }
+    
+                useOverride(param) {
+                    let overrideFlag = param  + '.override';
+                    return this.currentSite.params && this.currentSite.params[overrideFlag];
+                }
+    
+                open(promoCode) {
+                    let navUrl = this.currentSite.url;
+                    try {
+                        if(promoCode) {
+                            navUrl = new URL('promotion/' + promoCode, this.currentSite.url.origin);
+                            ui.log(`Opening ${this.currentSite.name} with Promo Code [${promoCode}]`);
+                        }
+    
+                        if (this.currentSite.firstRun) {
+                            if(Array.isArray(this.currentSite.rf) && this.currentSite.rf.length > 0) {
+                                navUrl = new URL(navUrl.href + this.currentSite.rf[helpers.randomInt(0, this.currentSite.rf.length - 1)]);
+                            }
+                        }
+    
+                        let params = this.currentSite.params || {};
+                        if (this.currentSite.wallet) {
+                            //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
+                            try {
+                                params.address = userWallet.find(x => x.type == this.currentSite.wallet).address;
+                            } catch {
+                                shared.addError(K.ErrorType.NO_ADDRESS, 'You need to add your address to the wallet before claiming this faucet.', this.uuid);
+                                ui.log(`Unable to launch ${this.currentSite.name}: Address not detected > add it to the wallet.`);
+                                this.moveNextAfterTimeoutOrError();
+                                return;
+                            }
+                        }
+                        if(this.currentSite.type == K.WebType.BESTCHANGE) {
+                            params.address = shared.getConfig()['bestchange.address'] == '1' ? userWallet.find(x => x.type == 1).address : params.address;
+                        }
+                        if(this.currentSite.type == K.WebType.BAGIKERAN) {
+                            params.doWithdraw = getDoWithdraw(this.currentSite.lastWithdraw);
+                            params.doSignOut = (this.currentSite.wallet == K.WalletType.FP_BCH ? true : false);
+                            params.trackUrl = this.currentSite.url;
+                        }
+                        params.cmc = this.currentSite.cmc;
+    
+                        if(this.currentSite.type == K.WebType.FPB) {
+                            switch(this.currentSite.id) {
+                                case '77':
+                                    params.sitePrefix = 'fpb';
+                                    break;
+                                case '83':
+                                    params.sitePrefix = 'fbch';
+                                    break;
+                                    // case '84':
+                                    //     params.sitePrefix = 'jtfey';
+                                    //     break;
+                            }
+                        }
+    
+                        // TODO: create credentials on site level
+                        if(this.currentSite.type == K.WebType.VIE) {
+                            params.credentials = {
+                                mode: shared.getConfig()['jtfey.credentials.mode'],
+                                username: shared.getConfig()['jtfey.credentials.username'],
+                                password: shared.getConfig()['jtfey.credentials.password']
+                            };
+                        }
+    
+                        shared.setFlowControl(this.uuid, this.currentSite.id, navUrl, this.currentSite.type, params);
+                        setTimeout(() => {
+                            this.resultReader();
+                        }, 15000);
+    
+                        if (this.tab && !this.tab.closed) {
+                            try {
+                                shared.devlog(`Tab closed from Manager`);
+                                this.tab.close();
+                            } catch {
+                                shared.devlog(`ERROR: unable to close tab from Manager`);
+                            }
+                        } else {
+                            shared.devlog(`No open tabs detected`);
+                        }
+    
+                        timer.startCheck(this.currentSite.type);
+                        let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24 ];
+                        let hrefOpener = navUrl.href;
+                        if (noSignUpList.includes(this.currentSite.type)) {
+                            hrefOpener = (new URL(this.currentSite.clId, 'https://criptologico.com/goto/')).href;
+                        }
+                        this.tab = GM_openInTab(hrefOpener, { active: !this.getCustomOrDefaultVal('defaults.workInBackground', this.useOverride('defaults.workInBackground')) });
+                    } catch(err) {
+                        ui.log(`Error opening tab: ${err}`)
+                    }
+                };
+
+                resultReader() {
+                    if(isObsolete()) {
+                        return;
+                    }
+    
+                    if ( ( (this.currentSite.type == K.WebType.FAUCETPAY && this.timeWaiting < shared.getConfig()['fp.maxTimeInMinutes'] * 60) )
+                        && this.tab && !this.tab.closed ) {
+                        this.timeWaiting += 15;
+                        ui.log(`Waiting for ${this.currentSite.name} results...`, this.timeWaiting);
+                        setTimeout(() => {
+                            this.resultReader();
+                        }, 15000);
+                        return;
+                    }
+    
+                    if(shared.wasVisited(this.currentSite.id)) {
+                        this.resultReader_part01();
+                    } else {
+                        this.resultReader_part02();
+                    }
+                };
+    
+                resultReader_part01() {
+                    // if wasVisited:
+                    let result = shared.getResult(this.uuid);
+    
+                    if (result) {
+                        this.updateWebListItem(result);
+    
+                        if (result.closeParentWindow) {
+                            ui.log(`Closing working tab per process request`);
+                            closeWorkingTab();
+                        }
+    
+                        if ( (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) &&
+                            ( (result.claimed) || (result.promoStatus && result.promoStatus != K.CF.PromoStatus.ACCEPTED) )) {
+                            let promoCode = CFPromotions.hasPromoAvailable(this.currentSite.id);
+                            if (promoCode) {
+                                this.timeWaiting = 0;
+                                update(false);
+                                this.open(promoCode);
+                                return;
+                            }
+                        }
+    
+                        if ( this.currentSite.type == K.WebType.BAGIKERAN && shared.getCurrent(this.uuid).params.doWithdraw && !result.withdrawnAmount) {
+                            if(!result.withdrawing) {
+                                shared.updateWithoutClosing({ withdrawing: true }, this.uuid);
+                                update(false);
+                                this.timeWaiting = 0;
+                            }
+    
+                            if (this.hasTimedOut()) {
+                                if(this.currentSite.stats.countTimeouts) {
+                                    this.currentSite.stats.countTimeouts += 1;
+                                } else {
+                                    this.currentSite.stats.countTimeouts = 1;
+                                }
+    
+                                ui.log(`Waited too much time for ${this.currentSite.name} results: triggering timeout`);
+                                this.moveNextAfterTimeoutOrError();
+                                return;
+                            }
+    
+                            if (shared.hasErrors(this.currentSite.id)) {
+                                this.currentSite.stats.errors = shared.getResult(this.uuid);
+                                ui.log(`${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType, this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`);
+    
+                                if(sleepIfBan()) {
+                                    return;
+                                }
+    
+                                this.moveNextAfterTimeoutOrError();
+                                return;
+                            }
+    
+                            this.timeWaiting += 15;
+                            ui.log(`Waiting for ${this.currentSite.name} withdraw...`, this.timeWaiting);
+                            setTimeout(() => {
+                                this.resultReader();
+                            }, 15000);
+                            return;
+                        }
+                    } else {
+                        ui.log(`Unable to read last run result, for ID: ${this.currentSite.id} > ${this.currentSite.name}`);
+                    }
+    
+                    this.timeWaiting = 0;
+                    update(true);
+                    readUpdateValues(true);
+                    return;
+                }
+    
+                resultReader_part02() {
+                    // No visited flag
+                    this.timeWaiting += 15;
+                    if (!shared.hasErrors(this.currentSite.id) && !this.hasTimedOut()) {
+                        ui.log(`Waiting for ${this.currentSite.name} results...`, this.timeWaiting);
+                        setTimeout(() => {
+                            this.resultReader();
+                        }, 15000);
+                        return;
+                    }
+    
+                    if (shared.hasErrors(this.currentSite.id)) {
+                        this.currentSite.stats.errors = shared.getResult(this.uuid);
+                        ui.log(`${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`);
+                        if(this.currentSite.type == K.WebType.CBG) {
+                            ui.log(`Closing working tab per process request`);
+                            closeWorkingTab();
+                        }
+    
+                        if(sleepIfBan()) {
+                            return;
+                        }
+                    }
+    
+                    if (this.hasTimedOut()) {
+                        if(this.currentSite.stats.countTimeouts) {
+                            this.currentSite.stats.countTimeouts += 1;
+                        } else {
+                            this.currentSite.stats.countTimeouts = 1;
+                        }
+    
+                        ui.log(`Waited too much time for ${this.currentSite.name} results: triggering timeout`);
+                    }
+    
+                    this.moveNextAfterTimeoutOrError();
+                    return;
+                }
+    
+                hasTimedOut() { // here or on a site level???
+                    // return (this.timeWaiting > +this.currentSite.preloaded.timeout);
+                    let val = this.getCustomOrDefaultVal('defaults.timeout', this.useOverride('defaults.timeout')) * 60;
+                    return (this.timeWaiting > val);
+                };    
+    
+                updateWebListItem(result) {
+                    if (result.withdrawing) {
+                        return;
+                    }
+    
+                    ui.log(`Updating data: ${JSON.stringify(result)}`);
+                    this.currentSite.stats.countTimeouts = 0;
+                    this.currentSite.stats.errors = null;
+    
+                    if (result.withdrawnAmount && result.withdrawnAmount > 0) {
+                        this.currentSite.lastWithdraw = new Date();
+                        this.currentSite.balance += result.withdrawnAmount;
+                        this.currentSite.lastClaim = 0;
+                        this.currentSite.aggregate = 0;
+                        return;
+                    }
+    
+                    if (result.claimed) {
+                        try {
+                            result.claimed = parseFloat(result.claimed);
+                        } catch { }
+                        if(!isNaN(result.claimed)) {
+                            this.currentSite.lastClaim = result.claimed;
+                            this.currentSite.aggregate += result.claimed;
+                        }
+                    }
+                    if(result.balance) {
+                        this.currentSite.balance = result.balance;
+                    }
+                    this.currentSite.nextRoll = this.getNextRun(result.nextRoll ? result.nextRoll.toDate() : null);
+                    if(result.promoStatus) {
+                        CFPromotions.updateFaucetForCode(result.promoCode, this.currentSite.id, result.promoStatus);
+                    }
+                    if(result.rolledNumber) {
+                        CFHistory.addRoll(result.rolledNumber);
+                    }
+                }
+
+                getNextRun(nextRollFromCountdown) {
+                    let useCustom = this.useOverride('defaults.nextRun');
+                    let useCountdown = this.getCustomOrDefaultVal('defaults.nextRun.useCountdown', useCustom);
+                    let nextRunMode = this.getCustomOrDefaultVal('defaults.nextRun', useCustom);
+                    let min = this.getCustomOrDefaultVal('defaults.nextRun.min', useCustom);
+                    let max = this.getCustomOrDefaultVal('defaults.nextRun.max', useCustom);
+                    let nextRun;
+    
+                    if (useCountdown && nextRollFromCountdown) {
+                        nextRun = nextRollFromCountdown;
+                    } else {
+                        let minutes = (nextRunMode == 0) ? helpers.randomInt(min, max) : nextRunMode;
+                        let msDelay = helpers.getRandomMs(minutes, 1);
+    
+                        nextRun = helpers.addMs(msDelay).toDate();
+                    }
+                    nextRun = this.sleepCheck(nextRun)
+    
+                    shared.devlog(`@getNextRun: ${nextRun}`);
+                    return nextRun;
+                    // return setNextRun(nextRollFromCountdown).then(setDelays).then(setSleepTime);
+                }
+    
+                errorTreatment() { // Move to group custom getNextRoll
+                    //TODO: validate that stats.errors.errorType exists
+                    shared.devlog(`@errorTreatment`);
+                    try {
+                        switch(this.currentSite.stats.errors.errorType) {
+                            case K.ErrorType.NEED_TO_LOGIN:
+                                this.currentSite.enabled = false;
+                                this.currentSite.nextRoll = null;
+                                return true;
+                            case K.ErrorType.FAUCET_EMPTY: // retry in 8 hours
+                                this.currentSite.enabled = true;
+                                this.currentSite.nextRoll = new Date(new Date().setHours(new Date().getHours() + 8));
+                                return true;
+                        }
+                    } catch {}
+                    return false;
+                }
+
+                sleepCheck(nextRun) {
+                    let useCustom = this.useOverride('defaults.sleepMode');
+                    let sleepMode = this.getCustomOrDefaultVal('defaults.sleepMode', useCustom);
+    
+                    if (sleepMode) {
+                        let intNextRunTime = nextRun.getHours() * 100 + nextRun.getMinutes();
+                        let min = this.getCustomOrDefaultVal('defaults.sleepMode.min', useCustom).replace(':', '');
+                        let max = this.getCustomOrDefaultVal('defaults.sleepMode.max', useCustom).replace(':', '');
+    
+                        if (+min < +max) {
+                            if (+min < intNextRunTime && intNextRunTime < +max) {
+                                shared.devlog(`Sleep Mode [${min} to ${max}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
+                                nextRun.setHours(max.slice(0, 2), max.slice(-2), 10, 10);
+                            }
+                        } else if (+min > +max) {
+                            if (intNextRunTime > +min || intNextRunTime < +max) {
+                                shared.devlog(`Sleep Mode [${max} to ${min}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
+                                nextRun.setHours(max.slice(0, 2), max.slice(-2), 10, 10);
+                                if (nextRun.getTime() < Date.now()) {
+                                    // add 1 day
+                                    nextRun.setDate(nextRun.getDate() + 1);
+                                }
+                            }
+                        }
+                    }
+                    return nextRun;
+                }
+
+                moveNextAfterTimeoutOrError() {
+                    let useCustom = this.useOverride('defaults.postponeMinutes');
+
+                    let mode = this.getCustomOrDefaultVal('defaults.postponeMinutes', useCustom);
+                    let min = this.getCustomOrDefaultVal('defaults.postponeMinutes.min', useCustom);
+                    let max = this.getCustomOrDefaultVal('defaults.postponeMinutes.max', useCustom);
+
+                    let minutes = (mode == 0) ? helpers.randomInt(min, max) : mode;
+                    let msDelay = helpers.getRandomMs(minutes, 5);
+
+                    this.currentSite.nextRoll = this.sleepCheck(helpers.addMs(msDelay).toDate());
+                    if(this.errorTreatment()) {
+                        shared.devlog(`@moveNextAfterTimeoutOrError: errorTreatment => true`);
+                    }
+                    shared.devlog(`@moveNextAfterTimeoutOrError: ${this.currentSite.nextRoll}`);
+
+                    shared.clearFlowControl(this.uuid);
+                    update(true);
+                    this.timeWaiting = 0;
+                    readUpdateValues(true);
+                }
+    
+            }
+
             const STATUS = {
                 INITIALIZING: 0,
                 IDLE: 1,
@@ -683,22 +1166,10 @@
             };
 
             let timestamp = null;
-            let timeWaiting = 0;
-            let uiUpdatesInterval;
-            let status = STATUS.INITIALIZING;
-            let processTimer;
-            let workingTab;
+            let intervalUiUpdate;
 
             let webList = [];
             let userWallet = [];
-            let groups = [];
-            groups.push({
-                name: 'Default',
-                color: '#fff',
-                siteList: [], // ids?
-                currentSite: null,
-                status: STATUS.INITIALIZING
-            });
 
             const sites = [
                 { id: '1', name: 'CF ADA', cmc: '2010', coinRef: 'ADA', url: new URL('https://freecardano.com/free'), rf: '?ref=335463', type: K.WebType.CRYPTOSFAUCETS, clId: 45 },
@@ -709,7 +1180,7 @@
                 { id: '6', name: 'CF LINK', cmc: '1975', coinRef: 'LINK', url: new URL('https://freechainlink.io/free'), rf: '?ref=78652', type: K.WebType.CRYPTOSFAUCETS, clId: 157 },
                 { id: '7', name: 'CF LTC', cmc: '2', coinRef: 'LTC', url: new URL('https://free-ltc.com/free'), rf: '?ref=117042', type: K.WebType.CRYPTOSFAUCETS, clId: 47 },
                 { id: '8', name: 'CF NEO', cmc: '1376', coinRef: 'NEO', url: new URL('https://freeneo.io/free'), rf: '?ref=100529', type: K.WebType.CRYPTOSFAUCETS, clId: 158 },
-                { id: '9', name: 'CF STEAM', cmc: '1230', coinRef: 'STEEM', url: new URL('https://freesteam.io/free'), rf: '?ref=117686', type: K.WebType.CRYPTOSFAUCETS, clId: 49 },
+                { id: '9', name: 'CF STEAM', cmc: 'USDT', coinRef: 'STEEM', url: new URL('https://freesteam.io/free'), rf: '?ref=117686', type: K.WebType.CRYPTOSFAUCETS, clId: 49 },
                 { id: '10', name: 'CF TRX', cmc: '1958', coinRef: 'TRX', url: new URL('https://free-tron.com/free'), rf: '?ref=145047', type: K.WebType.CRYPTOSFAUCETS, clId: 41 },
                 { id: '11', name: 'CF USDC', cmc: '3408', coinRef: 'USDC', url: new URL('https://freeusdcoin.com/free'), rf: '?ref=100434', type: K.WebType.CRYPTOSFAUCETS, clId: 51 },
                 { id: '12', name: 'CF USDT', cmc: '825', coinRef: 'USDT', url: new URL('https://freetether.com/free'), rf: '?ref=181230', type: K.WebType.CRYPTOSFAUCETS, clId: 43 },
@@ -812,8 +1283,10 @@
                 ui.init(getCFlist());
                 update();
                 ui.refresh(null, null, userWallet);
-                uiUpdatesInterval = setInterval(readUpdateValues, 10000);
-                processTimer = setTimeout(manager.process, 2000);
+                intervalUiUpdate = setInterval(readUpdateValues, 10000);
+                schedules.forEach(x => {
+                    x.start();
+                })
             };
 
             let loader = function() {
@@ -825,14 +1298,17 @@
                     initializeHistory();
                 };
                 async function initializeWebList() {
-                    await addSites();
-                    addStoredSitesData();
+                    await addSites().then(addStoredSitesData).then( webs => {
+                        webList = webs;
+                    });
+                    await addToSchedule(webList);
                     // splitInSchedules();
                 };
                 async function addSites() {
-                    sites.forEach(x => webList.push(x));
+                    let localSiteList = [];
+                    sites.forEach(x => localSiteList.push(x));
                     // Set some defaults
-                    webList.forEach(function (element, idx, arr) {
+                    localSiteList.forEach(function (element, idx, arr) {
                         arr[idx].enabled = false;
                         arr[idx].lastClaim = 0;
                         arr[idx].aggregate = 0;
@@ -841,7 +1317,7 @@
                         arr[idx].nextRoll = null;
                         arr[idx].params = {};
                         arr[idx].firstRun = true;
-                        arr[idx].schedule = '#4a70e0';
+                        arr[idx].schedule = '4a70e0';
                         // arr[idx].credentials = {
                         //     mode: -1, // need: not implemented, off, useCredentials, useThirdParty
                         //     username: '',
@@ -946,38 +1422,39 @@
                             arr[idx].params['defaults.nextRun.max'] = 45;
                         }
                     });
+                    return localSiteList;
                 };
-                function addStoredSitesData() {
+                async function addStoredSitesData(localSiteList) {
                     let storedData = persistence.load('webList', true);
                     if(storedData) {
                         storedData.forEach( function (element) {
-                            let idx = webList.findIndex(x => x.id == element.id);
+                            let idx = localSiteList.findIndex(x => x.id == element.id);
                             if(idx != -1) {
-                                webList[idx].name = element.name ?? webList[idx].name;
-                                webList[idx].lastClaim = element.lastClaim ?? webList[idx].lastClaim;
-                                webList[idx].aggregate = element.aggregate ?? webList[idx].aggregate;
-                                webList[idx].balance = element.balance ?? webList[idx].balance;
-                                webList[idx].stats = element.stats ?? webList[idx].stats;
-                                webList[idx].enabled = element.enabled ?? webList[idx].enabled;
-                                webList[idx].schedule = element.schedule ?? webList[idx].schedule;
+                                localSiteList[idx].name = element.name ?? localSiteList[idx].name;
+                                localSiteList[idx].lastClaim = element.lastClaim ?? localSiteList[idx].lastClaim;
+                                localSiteList[idx].aggregate = element.aggregate ?? localSiteList[idx].aggregate;
+                                localSiteList[idx].balance = element.balance ?? localSiteList[idx].balance;
+                                localSiteList[idx].stats = element.stats ?? localSiteList[idx].stats;
+                                localSiteList[idx].enabled = element.enabled ?? localSiteList[idx].enabled;
+                                localSiteList[idx].schedule = element.schedule ?? localSiteList[idx].schedule;
 
-                                if(!webList[idx].enabled) {
-                                    webList[idx].nextRoll = null;
+                                if(!localSiteList[idx].enabled) {
+                                    localSiteList[idx].nextRoll = null;
                                 } else {
-                                    webList[idx].nextRoll = element.nextRoll ? new Date(element.nextRoll) : new Date();
+                                    localSiteList[idx].nextRoll = element.nextRoll ? new Date(element.nextRoll) : new Date();
                                 }
 
                                 if(element.lastWithdraw) {
-                                    webList[idx].lastWithdraw = new Date(element.lastWithdraw);
+                                    localSiteList[idx].lastWithdraw = new Date(element.lastWithdraw);
                                 }
                                 if(element.params) {
                                     for (var p in element.params) {
-                                        webList[idx].params[p] = element.params[p];
+                                        localSiteList[idx].params[p] = element.params[p];
                                     }
                                 }
-                                webList[idx].firstRun = element.firstRun ?? webList[idx].firstRun;
-                                if(webList[idx].aggregate != 0 || webList[idx].balance != 0) {
-                                    webList[idx].firstRun = false;
+                                localSiteList[idx].firstRun = element.firstRun ?? localSiteList[idx].firstRun;
+                                if(localSiteList[idx].aggregate != 0 || localSiteList[idx].balance != 0) {
+                                    localSiteList[idx].firstRun = false;
                                 }
                                 // webList[idx].params = element.params ?? webList[idx].params;
                             }
@@ -985,21 +1462,23 @@
                     } else {
                         // webList.shuffle();
                     }
+                    return localSiteList;
                 };
-                function splitInSchedules() {
-                    let schedules = [];
-
-                    webList.forEach((x, idx, elm) => {
-                        if (x.type == 1) {
-                            x.schedule = '#a0a0a0';
+                async function addToSchedule(localSiteList) {
+                    localSiteList.forEach(x => {
+                        // x.schedule = '4a70e0';
+                        if(x.name.includes('JTFey')) {
+                            x.schedule = '#ccaacc';
                         }
-                        if(!schedules[x.schedule]) {
-                            schedules[x.schedule] = []
-                        };
-
-                        schedules[x.schedule].push(elm);
                     });
-
+                    localSiteList.forEach(site => {
+                        let sc = schedules.find(x => x.uuid == site.schedule);
+                        if (!sc) {
+                            sc = new Schedule({ uuid: site.schedule });
+                            schedules.push(sc);
+                        }
+                        sc.addSite(site);
+                    });
                 };
                 function initializeUserWallet() {
                     addWallets();
@@ -1017,7 +1496,7 @@
                         storedData.forEach( function (element) {
                             let idx = userWallet.findIndex(x => x.id == element.id);
                             if(idx != -1) {
-                                userWallet[idx].address = element.address ?? webList[idx].address;
+                                userWallet[idx].address = element.address ?? userWallet[idx].address;
                             }
                         });
                     }
@@ -1049,9 +1528,6 @@
                     timestamp = Date.now();
                     persistence.save('timestamp', timestamp);
                 };
-                function removeDisabledFaucets() {
-                    webList = webList.filter(x => x.enabled);
-                };
                 return {
                     initialize: initialize
                 };
@@ -1060,7 +1536,7 @@
                 readPromoCodeValues();
                 readModalData();
 
-                if(groups[0].status == STATUS.IDLE || forceCheck) {
+                if(schedules[0].status == STATUS.IDLE || forceCheck) {
                     let updateDataElement = document.getElementById('update-data');
                     let updateValues = updateDataElement.innerText.clean();
 
@@ -1129,7 +1605,6 @@
                         }
 
                         if(updateObj.site.changed) {
-                            // console.log(JSON.stringify(updateObj));
                             updateObj.site.list.forEach( (x) => {
                                 try {
                                     updateSite(x.id, x.items);
@@ -1141,13 +1616,17 @@
 
                         if(updateObj.runAsap.changed || updateObj.editSingle.changed || updateObj.site.changed) {
                             update(true);
-                            process();
+                            schedules.forEach(x => {
+                                x.checkNextRoll();
+                            });
                             return;
                         }
                     }
                 }
                 if(forceCheck) {
-                    process();
+                    schedules.forEach(x => {
+                        x.checkNextRoll();
+                    });
                 }
             };
             function updateSite(id, items) {
@@ -1179,7 +1658,6 @@
                 }
             }
             function update(sortIt = true) {
-                // let updateRollStats = groups[0].currentSite && groups[0].currentSite.type == K.WebType.CRYPTOSFAUCETS;
                 if(sortIt) {
                     webList.sort( function(a,b) {
                         if (a === b) {
@@ -1194,13 +1672,23 @@
                             return a.nextRoll.getTime() < b.nextRoll.getTime() ? -1 : 1;
                         }
                     });
-                    groups[0].currentSite = webList[0];
+                    schedules.forEach( schedule => {
+                        schedule.currentSite = webList.find(site => site.schedule == schedule.uuid);
+                        // TODO:
+                        // Maybe load some parameters like: address, timeout, sleep time, etc
+                        // calculated based on customs and group customs or defaults
+                        // let newCurrent = webList.find(site => site.schedule == schedule.uuid);
+                        // schedule.currentSite = newCurrent;
+                        // schedule.currentSite.preloaded = {}
+                        // schedule.currentSite.preloaded['timeout'] = getCustomOrDefaultVal('defaults.timeout', useOverride('defaults.timeout')) * 60
+                    });
                 }
 
                 saveWebList();
                 ui.refresh(webList, CFPromotions.getAll());
                 updateRollStatsSpan();
             };
+
             function saveWebList() {
                 const data = webList.map(function(x) {
                     let ret = {
@@ -1233,145 +1721,14 @@
 
                 persistence.save('userWallet', data, true);
             }
-            function process() {
-                if(isObsolete()) {
-                    return;
-                }
-                timer.stopCheck();
-                if(groups[0].currentSite.nextRoll == null) {
-                    ui.log(`All faucets are disabled. Click edit and select those you want to run, or just hit the 'Run ASAP' link at the Actions column...`);
-                    clearTimeout(processTimer);
-                    groups[0].status = STATUS.IDLE;
-                    return;
-                }
-
-                if(groups[0].currentSite.nextRoll.getTime() < Date.now()) {
-                    ui.log(`Opening ${groups[0].currentSite.name}`);
-                    clearTimeout(processTimer);
-                    groups[0].status = STATUS.CLAIMING;
-                    open();
-                } else {
-                    let timeUntilNext = groups[0].currentSite.nextRoll.getTime() - Date.now() + helpers.randomMs(1000, 2000);
-
-                    // PROCESSING AGAIN LAST 'FORCE CLOSED' IN CASE WE HAVE A WINDOW OF TIME (MORE THAN TIMEOUT/2):
-                    if (timeUntilNext > (shared.getConfig()['defaults.timeout'] * 60 * 1000 / 2)) {
-                        let idx = -1;
-                        for (let i = webList.length - 1; i >= 0; i--) {
-                            if (webList[i].enabled && webList[i].stats && webList[i].stats.errors && webList[i].stats.errors.errorType == K.ErrorType.FORCE_CLOSED) {
-                                idx = i;
-                                break;
-                            }
-                        }
-                        if (idx > -1) {
-                            webList[idx].nextRoll = new Date(-20);
-                            update(true);
-                            process();
-                            return;
-                        }
-                    }
-
-                    ui.log(`Waiting ${(timeUntilNext/1000/60).toFixed(2)} minutes...`);
-                    clearTimeout(processTimer);
-                    processTimer = setTimeout(manager.process, timeUntilNext);
-                    groups[0].status = STATUS.IDLE;
-                }
-            };
             function isObsolete() {
                 let savedTimestamp = persistence.load('timestamp');
                 if (savedTimestamp && savedTimestamp > timestamp) {
                     ui.log('<b>STOPING EXECUTION!<b> A new Manager UI window was opened. Process should continue there');
-                    clearInterval(uiUpdatesInterval);
+                    clearInterval(intervalUiUpdate);
                     return true;
                 }
                 return false;
-            };
-            function open(promoCode) {
-                let navUrl = groups[0].currentSite.url;
-                console.log('About to open')
-                console.log(groups[0].currentSite.url)
-                try {
-                    if(promoCode) {
-                        navUrl = new URL('promotion/' + promoCode, groups[0].currentSite.url.origin);
-                        ui.log(`Opening ${groups[0].currentSite.name} with Promo Code [${promoCode}]`);
-                    }
-
-                    if (groups[0].currentSite.firstRun) {
-                        if(Array.isArray(groups[0].currentSite.rf) && groups[0].currentSite.rf.length > 0) {
-                            navUrl = new URL(navUrl.href + groups[0].currentSite.rf[helpers.randomInt(0, groups[0].currentSite.rf.length - 1)]);
-                        }
-                    }
-
-                    let params = groups[0].currentSite.params || {};
-                    if (groups[0].currentSite.wallet) {
-                        //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
-                        try {
-                            params.address = userWallet.find(x => x.type == groups[0].currentSite.wallet).address;
-                            // console.log(params.address);
-                        } catch {
-                            shared.addError(K.ErrorType.NO_ADDRESS, 'You need to add your address to the wallet before claiming this faucet.');
-                            ui.log(`Unable to launch ${groups[0].currentSite.name}: Address not detected > add it to the wallet.`);
-                            moveNextAfterTimeoutOrError();
-                            return;
-                        }
-                    }
-                    if(groups[0].currentSite.type == K.WebType.BESTCHANGE) {
-                        params.address = shared.getConfig()['bestchange.address'] == '1' ? userWallet.find(x => x.type == 1).address : params.address;
-                    }
-                    if(groups[0].currentSite.type == K.WebType.BAGIKERAN) {
-                        params.doWithdraw = getDoWithdraw(groups[0].currentSite.lastWithdraw);
-                        params.doSignOut = (groups[0].currentSite.wallet == K.WalletType.FP_BCH ? true : false);
-                        params.trackUrl = groups[0].currentSite.url;
-                    }
-                    params.cmc = groups[0].currentSite.cmc;
-
-                    if(groups[0].currentSite.type == K.WebType.FPB) {
-                        switch(groups[0].currentSite.id) {
-                            case '77':
-                                params.sitePrefix = 'fpb';
-                                break;
-                            case '83':
-                                params.sitePrefix = 'fbch';
-                                break;
-                                // case '84':
-                                //     params.sitePrefix = 'jtfey';
-                                //     break;
-                        }
-                    }
-
-                    // TODO: create credentials on site level
-                    if(groups[0].currentSite.type == K.WebType.VIE) {
-                        params.credentials = {
-                            mode: shared.getConfig()['jtfey.credentials.mode'],
-                            username: shared.getConfig()['jtfey.credentials.username'],
-                            password: shared.getConfig()['jtfey.credentials.password']
-                        };
-                    }
-
-                    shared.setFlowControl(groups[0].currentSite.id, navUrl, groups[0].currentSite.type, params);
-                    setTimeout(manager.resultReader, 15000);
-
-                    // Try to close old workingTab if still opened
-                    if (workingTab && !workingTab.closed) {
-                        try {
-                            shared.devlog(`Tab closed from Manager`);
-                            workingTab.close();
-                        } catch {
-                            shared.devlog(`ERROR: unable to close tab from Manager`);
-                        }
-                    } else {
-                        shared.devlog(`No open tabs detected`);
-                    }
-
-                    timer.startCheck(groups[0].currentSite.type);
-                    let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24 ];
-                    let hrefOpener = navUrl.href;
-                    if (noSignUpList.includes(groups[0].currentSite.type)) {
-                        hrefOpener = (new URL(groups[0].currentSite.clId, 'https://criptologico.com/goto/')).href;
-                    }
-                    workingTab = GM_openInTab(hrefOpener, { active: !getCustomOrDefaultVal('defaults.workInBackground', useOverride('defaults.workInBackground')) });
-                } catch(err) {
-                    ui.log(`Error opening tab: ${err}`)
-                }
             };
 
             function getDoWithdraw(lastWithdraw) {
@@ -1394,324 +1751,76 @@
                 return false;
             }
 
-            function resultReaderV2() {
-                if(isObsolete()) {
-                    return;
-                }
-
-                let active = shared.getCurrent();
-
-                switch(active.status) {
-                    case 'STARTING':
-                        return;
-                    case 'WORKING':
-                        return;
-                    case 'PARTIAL_RESULTS':
-                        return;
-                    case 'FINISHED':
-                        return;
-                }
-            }
-
             // REFACTOR
-            function resultReader() {
-                if(isObsolete()) {
-                    return;
-                }
-
-                if ( ( (groups[0].currentSite.type == K.WebType.FAUCETPAY && timeWaiting < shared.getConfig()['fp.maxTimeInMinutes'] * 60) )
-                    && workingTab && !workingTab.closed ) {
-                    timeWaiting += 15;
-                    ui.log(`Waiting for ${groups[0].currentSite.name} results...`, timeWaiting);
-                    setTimeout(manager.resultReader, 15000);
-                    return;
-                }
-
-                if(shared.wasVisited(groups[0].currentSite.id)) {
-                    let result = shared.getResult();
-
-                    if (result) {
-                        updateWebListItem(result);
-
-                        if (result.closeParentWindow) {
-                            ui.log(`Closing working tab per process request`);
-                            closeWorkingTab();
-                        }
-
-                        if ( (groups[0].currentSite.type == K.WebType.CRYPTOSFAUCETS) &&
-                            ( (result.claimed) || (result.promoStatus && result.promoStatus != K.CF.PromoStatus.ACCEPTED) )) {
-                            let promoCode = CFPromotions.hasPromoAvailable(groups[0].currentSite.id);
-                            if (promoCode) {
-                                timeWaiting = 0;
-                                update(false);
-                                open(promoCode);
-                                return;
-                            }
-                        }
-
-                        if ( groups[0].currentSite.type == K.WebType.BAGIKERAN && shared.getCurrent().params.doWithdraw && !result.withdrawnAmount) {
-                            if(!result.withdrawing) {
-                                shared.updateWithoutClosing({ withdrawing: true });
-                                update(false);
-                                timeWaiting = 0;
-                            }
-
-                            if (hasTimedOut()) {
-                                if(groups[0].currentSite.stats.countTimeouts) {
-                                    groups[0].currentSite.stats.countTimeouts += 1;
-                                } else {
-                                    groups[0].currentSite.stats.countTimeouts = 1;
-                                }
-
-                                ui.log(`Waited too much time for ${groups[0].currentSite.name} results: triggering timeout`);
-                                moveNextAfterTimeoutOrError();
-                                return;
-                            }
-
-                            if (shared.hasErrors(groups[0].currentSite.id)) {
-                                groups[0].currentSite.stats.errors = shared.getResult();
-                                ui.log(`${groups[0].currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType, groups[0].currentSite.stats.errors.errorType)} ${groups[0].currentSite.stats.errors.errorMessage}`);
-
-                                if(sleepIfBan()) {
-                                    return;
-                                }
-
-                                moveNextAfterTimeoutOrError();
-                                return;
-                            }
-
-                            timeWaiting += 15;
-                            ui.log(`Waiting for ${groups[0].currentSite.name} withdraw...`, timeWaiting);
-                            setTimeout(manager.resultReader, 15000);
-                            return;
-                        }
-                    } else {
-                        ui.log(`Unable to read last run result, for ID: ${groups[0].currentSite.id} > ${groups[0].currentSite.name}`);
-                    }
-
-                    timeWaiting = 0;
-                    update(true);
-                    readUpdateValues(true);
-                    return;
-                } else {
-
-                    timeWaiting += 15;
-                    if (!shared.hasErrors(groups[0].currentSite.id) && !hasTimedOut()) {
-                        ui.log(`Waiting for ${groups[0].currentSite.name} results...`, timeWaiting);
-                        setTimeout(manager.resultReader, 15000);
-                        return;
-                    }
-
-                    if (shared.hasErrors(groups[0].currentSite.id)) {
-                        groups[0].currentSite.stats.errors = shared.getResult();
-                        ui.log(`${groups[0].currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,groups[0].currentSite.stats.errors.errorType)} ${groups[0].currentSite.stats.errors.errorMessage}`);
-                        if(groups[0].currentSite.type == K.WebType.CBG) {
-                            ui.log(`Closing working tab per process request`);
-                            closeWorkingTab();
-                        }
-
-                        if(sleepIfBan()) {
-                            return;
-                        }
-                    }
-
-                    if (hasTimedOut()) {
-                        if(groups[0].currentSite.stats.countTimeouts) {
-                            groups[0].currentSite.stats.countTimeouts += 1;
-                        } else {
-                            groups[0].currentSite.stats.countTimeouts = 1;
-                        }
-
-                        ui.log(`Waited too much time for ${groups[0].currentSite.name} results: triggering timeout`);
-                    }
-
-                    moveNextAfterTimeoutOrError();
-                    return;
-                }
-            };
-
-            function errorTreatment() {
-                //TODO: validate that stats.errors.errorType exists
-                shared.devlog(`@errorTreatment`);
-                try {
-                    switch(groups[0].currentSite.stats.errors.errorType) {
-                        case K.ErrorType.NEED_TO_LOGIN:
-                            groups[0].currentSite.enabled = false;
-                            groups[0].currentSite.nextRoll = null;
-                            return true;
-                        case K.ErrorType.FAUCET_EMPTY: // retry in 8 hours
-                            groups[0].currentSite.enabled = true;
-                            groups[0].currentSite.nextRoll = new Date(new Date().setHours(new Date().getHours() + 8));
-                            return true;
-                    }
-                } catch {}
-                return false;
-            }
-
             function sleepIfBan() {
-                if( (groups[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN && shared.getConfig()['cf.sleepHoursIfIpBan'] > 0)
-                   || ( (groups[0].currentSite.stats.errors.errorType == K.ErrorType.IP_RESTRICTED || groups[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN) && shared.getConfig()['bk.sleepMinutesIfIpBan'] > 0) ) {
-                    if(groups[0].currentSite.type == K.WebType.CRYPTOSFAUCETS) {
+                if( (schedules[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN && shared.getConfig()['cf.sleepHoursIfIpBan'] > 0)
+                   || ( (schedules[0].currentSite.stats.errors.errorType == K.ErrorType.IP_RESTRICTED || schedules[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN) && shared.getConfig()['bk.sleepMinutesIfIpBan'] > 0) ) {
+                    if(schedules[0].currentSite.type == K.WebType.CRYPTOSFAUCETS) {
                         webList.filter(x => x.enabled && x.type == K.WebType.CRYPTOSFAUCETS)
                             .forEach( function(el) {
-                            el.nextRoll = sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['cf.sleepHoursIfIpBan'] * 60, 2)).toDate());
+                            el.nextRoll = schedules[0].sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['cf.sleepHoursIfIpBan'] * 60, 2)).toDate());
                         });
                     }
 
-                    if(groups[0].currentSite.type == K.WebType.BAGIKERAN) {
-                        webList.filter(x => x.enabled && x.type == K.WebType.BAGIKERAN && x.url.host == groups[0].currentSite.url.host)
+                    if(schedules[0].currentSite.type == K.WebType.BAGIKERAN) {
+                        webList.filter(x => x.enabled && x.type == K.WebType.BAGIKERAN && x.url.host == schedules[0].currentSite.url.host)
                             .forEach( function(el) {
-                            el.nextRoll = sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['bk.sleepMinutesIfIpBan'], 2)).toDate());
+                            el.nextRoll = schedules[0].sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['bk.sleepMinutesIfIpBan'], 2)).toDate());
                         });
                     }
 
-                    shared.clearFlowControl();
+                    shared.clearFlowControl(schedules[0].uuid);
                     update(true);
-                    timeWaiting = 0;
+                    schedules[0].timeWaiting = 0;
                     readUpdateValues(true);
                     return true;
                 }
                 return false;
             }
 
-            function getCustomOrDefaultVal(param, useOverride = false) {
-                let val;
-
-                if (useOverride) {
-                    if (groups[0].currentSite.params && groups[0].currentSite.params.hasOwnProperty(param)) {
-                        val = groups[0].currentSite.params[param];
-                        if (val != -1) {
-                            return val;
-                        }
-                    }
-                }
-
-                // console.log(`Using Default for ${param}: ${shared.getConfig()[param]}`);
-                return shared.getConfig()[param];
+            function sitehasCustom(prop) { // for site level
+                return this.customs && this.customs.hasOwnProperty(prop) && this.params.customs[prop];
             }
 
-            function useOverride(param) {
-                let overrideFlag = param  + '.override';
-                return groups[0].currentSite.params && groups[0].currentSite.params[overrideFlag];
+            function grouphasCustom(prop) { // for group level
+                return this.customs && this.customs.hasOwnProperty(prop) && this.params.customs[prop];
             }
 
-            function sleepCheck(nextRun) {
-                // console.log(`sleepCheck for next run: ${nextRun}`);
-                let useCustom = useOverride('defaults.sleepMode');
-                // console.log(`Using Overide for sleepCheck: ${useCustom}`);
-                let sleepMode = getCustomOrDefaultVal('defaults.sleepMode', useCustom);
-
-                if (sleepMode) {
-                    let intNextRunTime = nextRun.getHours() * 100 + nextRun.getMinutes();
-                    let min = getCustomOrDefaultVal('defaults.sleepMode.min', useCustom).replace(':', '');
-                    let max = getCustomOrDefaultVal('defaults.sleepMode.max', useCustom).replace(':', '');
-
-                    if (+min < +max) {
-                        if (+min < intNextRunTime && intNextRunTime < +max) {
-                            shared.devlog(`Sleep Mode [${min} to ${max}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
-                            nextRun.setHours(max.slice(0, 2), max.slice(-2), 10, 10);
-                        }
-                    } else if (+min > +max) {
-                        if (intNextRunTime > +min || intNextRunTime < +max) {
-                            shared.devlog(`Sleep Mode [${max} to ${min}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
-                            nextRun.setHours(max.slice(0, 2), max.slice(-2), 10, 10);
-                            if (nextRun.getTime() < Date.now()) {
-                                // add 1 day
-                                nextRun.setDate(nextRun.getDate() + 1);
-                            }
-                        }
-                    }
-                }
-                return nextRun;
+            function grouphasCustom(prop) { // for group level
+                return this.params && this.params.hasOwnProperty(prop);
             }
 
-            function getNextRun(nextRollFromCountdown) {
-                let useCustom = useOverride('defaults.nextRun');
-                let useCountdown = getCustomOrDefaultVal('defaults.nextRun.useCountdown', useCustom);
-                let nextRunMode = getCustomOrDefaultVal('defaults.nextRun', useCustom);
-                let min = getCustomOrDefaultVal('defaults.nextRun.min', useCustom);
-                let max = getCustomOrDefaultVal('defaults.nextRun.max', useCustom);
-                let nextRun;
-
-                if (useCountdown && nextRollFromCountdown) {
-                    nextRun = nextRollFromCountdown;
+            function setNextRun(nextRun) {
+                if (curentSite.hasCustom('nextRun')) {
+                    return currentSite.getCustom('nextRun', { nextRun: nextRun });
+                } else if (curentSite.group.hasCustom('nextRun')) {
+                    return currentSite.group.getCustom('nextRun', { nextRun: nextRun });
                 } else {
-                    let minutes = (nextRunMode == 0) ? helpers.randomInt(min, max) : nextRunMode;
-                    let msDelay = helpers.getRandomMs(minutes, 1);
-
-                    nextRun = helpers.addMs(msDelay).toDate();
+                    return schedule.getCustom('nextRun', { nextRun: nextRun });
                 }
-                nextRun = sleepCheck(nextRun)
+            }
 
-                shared.devlog(`@getNextRun: ${nextRun}`);
+            function setDelays(nextRun) {
+                if (curentSite.hasCustom('delay')) {
+                    return currentSite.getCustom('delay', { nextRun: nextRun });
+                } else if (curentSite.group.hasCustom('delay')) {
+                    return currentSite.group.getCustom('delay', { nextRun: nextRun });
+                } else if (schedule.hasCustom('delay')) {
+                    return schedule.getCustom('delay', { nextRun: nextRun });
+                }
                 return nextRun;
             }
 
-            function moveNextAfterTimeoutOrError() {
-                let useCustom = useOverride('defaults.postponeMinutes');
-
-                let mode = getCustomOrDefaultVal('defaults.postponeMinutes', useCustom);
-                let min = getCustomOrDefaultVal('defaults.postponeMinutes.min', useCustom);
-                let max = getCustomOrDefaultVal('defaults.postponeMinutes.max', useCustom);
-
-                let minutes = (mode == 0) ? helpers.randomInt(min, max) : mode;
-                let msDelay = helpers.getRandomMs(minutes, 5);
-
-
-                groups[0].currentSite.nextRoll = sleepCheck(helpers.addMs(msDelay).toDate());
-                if(errorTreatment()) {
-                    shared.devlog(`@moveNextAfterTimeoutOrError: errorTreatment => true`);
+            function setSleepTime() {
+                if (curentSite.hasCustom('sleep')) {
+                    return currentSite.getCustom('sleep', { nextRun: nextRun });
+                } else if (curentSite.group.hasCustom('sleep')) {
+                    return currentSite.group.getCustom('sleep', { nextRun: nextRun });
+                } else if (schedule.hasCustom('sleep')) {
+                    return schedule.getCustom('sleep', { nextRun: nextRun });
                 }
-                shared.devlog(`@moveNextAfterTimeoutOrError: ${groups[0].currentSite.nextRoll}`);
-
-                shared.clearFlowControl();
-                update(true);
-                timeWaiting = 0;
-                readUpdateValues(true);
+                return nextRun;
             }
-
-            function hasTimedOut() {
-                let val = getCustomOrDefaultVal('defaults.timeout', useOverride('defaults.timeout')) * 60;
-                return (timeWaiting > val);
-            };
-
-            function updateWebListItem(result) {
-                if (result.withdrawing) {
-                    return;
-                }
-
-                ui.log(`Updating data: ${JSON.stringify(result)}`);
-                groups[0].currentSite.stats.countTimeouts = 0;
-                groups[0].currentSite.stats.errors = null;
-
-                if (result.withdrawnAmount && result.withdrawnAmount > 0) {
-                    groups[0].currentSite.lastWithdraw = new Date();
-                    groups[0].currentSite.balance += result.withdrawnAmount;
-                    groups[0].currentSite.lastClaim = 0;
-                    groups[0].currentSite.aggregate = 0;
-                    return;
-                }
-
-                if (result.claimed) {
-                    try {
-                        result.claimed = parseFloat(result.claimed);
-                    } catch { }
-                    if(!isNaN(result.claimed)) {
-                        groups[0].currentSite.lastClaim = result.claimed;
-                        groups[0].currentSite.aggregate += result.claimed;
-                    }
-                }
-                if(result.balance) {
-                    groups[0].currentSite.balance = result.balance;
-                }
-                groups[0].currentSite.nextRoll = getNextRun(result.nextRoll ? result.nextRoll.toDate() : null);
-                if(result.promoStatus) {
-                    CFPromotions.updateFaucetForCode(result.promoCode, groups[0].currentSite.id, result.promoStatus);
-                }
-                if(result.rolledNumber) {
-                    CFHistory.addRoll(result.rolledNumber);
-                }
-            };
 
             function readPromoCodeValues() {
                 let promoCodeElement = document.getElementById('promo-code-new');
@@ -1726,8 +1835,7 @@
                 if(promoData.action) {
                     switch (promoData.action) {
                         case 'FORCESTOPFAUCET':
-                            console.log('manager needs to stop current running site');
-                            groups[0].currentSite.enabled = false;
+                            schedules.forEach(s => s.currentSite.enabled = false);
                             update(true);
                             window.location.reload();
 
@@ -1780,12 +1888,10 @@
                 return items;
             };
             function closeWorkingTab() {
-                workingTab.close();
+                schedules[0].tab.close();
             };
             return{
                 init:start,
-                process: process,
-                resultReader: resultReader,
                 getFaucetsForPromotion: getCFlist,
                 readPromoCodeValues: readPromoCodeValues,
                 closeWorkingTab: closeWorkingTab
@@ -1808,9 +1914,7 @@
                             let content = {"description":description, "log":log};
                             let opt = { method: "POST", header, mode: "cors", body: JSON.stringify(content) };
                             fetch("https://1d0103ec5a621b87ea27ffed3c072796.m.pipedream.net", opt).then(response => {
-                                console.log(response);
                             }).catch(err => {
-                                console.error("[error] " + err.message);
                             });
                         } catch { }
                     };
@@ -2107,7 +2211,6 @@
                     };
 
                     window.forceStopFaucet = function removeAllPromos() {
-                        console.log('stopping current');
                         var promoCode = document.getElementById("promo-code-new");
                         var promoObject = { action: "FORCESTOPFAUCET" };
                         promoCode.innerHTML =JSON.stringify(promoObject);
@@ -2232,6 +2335,7 @@
             function appendHtml() {
                 let html ='';
                 let cardBody ='';
+                // html = await GM_getResourceText("r_html")
 
                 html += '<div class="modal fade" id="confirmable-modal" tabindex="-1" role="dialog" aria-hidden="true">';
                 html += '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">';
@@ -2508,9 +2612,9 @@
                 html += '<div class="card"><div class="card-header"><h3 class="card-title font-weight-bold">Schedule</h3>';
                 html += '<div class="card-tools">';
 
+                html += `<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 align-middle${localStorage.getItem("hiddenSiteIds") ? '' : ' d-none'}" id="unhide-btn" onclick="showHidden()"><i class="fa fa-eye"></i> Show Hidden</button>`;
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-success em-only d-none mx-1" onclick="editListSave()"><i class="fa fa-check-circle"></i> Save</button>';
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-danger em-only d-none mx-1" onclick="editListCancel()"><i class="fa fa-times-circle"></i> Cancel</button>';
-                html += `<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 em-hide align-middle${localStorage.getItem("hiddenSiteIds") ? '' : ' d-none'}" id="unhide-btn" onclick="showHidden()"><i class="fa fa-eye"></i> Show Hidden</button>`;
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 em-hide" onclick="editList()"><i class="fa fa-edit"></i> Edit</button>';
                 html += '<button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>';
                 html += '<button type="button" class="btn btn-tool mx-1" data-card-widget="maximize"><i class="fas fa-expand"></i></button>';
@@ -2625,7 +2729,7 @@
                     }
                     tableBody += '">';
                     tableBody +='<td class="align-middle edit-status d-none em-only"><label class="switch"><input type="checkbox" data-original="' + (data[i].enabled ? '1' : '0') + '" ' + (data[i].enabled ? 'checked' : ' ') + '><span class="slider round"></span></label></td>';
-                    tableBody +='<td class="align-middle">' + helpers.getPrintableTime(data[i].nextRoll) + '</td>';
+                    tableBody +='<td class="align-middle" style="background-color: #' + data[i].schedule + '">' + helpers.getPrintableTime(data[i].nextRoll) + '</td>';
                     tableBody +='<td class="align-middle text-left">';
                     tableBody +='<a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + (new URL(data[i].clId, 'https://criptologico.com/goto/')).href + '"><i class="fa fa-external-link-alt"></i></a> ';
                     tableBody += '</td>';
@@ -4531,7 +4635,6 @@
 
     function overrideSelectNativeJS_Functions () {
         window.alert = function alert (message) {
-            console.log (message);
         }
     }
     function addJS_Node (text, s_URL, funcToRun) {
@@ -4546,11 +4649,11 @@
 
     function detectWeb() {
         // Temp until JTFey logo size is fixed
-        try {
-            if (window.location.href.includes('james-trussy')) {
-                document.querySelector('.navbar-brand img.img-fluid').style.maxWidth = "75px";
-            }
-        } catch(err) {}
+        // try {
+        //     if (window.location.href.includes('james-trussy')) {
+        //         document.querySelector('.navbar-brand img.img-fluid').style.maxWidth = "75px";
+        //     }
+        // } catch(err) {}
 
         if(!shared.isOpenedByManager()) {
             shared.devlog(`${window.location.href} dismissed`);
@@ -4651,7 +4754,6 @@
         }
     }
 
-    // CLASSES (WIP)
     class Timeout {
         constructor(seconds) {
             this.wait = seconds || shared.getConfig()['defaults.timeout'] * 60;
@@ -4678,11 +4780,12 @@
     }
 
     class Timer {
-        constructor(isManager, delaySeconds, webType) {
+        constructor(isManager, delaySeconds, webType, schedule) {
             if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
                 return;
             }
             this.delay = delaySeconds * 1000;
+            this.uuid = schedule;
 
             if(!isManager) {
                 this.tick();
@@ -4698,8 +4801,9 @@
                 return;
             }
             persistence.save('lastAccess', Date.now());
-            this.interval = setInterval(
-                () => { this.isAlive() }, this.delay);
+            this.interval = setInterval(() => {
+                this.isAlive();
+            }, this.delay);
         }
 
         stopCheck() {
@@ -4725,7 +4829,7 @@
             if(newAccess && (now - newAccess > this.delay)) {
                 //Close working tab and force restart
                 shared.devlog(`Timer is closing the working tab`);
-                shared.addError(K.ErrorType.FORCE_CLOSED, 'Site was unresponsive or redirected');
+                shared.addError(K.ErrorType.FORCE_CLOSED, 'Site was unresponsive or redirected', this.uuid);
                 manager.closeWorkingTab();
             }
         }
@@ -5327,17 +5431,12 @@
 
             let totalPixels = charElm.width * charElm.height;
             let totalBlacks = charElm.bools.filter(x => x === true).length;
-            // console.log('Total Pixels:', totalPixels);
-            // console.log('Total Blacks:', totalBlacks);
-            // console.log(this.charList().length);
             this.charList().filter(x => x.answer != '').forEach( function (elm) {
                 if (bestGuess.exactMatch) {
                     return;
                 }
                 if (charElm.width == elm.width && charElm.height == elm.height) {
-                    // console.log(`${elm.answer} >> ${charElm.width} == ${elm.width} and ${charElm.height} == ${elm.height} > INSIDE`);
                     if (charElm.bools.join(',') == elm.bools.join(',')) {
-                        // console.log(`EXACT MATCH!`);
                         bestGuess = {
                             answer: elm.answer,
                             percentageBlacks: 100,
@@ -7107,6 +7206,10 @@
             CFHistory = objectGenerator.createCFHistory();
 
             await manager.init();
+            try {
+                if (!document.body.classList.contains('sidebar-collapse')) document.querySelector('a[data-widget="pushmenu"]').click()
+            } catch {}
+            setTimeout( () => { window.stop(); }, 10000);
         } else {
             detectWeb();
         }
