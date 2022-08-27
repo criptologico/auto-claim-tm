@@ -2677,9 +2677,9 @@
                 html += '<div class="card"><div class="card-header"><h3 class="card-title font-weight-bold">Schedule</h3>';
                 html += '<div class="card-tools">';
 
+                html += `<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 align-middle${localStorage.getItem("hiddenSiteIds") ? '' : ' d-none'}" id="unhide-btn" onclick="showHidden()"><i class="fa fa-eye"></i> Show Hidden</button>`;
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-success em-only d-none mx-1" onclick="editListSave()"><i class="fa fa-check-circle"></i> Save</button>';
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-danger em-only d-none mx-1" onclick="editListCancel()"><i class="fa fa-times-circle"></i> Cancel</button>';
-                html += `<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 em-hide align-middle${localStorage.getItem("hiddenSiteIds") ? '' : ' d-none'}" id="unhide-btn" onclick="showHidden()"><i class="fa fa-eye"></i> Show Hidden</button>`;
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 em-hide" onclick="editList()"><i class="fa fa-edit"></i> Edit</button>';
                 html += '<button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>';
                 html += '<button type="button" class="btn btn-tool mx-1" data-card-widget="maximize"><i class="fas fa-expand"></i></button>';
