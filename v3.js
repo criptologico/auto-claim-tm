@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         [satology] Auto Claim V3
+// @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0
+// @version      2.8.1
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -253,7 +253,13 @@
             BFG: '11038',
             CAKE: '7186',
             GRC: '833',
-            MATIC: '3890'
+            MATIC: '3890',
+            BABY: '10334'
+        },
+        LOCATION: {
+            UNKNOWN: 0,
+            MANAGER: 1,
+            SITE: 2
         }
     });
 
@@ -539,35 +545,44 @@
                 if(!runningSites || runningSites == {}) {
                     return false;
                 }
-
+                let uuid = null;
                 for (const sch in runningSites) {
-                    if (runningSites[sch].type == K.WebType.CBG) {
-                        if (window.location.href.includes(runningSites[sch].url) || window.location.href.includes(runningSites[sch].host)) {
-                            shared.devlog(`Visit [CBG] returning true`);
-                            scheduleUuid = sch;
-                            return true;
-                        } else {
-                            shared.devlog(`Visit [CBG] returning false`);
-                            return false;
-                        }
-                        // // Ignore if full domain
-                        // if(flowControl.host == window.location.host) {
-                        //     return false;
-                        // }
-                    } else if (runningSites[sch].host != window.location.host) {
-                        return false;
+                    if ( (runningSites[sch].host && runningSites[sch].host == window.location.host) ||
+                         (runningSites[sch].params && runningSites[sch].params.trackUrl && window.location.href.includes(runningSites[sch].params.trackUrl))
+                       ) {
+                        uuid = sch;
+                        break;
                     }
-    
-                    if(runningSites[sch].opened && runningSites[sch].type != K.WebType.FAUCETPAY && runningSites[sch].type != K.WebType.BAGIKERAN) {
-                        return false;
-                    }
-                    if(runningSites[sch].type == K.WebType.BAGIKERAN && !window.location.href.includes(runningSites[sch].params.trackUrl)) {
-                        return false;
-                    }
-                    scheduleUuid = sch;
-                    return true;
                 }
-                // shared.devlog(`Visit to: ${flowControl.url}`);
+                if (!uuid) {
+                    return false;
+                }
+                if (runningSites[uuid].type == K.WebType.CBG) {
+                    if (window.location.href.includes(runningSites[uuid].url) || window.location.href.includes(runningSites[uuid].host)) {
+                        shared.devlog(`Visit [CBG] returning true`);
+                        scheduleUuid = uuid;
+                        return true;
+                    } else {
+                        shared.devlog(`Visit [CBG] returning false`);
+                        return false;
+                    }
+                    // // Ignore if full domain
+                    // if(flowControl.host == window.location.host) {
+                    //     return false;
+                    // }
+                } else if (runningSites[uuid].host != window.location.host) {
+                    return false;
+                }
+
+                if(runningSites[uuid].opened && runningSites[uuid].type != K.WebType.FAUCETPAY && runningSites[uuid].type != K.WebType.BAGIKERAN) {
+                    return false;
+                }
+                if(runningSites[uuid].type == K.WebType.BAGIKERAN && !window.location.href.includes(runningSites[uuid].params.trackUrl)) {
+                    return false;
+                }
+                scheduleUuid = uuid;
+                return true;
+            // shared.devlog(`Visit to: ${flowControl.url}`);
             };
             function setFlowControl(schedule, id, url, webType, params = null) {
                 runningSites[schedule] = {
@@ -651,7 +666,7 @@
                     runningSites[scheduleUuid].error = true;
                     runningSites[scheduleUuid].result.errorType = errorType;
                     runningSites[scheduleUuid].result.errorMessage = errorMessage;
-                }                
+                }
 
                 saveFlowControl();
             };
@@ -681,11 +696,20 @@
                 return false;
             };
             function setProp(key, val) {
+                shared.devlog(`@setProp, key => ${key}, val => ${val}`);
                 runningSites[scheduleUuid][key] = val;
                 saveFlowControl();
             };
             function getProp(key) {
+                shared.devlog(`@getProp, key => ${key}`);
                 return runningSites[scheduleUuid][key];
+            };
+            function getParam(key) {
+                shared.devlog(`@getParam, key => ${key}`);
+                try {
+                    shared.devlog(`@getParam, returning: ${runningSites[scheduleUuid].params[key]}`);
+                } catch {}
+                return runningSites[scheduleUuid].params[key];
             };
             initializeConfig();
             return {
@@ -708,7 +732,8 @@
                 clearRetries: clearRetries,
                 isRetrying: isRetrying,
                 setProp: setProp,
-                getProp: getProp
+                getProp: getProp,
+                getParam: getParam
             };
         },
         createManager: function() {
@@ -727,37 +752,44 @@
                         timeUntilNext: null,
                         worker: null
                     }, params)
+                    this.timer = new Timer({ isManager: true, delaySeconds: 30, uuid: this.uuid, webType: null });
+                    this.timer = new Timer(true, 30, this.uuid);
                 }
-        
+
                 addSite(site)     { this.sites.push(site) }
                 removeSite(siteId)  { this.sites.splice(this.sites.indexOf(x => x.id == siteId), 1) }
 
                 start() {
+                    this.status = STATUS.IDLE;
                     this.worker = setTimeout(() => {
                         this.checkNextRoll();
                     }, 2000);
                 }
 
                 checkNextRoll() {
+                    if (this.status != STATUS.IDLE) {
+                        console.log(`[${this.uuid}] Skipping checkNextRoll`)
+                        return;
+                    }
                     console.log(`[${this.uuid}] Checking next roll...`)
-                    // timer.stopCheck(); TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    this.timer.stopCheck();
                     clearTimeout(this.worker);
                     if(this.currentSite.nextRoll == null) {
                         ui.log(`[${this.uuid}] All faucets in Schedule ${this.uuid} are disabled. Click edit and select those you want to run, or just hit the 'Run ASAP' link at the Actions column...`);
                         this.status = STATUS.IDLE;
+                        shared.clearFlowControl(this.uuid);
                         return;
                     }
 
                     if(this.currentSite.nextRoll.getTime() < Date.now()) {
                         // Open it!
-                        ui.log(`Opening ${this.currentSite.name}`);
-                        this.status = STATUS.CLAIMING;
+                        ui.log(`[${this.uuid}] Opening ${this.currentSite.name}`);
                         this.open();
                         this.timeUntilNext = null;
                         return;
                     } else {
                         this.timeUntilNext = this.currentSite.nextRoll.getTime() - Date.now() + helpers.randomMs(1000, 2000);
-    
+
                         // TODO: add FORCE_CLOSED or other sites when time window available
                         // PROCESSING AGAIN LAST 'FORCE CLOSED' IN CASE WE HAVE A WINDOW OF TIME (MORE THAN TIMEOUT/2):
                         // if (this.timeUntilNext > (shared.getConfig()['defaults.timeout'] * 60 * 1000 / 2)) {
@@ -775,7 +807,7 @@
                         //         // return;
                         //     }
                         // }
-    
+
                         ui.log(`[${this.uuid}] Waiting ${(this.timeUntilNext/1000/60).toFixed(2)} minutes...`);
                         this.worker = setTimeout(() => {
                             this.checkNextRoll();
@@ -786,7 +818,7 @@
 
                 getCustomOrDefaultVal(param, useOverride = false) {
                     let val;
-    
+
                     if (useOverride) {
                         if (this.currentSite.params && this.currentSite.params.hasOwnProperty(param)) {
                             val = this.currentSite.params[param];
@@ -795,29 +827,34 @@
                             }
                         }
                     }
-    
+
                     return shared.getConfig()[param];
                 }
-    
+
                 useOverride(param) {
                     let overrideFlag = param  + '.override';
                     return this.currentSite.params && this.currentSite.params[overrideFlag];
                 }
-    
+
+                closeTab() {
+                    this.tab.close();
+                };
+
                 open(promoCode) {
+                    this.status = STATUS.CLAIMING;
                     let navUrl = this.currentSite.url;
                     try {
                         if(promoCode) {
                             navUrl = new URL('promotion/' + promoCode, this.currentSite.url.origin);
                             ui.log(`Opening ${this.currentSite.name} with Promo Code [${promoCode}]`);
                         }
-    
+
                         if (this.currentSite.firstRun) {
                             if(Array.isArray(this.currentSite.rf) && this.currentSite.rf.length > 0) {
                                 navUrl = new URL(navUrl.href + this.currentSite.rf[helpers.randomInt(0, this.currentSite.rf.length - 1)]);
                             }
                         }
-    
+
                         let params = this.currentSite.params || {};
                         if (this.currentSite.wallet) {
                             //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
@@ -838,8 +875,9 @@
                             params.doSignOut = (this.currentSite.wallet == K.WalletType.FP_BCH ? true : false);
                             params.trackUrl = this.currentSite.url;
                         }
+                        params.timeout = this.getCustomOrDefaultVal('defaults.timeout', this.useOverride('defaults.timeout'));
                         params.cmc = this.currentSite.cmc;
-    
+
                         if(this.currentSite.type == K.WebType.FPB) {
                             switch(this.currentSite.id) {
                                 case '77':
@@ -853,7 +891,7 @@
                                     //     break;
                             }
                         }
-    
+
                         // TODO: create credentials on site level
                         if(this.currentSite.type == K.WebType.VIE) {
                             params.credentials = {
@@ -862,12 +900,12 @@
                                 password: shared.getConfig()['jtfey.credentials.password']
                             };
                         }
-    
+
                         shared.setFlowControl(this.uuid, this.currentSite.id, navUrl, this.currentSite.type, params);
                         setTimeout(() => {
                             this.resultReader();
                         }, 15000);
-    
+
                         if (this.tab && !this.tab.closed) {
                             try {
                                 shared.devlog(`Tab closed from Manager`);
@@ -878,8 +916,8 @@
                         } else {
                             shared.devlog(`No open tabs detected`);
                         }
-    
-                        timer.startCheck(this.currentSite.type);
+
+                        this.timer.startCheck(this.currentSite.type);
                         let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24 ];
                         let hrefOpener = navUrl.href;
                         if (noSignUpList.includes(this.currentSite.type)) {
@@ -895,7 +933,7 @@
                     if(isObsolete()) {
                         return;
                     }
-    
+
                     if ( ( (this.currentSite.type == K.WebType.FAUCETPAY && this.timeWaiting < shared.getConfig()['fp.maxTimeInMinutes'] * 60) )
                         && this.tab && !this.tab.closed ) {
                         this.timeWaiting += 15;
@@ -905,68 +943,70 @@
                         }, 15000);
                         return;
                     }
-    
+
                     if(shared.wasVisited(this.currentSite.id)) {
                         this.resultReader_part01();
                     } else {
                         this.resultReader_part02();
                     }
                 };
-    
+
                 resultReader_part01() {
                     // if wasVisited:
                     let result = shared.getResult(this.uuid);
-    
+
                     if (result) {
                         this.updateWebListItem(result);
-    
+
                         if (result.closeParentWindow) {
                             ui.log(`Closing working tab per process request`);
-                            closeWorkingTab();
+                            this.closeTab();
                         }
-    
+
                         if ( (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) &&
                             ( (result.claimed) || (result.promoStatus && result.promoStatus != K.CF.PromoStatus.ACCEPTED) )) {
                             let promoCode = CFPromotions.hasPromoAvailable(this.currentSite.id);
                             if (promoCode) {
                                 this.timeWaiting = 0;
+
+                                this.currentSite.nextRoll = new Date(754000 + idx);
                                 update(false);
                                 this.open(promoCode);
                                 return;
                             }
                         }
-    
+
                         if ( this.currentSite.type == K.WebType.BAGIKERAN && shared.getCurrent(this.uuid).params.doWithdraw && !result.withdrawnAmount) {
                             if(!result.withdrawing) {
                                 shared.updateWithoutClosing({ withdrawing: true }, this.uuid);
                                 update(false);
                                 this.timeWaiting = 0;
                             }
-    
+
                             if (this.hasTimedOut()) {
                                 if(this.currentSite.stats.countTimeouts) {
                                     this.currentSite.stats.countTimeouts += 1;
                                 } else {
                                     this.currentSite.stats.countTimeouts = 1;
                                 }
-    
+
                                 ui.log(`Waited too much time for ${this.currentSite.name} results: triggering timeout`);
                                 this.moveNextAfterTimeoutOrError();
                                 return;
                             }
-    
+
                             if (shared.hasErrors(this.currentSite.id)) {
                                 this.currentSite.stats.errors = shared.getResult(this.uuid);
                                 ui.log(`${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType, this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`);
-    
-                                if(sleepIfBan()) {
+
+                                if(this.sleepIfBan()) {
                                     return;
                                 }
-    
+
                                 this.moveNextAfterTimeoutOrError();
                                 return;
                             }
-    
+
                             this.timeWaiting += 15;
                             ui.log(`Waiting for ${this.currentSite.name} withdraw...`, this.timeWaiting);
                             setTimeout(() => {
@@ -977,13 +1017,15 @@
                     } else {
                         ui.log(`Unable to read last run result, for ID: ${this.currentSite.id} > ${this.currentSite.name}`);
                     }
-    
+
                     this.timeWaiting = 0;
+                    this.status = STATUS.IDLE;
+                    shared.clearFlowControl(this.uuid);
                     update(true);
                     readUpdateValues(true);
                     return;
                 }
-    
+
                 resultReader_part02() {
                     // No visited flag
                     this.timeWaiting += 15;
@@ -994,49 +1036,78 @@
                         }, 15000);
                         return;
                     }
-    
+
                     if (shared.hasErrors(this.currentSite.id)) {
                         this.currentSite.stats.errors = shared.getResult(this.uuid);
                         ui.log(`${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`);
                         if(this.currentSite.type == K.WebType.CBG) {
                             ui.log(`Closing working tab per process request`);
-                            closeWorkingTab();
+                            this.closeTab();
                         }
-    
-                        if(sleepIfBan()) {
+
+                        if(this.sleepIfBan()) {
                             return;
                         }
                     }
-    
+
                     if (this.hasTimedOut()) {
                         if(this.currentSite.stats.countTimeouts) {
                             this.currentSite.stats.countTimeouts += 1;
                         } else {
                             this.currentSite.stats.countTimeouts = 1;
                         }
-    
+
                         ui.log(`Waited too much time for ${this.currentSite.name} results: triggering timeout`);
                     }
-    
+
                     this.moveNextAfterTimeoutOrError();
                     return;
                 }
-    
+
                 hasTimedOut() { // here or on a site level???
                     // return (this.timeWaiting > +this.currentSite.preloaded.timeout);
                     let val = this.getCustomOrDefaultVal('defaults.timeout', this.useOverride('defaults.timeout')) * 60;
                     return (this.timeWaiting > val);
-                };    
-    
+                };
+
+                // REFACTOR
+                sleepIfBan() {
+                    if( (this.currentSite.stats.errors.errorType == K.ErrorType.IP_BAN && shared.getConfig()['cf.sleepHoursIfIpBan'] > 0)
+                    || ( (this.currentSite.stats.errors.errorType == K.ErrorType.IP_RESTRICTED || this.currentSite.stats.errors.errorType == K.ErrorType.IP_BAN) && shared.getConfig()['bk.sleepMinutesIfIpBan'] > 0) ) {
+                        if(this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
+                            webList.filter(x => x.enabled && x.type == K.WebType.CRYPTOSFAUCETS)
+                                .forEach( function(el) {
+                                el.nextRoll = this.sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['cf.sleepHoursIfIpBan'] * 60, 2)).toDate());
+                            });
+                        }
+
+                        if(this.currentSite.type == K.WebType.BAGIKERAN) {
+                            webList.filter(x => x.enabled && x.type == K.WebType.BAGIKERAN && x.url.host == this.currentSite.url.host)
+                                .forEach( function(el) {
+                                el.nextRoll = this.sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['bk.sleepMinutesIfIpBan'], 2)).toDate());
+                            });
+                        }
+
+                        shared.clearFlowControl(this.uuid);
+                        update(true);
+                        this.timeWaiting = 0;
+                        this.status = STATUS.IDLE;
+                        shared.clearFlowControl(this.uuid);
+                        readUpdateValues(true);
+                        return true;
+                    }
+                    return false;
+                }
+
                 updateWebListItem(result) {
                     if (result.withdrawing) {
                         return;
                     }
-    
-                    ui.log(`Updating data: ${JSON.stringify(result)}`);
+
+                    ui.log(`[${this.uuid}] Updating data: ${JSON.stringify(result)}`);
                     this.currentSite.stats.countTimeouts = 0;
                     this.currentSite.stats.errors = null;
-    
+
                     if (result.withdrawnAmount && result.withdrawnAmount > 0) {
                         this.currentSite.lastWithdraw = new Date();
                         this.currentSite.balance += result.withdrawnAmount;
@@ -1044,7 +1115,7 @@
                         this.currentSite.aggregate = 0;
                         return;
                     }
-    
+
                     if (result.claimed) {
                         try {
                             result.claimed = parseFloat(result.claimed);
@@ -1073,22 +1144,22 @@
                     let min = this.getCustomOrDefaultVal('defaults.nextRun.min', useCustom);
                     let max = this.getCustomOrDefaultVal('defaults.nextRun.max', useCustom);
                     let nextRun;
-    
+
                     if (useCountdown && nextRollFromCountdown) {
                         nextRun = nextRollFromCountdown;
                     } else {
                         let minutes = (nextRunMode == 0) ? helpers.randomInt(min, max) : nextRunMode;
                         let msDelay = helpers.getRandomMs(minutes, 1);
-    
+
                         nextRun = helpers.addMs(msDelay).toDate();
                     }
                     nextRun = this.sleepCheck(nextRun)
-    
+
                     shared.devlog(`@getNextRun: ${nextRun}`);
                     return nextRun;
                     // return setNextRun(nextRollFromCountdown).then(setDelays).then(setSleepTime);
                 }
-    
+
                 errorTreatment() { // Move to group custom getNextRoll
                     //TODO: validate that stats.errors.errorType exists
                     shared.devlog(`@errorTreatment`);
@@ -1110,12 +1181,12 @@
                 sleepCheck(nextRun) {
                     let useCustom = this.useOverride('defaults.sleepMode');
                     let sleepMode = this.getCustomOrDefaultVal('defaults.sleepMode', useCustom);
-    
+
                     if (sleepMode) {
                         let intNextRunTime = nextRun.getHours() * 100 + nextRun.getMinutes();
                         let min = this.getCustomOrDefaultVal('defaults.sleepMode.min', useCustom).replace(':', '');
                         let max = this.getCustomOrDefaultVal('defaults.sleepMode.max', useCustom).replace(':', '');
-    
+
                         if (+min < +max) {
                             if (+min < intNextRunTime && intNextRunTime < +max) {
                                 shared.devlog(`Sleep Mode [${min} to ${max}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
@@ -1154,9 +1225,11 @@
                     shared.clearFlowControl(this.uuid);
                     update(true);
                     this.timeWaiting = 0;
+                    this.status = STATUS.IDLE;
+                    shared.clearFlowControl(this.uuid);
                     readUpdateValues(true);
                 }
-    
+
             }
 
             const STATUS = {
@@ -1256,7 +1329,8 @@
                 { id: '82', name: 'Heli', cmc: '-1', url: new URL('https://helidrops.io/coins.php'), rf: 'OLPUAO', type: K.WebType.HELI, clId: 211 },
                 // { id: '83', name: 'FreeBCH', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://freebch.fun/page/dashboard'), rf: ['?r=satology'], type: K.WebType.FPB, clId: 212 },
                 { id: '84', name: 'JTFey', cmc: '-1', url: new URL('https://james-trussy.com/faucet'), rf: ['?r=corecrafting'], type: K.WebType.VIE, clId: 213 },
-                { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 }
+                { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
+                { id: '86', name: 'BF BABY', cmc: '10334', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 }
             ];
 
             const wallet = [
@@ -1364,7 +1438,7 @@
                             arr[idx].params['defaults.nextRun.min'] = 15;
                             arr[idx].params['defaults.nextRun.max'] = 18;
                         }
-                        if (element.id == '58' || element.id == '59' || element.id == '67') { //58, 59: BF x2 + 67: BFG
+                        if (element.id == '58' || element.id == '59' || element.id == '67' || element.id == '86') { //58, 59: BF x2 + 67: BFG
                             arr[idx].params['defaults.nextRun.override'] = true;
                             arr[idx].params['defaults.nextRun.useCountdown'] = false;
                             arr[idx].params['defaults.nextRun'] = 0;
@@ -1393,13 +1467,6 @@
                             arr[idx].params['defaults.postponeMinutes.min'] = 12;
                             arr[idx].params['defaults.postponeMinutes.max'] = 18;
                         }
-                        // if (element.id == '71' || element.id == '72' || element.id == '73' || element.id == '74' || element.id == '75' || element.id == '76') {
-                        //     arr[idx].params['defaults.nextRun.override'] = true;
-                        //     arr[idx].params['defaults.nextRun.useCountdown'] = false;
-                        //     arr[idx].params['defaults.nextRun'] = 0;
-                        //     arr[idx].params['defaults.nextRun.min'] = 9;
-                        //     arr[idx].params['defaults.nextRun.max'] = 22;
-                        // }
                         if (element.id == '77') { //77: FPB
                             arr[idx].params['defaults.nextRun.override'] = true;
                             arr[idx].params['defaults.nextRun.useCountdown'] = false;
@@ -1466,10 +1533,7 @@
                 };
                 async function addToSchedule(localSiteList) {
                     localSiteList.forEach(x => {
-                        // x.schedule = '4a70e0';
-                        if(x.name.includes('JTFey')) {
-                            x.schedule = '#ccaacc';
-                        }
+                        betaScheduleDivision(x);
                     });
                     localSiteList.forEach(site => {
                         let sc = schedules.find(x => x.uuid == site.schedule);
@@ -1536,7 +1600,8 @@
                 readPromoCodeValues();
                 readModalData();
 
-                if(schedules[0].status == STATUS.IDLE || forceCheck) {
+                // if(schedules[0].status == STATUS.IDLE || forceCheck) {
+                if(true) {
                     let updateDataElement = document.getElementById('update-data');
                     let updateValues = updateDataElement.innerText.clean();
 
@@ -1751,33 +1816,6 @@
                 return false;
             }
 
-            // REFACTOR
-            function sleepIfBan() {
-                if( (schedules[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN && shared.getConfig()['cf.sleepHoursIfIpBan'] > 0)
-                   || ( (schedules[0].currentSite.stats.errors.errorType == K.ErrorType.IP_RESTRICTED || schedules[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN) && shared.getConfig()['bk.sleepMinutesIfIpBan'] > 0) ) {
-                    if(schedules[0].currentSite.type == K.WebType.CRYPTOSFAUCETS) {
-                        webList.filter(x => x.enabled && x.type == K.WebType.CRYPTOSFAUCETS)
-                            .forEach( function(el) {
-                            el.nextRoll = schedules[0].sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['cf.sleepHoursIfIpBan'] * 60, 2)).toDate());
-                        });
-                    }
-
-                    if(schedules[0].currentSite.type == K.WebType.BAGIKERAN) {
-                        webList.filter(x => x.enabled && x.type == K.WebType.BAGIKERAN && x.url.host == schedules[0].currentSite.url.host)
-                            .forEach( function(el) {
-                            el.nextRoll = schedules[0].sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['bk.sleepMinutesIfIpBan'], 2)).toDate());
-                        });
-                    }
-
-                    shared.clearFlowControl(schedules[0].uuid);
-                    update(true);
-                    schedules[0].timeWaiting = 0;
-                    readUpdateValues(true);
-                    return true;
-                }
-                return false;
-            }
-
             function sitehasCustom(prop) { // for site level
                 return this.customs && this.customs.hasOwnProperty(prop) && this.params.customs[prop];
             }
@@ -1835,7 +1873,11 @@
                 if(promoData.action) {
                     switch (promoData.action) {
                         case 'FORCESTOPFAUCET':
-                            schedules.forEach(s => s.currentSite.enabled = false);
+                            schedules.forEach(s => {
+                                if (s.status != STATUS.IDLE) {
+                                    s.currentSite.enabled = false
+                                }
+                            });
                             update(true);
                             window.location.reload();
 
@@ -1887,9 +1929,12 @@
 
                 return items;
             };
-            function closeWorkingTab() {
-                schedules[0].tab.close();
+
+            function closeWorkingTab(schedule) {
+                let sc = schedules.find(x => x.uuid == schedule);
+                if (sc) sc.closeTab()
             };
+
             return{
                 init:start,
                 getFaucetsForPromotion: getCFlist,
@@ -2171,6 +2216,44 @@
                             document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
                             toastr["info"]("Faucet will be updated to run as soon as possible");
                         }
+                    };
+
+                    window.selectedSchedule = null;
+                    window.initScheduleList = function initScheduleList(cont) {
+                        let uuids = [...document.querySelectorAll('#schedule-table-body tr')].map(x => x.getAttribute('data-schedule'));
+                        uuids = uuids.filter((value, index, self) => {
+                            return self.indexOf(value) === index;
+                        });
+                        let inner = '<button type="button" class="btn btn-default btn-flat" data-schedule="all" onclick="toggleSchedule(\'all\')">All Schedules</button>';
+                        uuids.forEach(x => {
+                            inner += `<button type="button" class="btn btn-default btn-flat" data-schedule="${x}" onclick="toggleSchedule(\'${x}\')" style="background-color: #${x}">${x}</button>`;
+                        });
+                        cont.innerHTML = inner;
+                        console.log(uuids);
+                    }
+                    window.toggleSchedule = function toggleSchedule(uuid) {
+                        let cont = document.querySelector('#schedules-toggler');
+                        if(cont.childNodes.length == 0) {
+                            window.initScheduleList(cont);
+                        }
+
+                        if (uuid) {
+                            window.selectedSchedule = uuid;
+                        } else {
+                            if (!window.selectedSchedule) {
+                                window.selectedSchedule = 'all';
+                            }
+                        }
+
+                        [...document.querySelectorAll('#schedule-table-body tr')].forEach((x, idx) => {
+                            if (window.selectedSchedule == 'all') {
+                                x.classList.remove('d-none');
+                            } else if (x.getAttribute('data-schedule') == window.selectedSchedule) {
+                                x.classList.remove('d-none');
+                            } else {
+                                x.classList.add('d-none');
+                            }
+                        });
                     };
 
                     window.confirmable = {
@@ -2621,8 +2704,12 @@
                 html += '</div></div>';
 
                 html += '<div class="card-body table-responsive p-0" style="height: 400px;" id="schedule-container">';
+                html += '</div>';
 
+                html += '<div class="card-footer"><div class="btn-group" id="schedules-toggler">';
                 html += '</div></div>';
+
+                html += '</div>';
 
                 html += '</div>';
                 html += '<span id="update-data" style="display:none;"></span></section>';
@@ -2717,9 +2804,9 @@
 
                 for(let i=0, all = data.length; i < all; i++) {
                     if(hsi.indexOf(data[i].id) > -1) {
-                        tableBody += '<tr class="fake-row d-none"></tr>'; // nth background styling workaround
+                        tableBody += '<tr class="fake-row d-none" data-schedule="' + data[i].schedule + '"></tr>'; // nth background styling workaround
                     }
-                    tableBody += `<tr class="align-middle${hsi.indexOf(data[i].id) > -1 ? ' d-none' : ''}" data-id="${data[i].id}" data-enabled="${(data[i].enabled ? '1' : '0')}" data-cmc="${data[i].cmc}" data-balance="`;
+                    tableBody += `<tr class="align-middle${hsi.indexOf(data[i].id) > -1 ? ' d-none' : ''}" data-schedule="${data[i].schedule}" data-id="${data[i].id}" data-enabled="${(data[i].enabled ? '1' : '0')}" data-cmc="${data[i].cmc}" data-balance="`;
                     if (data[i].balance) {
                         if(typeof data[i].balance == 'string') {
                             tableBody += data[i].balance.split(' ')[0];
@@ -2769,7 +2856,7 @@
 
                 document.getElementById('schedule-table-body').innerHTML = tableBody;
 
-                location.href = 'javascript:convertToFiat();';
+                location.href = 'javascript:window.toggleSchedule();';
             };
 
             function addBadges(stats) {
@@ -3738,7 +3825,7 @@
         },
         createFBProcessor: function() {
             let countdownMinutes;
-            let timeout = new Timeout(this.maxSeconds);
+            let timeout = new Timeout();
             let captcha = new HCaptchaWidget();
 
             function run() {
@@ -3899,7 +3986,7 @@
             };
         },
         createFPProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
+            let timeout = new Timeout();
             let captcha = new HCaptchaWidget();
 
             function init() {
@@ -4002,7 +4089,7 @@
             };
         },
         createBagiKeranProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
+            let timeout = new Timeout();
             let hcaptcha = new HCaptchaWidget({selector: '.h-captcha > iframe, .hcaptcha > iframe, .g-recaptcha > iframe'});
             let captcha = new BKCaptchaWidget({selector: ''});
             let elements = {
@@ -4356,7 +4443,7 @@
             };
         },
         createBigBtcProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
+            let timeout = new Timeout();
             let countdownMinutes;
             let captcha = new HCaptchaWidget();
             let selectElement = {
@@ -4503,7 +4590,7 @@
             };
         },
         createBestChangeProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
+            let timeout = new Timeout();
             let countdownMinutes;
             let captcha = new HCaptchaWidget({selector: '.hcaptcha > iframe'});
             let elements = {
@@ -4659,11 +4746,12 @@
             shared.devlog(`${window.location.href} dismissed`);
             return;
         }
+        instance = K.LOCATION.SITE;
         shared.devlog(`${window.location.href} accepted`);
 
         let typeFromManager = shared.getCurrent().type;
 
-        timer = new Timer(false, 20, typeFromManager);
+        siteTimer = new Timer({ isManager: false, delaySeconds: 20, uuid: shared.getProp('schedule'), webType: typeFromManager });
         switch( typeFromManager ) {
             case K.WebType.STORMGAIN:
                 SiteProcessor = objectGenerator.createSGProcessor();
@@ -4756,10 +4844,19 @@
 
     class Timeout {
         constructor(seconds) {
-            this.wait = seconds || shared.getConfig()['defaults.timeout'] * 60;
             this.startedAt;
             this.interval;
             this.cb = (() => { shared.closeWithError(K.ErrorType.TIMEOUT, '') });
+            if (seconds) {
+                this.wait = seconds;
+            } else {
+                let paramTimeout =  shared.getParam('timeout');
+                if (paramTimeout) {
+                    this.wait = paramTimeout * 60;
+                } else {
+                    this.wait = shared.getConfig()['defaults.timeout'] * 60
+                }
+            }
             this.restart();
         }
 
@@ -4780,14 +4877,14 @@
     }
 
     class Timer {
-        constructor(isManager, delaySeconds, webType, schedule) {
-            if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
+        constructor(params) {
+            Object.assign(this, params);
+            if(!useTimer || (this.webType && !Timer.webTypes().includes(this.webType))) {
                 return;
             }
-            this.delay = delaySeconds * 1000;
-            this.uuid = schedule;
+            this.delay = this.delaySeconds * 1000;
 
-            if(!isManager) {
+            if(!this.isManager) {
                 this.tick();
                 this.interval = setInterval(
                     () => { this.tick() }, this.delay);
@@ -4797,10 +4894,11 @@
         static webTypes() { return [K.WebType.FREELITECOIN, K.WebType.FREEETHEREUMIO, K.WebType.BAGIKERAN, K.WebType.BIGBTC, K.WebType.FCRYPTO, K.WebType.FPB] };
 
         startCheck(webType) {
+            this.webType = webType;
             if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
                 return;
             }
-            persistence.save('lastAccess', Date.now());
+            persistence.save(this.uuid + '_lastAccess', Date.now());
             this.interval = setInterval(() => {
                 this.isAlive();
             }, this.delay);
@@ -4810,14 +4908,14 @@
             if(!useTimer) {
                 return;
             }
-            clearInterval(timer.interval);
+            clearInterval(this.interval);
         }
 
         tick() {
             if(!useTimer) {
                 return;
             }
-            persistence.save('lastAccess', Date.now());
+            persistence.save(this.uuid + '_lastAccess', Date.now());
         }
 
         isAlive() {
@@ -4825,12 +4923,12 @@
                 return;
             }
             let now = Date.now();
-            let newAccess = persistence.load('lastAccess');
+            let newAccess = persistence.load(this.uuid + '_lastAccess');
             if(newAccess && (now - newAccess > this.delay)) {
                 //Close working tab and force restart
                 shared.devlog(`Timer is closing the working tab`);
                 shared.addError(K.ErrorType.FORCE_CLOSED, 'Site was unresponsive or redirected', this.uuid);
-                manager.closeWorkingTab();
+                manager.closeWorkingTab(schedule);
             }
         }
     }
@@ -5638,7 +5736,7 @@
     class Faucet {
         constructor(elements, actions = {}) {
             this._url = window.location.href;
-            this._timeout = new Timeout(this.maxSeconds);
+            this._timeout = new Timeout();
             this._elements = elements;
             this._actions = {
                 preRun: false,
@@ -6690,6 +6788,7 @@
         }
 
         getClaimsQty() {
+            shared.devlog(`@getClaimsQty`);
             let statWidgets = document.querySelectorAll('.card.mini-stats-wid');
             if (statWidgets.length < 4) return false;
 
@@ -6699,15 +6798,18 @@
             claimCounts = claimCounts.innerText.split('/');
             if (claimCounts.length != 2) return false;
 
+            shared.devlog(`@getClaimsQty => ${claimCounts[0]}`);
             return claimCounts[0];
         }
 
         async evalClaimsQty() {
+            shared.devlog(`@evalClaimsQty`);
             let current = this.getClaimsQty();
 
             if (current) {
                 current = +current;
             } else {
+                shared.devlog(`@evalClaimsQty => no current`);
                 return;
             }
 
@@ -6715,10 +6817,13 @@
             if (!isNaN(previous)) previous = +previous;
 
             if (current == previous) {
+                shared.devlog(`@evalClaimsQty => current == previous`);
                 return;
             } else if (current < previous) {
+                shared.devlog(`@evalClaimsQty => to updateResult`);
                 return this.updateResult();
             } else {
+                shared.devlog(`@evalClaimsQty => to setProp`);
                 await shared.setProp('tempClaimsQty', current);
             }
         }
@@ -6995,14 +7100,19 @@
         readNextRoll() {
             try {
                 let pars = [...document.querySelectorAll('p')];
-                if (pars.find(x => x.innerText.includes('PROBLEM'))) {
-                    // need to wait
+                if (pars.find(x => x.innerText.includes('wait until next day before claiming again'))) {
+                    // need to wait a day
                     return helpers.addMinutes(helpers.randomInt(6, 22));
                 }
 
                 if (pars.find(x => x.innerText.includes('ALL DAILY CLAIMS') || x.innerText.includes('You have 0 claims left'))) {
                     // need to wait a day
                     return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+                }
+
+                if (pars.find(x => x.innerText.includes('PROBLEM'))) {
+                    // need to wait
+                    return helpers.addMinutes(helpers.randomInt(6, 22));
                 }
 
                 if (pars.find(x => x.innerText.includes('You have'))) {
@@ -7190,7 +7300,7 @@
         }
     }
 
-    let timer, landing;
+    let landing, instance, siteTimer;
     let useTimer;
     async function init() {
         persistence = objectGenerator.createPersistence();
@@ -7198,7 +7308,7 @@
         useTimer = shared.getConfig()['defaults.extraInterval'];
         if (window.location.host === 'criptologico.com') {
             landing = window.location.host;
-            timer = new Timer(true, 30);
+            instance = K.LOCATION.MANAGER;
             shared.devlog('Manager Reloaded');
             manager = objectGenerator.createManager();
             CFPromotions = objectGenerator.createCFPromotions();
@@ -7211,8 +7321,30 @@
             } catch {}
             setTimeout( () => { window.stop(); }, 10000);
         } else {
+            instance = K.LOCATION.UNKNOWN;
             detectWeb();
         }
     }
     init();
+
+    // BETA Schedules:
+    function betaScheduleDivision(site) {
+        // All schedules that not match the conditions will be added to a default schedule (color #4a70e0).
+        site.schedule = '4a70e0';
+        // You can use any hex color (don't put the #).
+
+        // Here we are creating 2 schedules based on conditions (ids): 1 for all BK sites and 1 for BF boxes. The other sites go to the default.
+        let idNmbr = +site.id;
+        if([58, 59, 67, 86].includes(idNmbr)) { // BFs
+            site.schedule = 'd1671b';
+        }
+        if( (idNmbr >= 21 && idNmbr <= 44) || [69, 70].includes(idNmbr) ) { // BKs
+            site.schedule = '65329c';
+        }
+        if(idNmbr <= 14 || [16, 68, 78, 81].includes(idNmbr)) { // this matches CFs
+            // doing nothing
+        }
+        if (idNmbr == 84) site.schedule = 'd1671b'; // JTFey
+        if (idNmbr == 18) site.schedule = '65329c'; // FP PTC
+    }
 })();
