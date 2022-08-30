@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      2.7.0
+// @version      2.7.2
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -130,7 +130,7 @@
             promoCodeExpired: ['ended']
         }
     };
-
+  
     const K = Object.freeze({
         WebType: {
             CRYPTOSFAUCETS: 1,
@@ -140,11 +140,11 @@
             FREELITECOIN: 5,
             FREEETHEREUMIO: 6,
             BAGIKERAN: 7,
-            // OKFAUCET: 8,
+            OKFAUCET: 8,
             BIGBTC: 9,
             BESTCHANGE: 10,
             KINGBIZ: 11,
-            BFBOX: 13,
+            BETFURYBOX: 13,
             FREEDOGEIO: 14,
             DUTCHYROLL: 15,
             FCRYPTO: 16,
@@ -253,12 +253,13 @@
             BFG: '11038',
             CAKE: '7186',
             GRC: '833',
-            MATIC: '3890'
+            MATIC: '3890',
+            BABY: '10334',
         }
     });
-
+  
     let persistence, shared, manager, ui, CFPromotions, interactions, CFHistory, SiteProcessor;
-
+  
     Element.prototype.isVisible = function() {
         return !!(this.offsetWidth||this.offsetHeight||this.getClientRects().length);
     };
@@ -267,7 +268,7 @@
         return e && e.isVisible()  ? e : null;
     };
     HTMLDocument.prototype.isUserFriendly = Element.prototype.isUserFriendly;
-
+  
     Number.prototype.toDate = function() {
         return new Date(this);
     };
@@ -282,7 +283,7 @@
     };
     Array.prototype.shuffle = function () {
         let currentIndex = this.length, temporaryValue, randomIndex;
-
+  
         while (0 !== currentIndex) {
             randomIndex = Math.floor(Math.random() * currentIndex);
             currentIndex -= 1;
@@ -290,10 +291,10 @@
             this[currentIndex] = this[randomIndex];
             this[randomIndex] = temporaryValue;
         }
-
+  
         return this;
     };
-
+  
     let helpers = {
         getPrintableTime: function (date = new Date()) {
             if (date == null) {
@@ -394,7 +395,7 @@
                         return K.CF.UrlType.HOME;
                     }
                 }
-
+  
                 return K.CF.UrlType.IGNORE;
             }
         },
@@ -410,7 +411,7 @@
             helpers.triggerMouseEvent (elm, "click");
         }
     }
-
+  
     let objectGenerator = {
         createPersistence: function() {
             const prefix = 'autoWeb_';
@@ -472,7 +473,7 @@
                 config['jtfey.credentials.mode'] = 2;
                 config['jtfey.credentials.username'] = 'YOUR_USERNAME';
                 config['jtfey.credentials.password'] = 'YOURPASSWORD';
-
+  
                 let storedData = persistence.load('config', true);
                 if(storedData) {
                     for (const prop in config) {
@@ -481,7 +482,7 @@
                         }
                     }
                 }
-
+  
                 config.version = GM_info.script.version;
                 // console.log('VERSION:', config.version);
             };
@@ -498,7 +499,7 @@
                 if(!config['devlog.enabled']) {
                     return;
                 }
-
+  
                 let log;
                 if(reset) {
                     log = [`${helpers.getPrintableTime()}|Log cleared`];
@@ -506,7 +507,7 @@
                     log = persistence.load('devlog', true);
                     log = log ?? [];
                 }
-
+  
                 if(msg) {
                     let previous;
                     try {
@@ -518,11 +519,11 @@
                         log.push(`${helpers.getPrintableTime()}|${msg}`);
                     }
                 }
-
+  
                 if(log.length > 200) {
                     log.splice(0, log.length - 200);
                 }
-
+  
                 persistence.save('devlog', log, true);
             };
             function getDevLog() {
@@ -537,7 +538,7 @@
                 if(!flowControl) {
                     return false;
                 }
-
+  
                 shared.devlog(`Visit to: ${flowControl.url}`);
                 if (flowControl.type == K.WebType.CBG) {
                     if (window.location.href.includes(flowControl.url) || window.location.href.includes(flowControl.host)) {
@@ -554,14 +555,14 @@
                 } else if (flowControl.host != window.location.host) {
                     return false;
                 }
-
+  
                 if(flowControl.opened && flowControl.type != K.WebType.FAUCETPAY && flowControl.type != K.WebType.BAGIKERAN) {
                     return false;
                 }
                 if(flowControl.type == K.WebType.BAGIKERAN && !window.location.href.includes(flowControl.params.trackUrl)) {
                     return false;
                 }
-
+  
                 return true;
             };
             function setFlowControl(id, url, webType, params = null) {
@@ -615,10 +616,10 @@
             };
             function addError(errorType, errorMessage) {
                 flowControl.error = true;
-
+  
                 flowControl.result.errorType = errorType;
                 flowControl.result.errorMessage = errorMessage;
-
+  
                 saveFlowControl();
             };
             function closeWithError(errorType, errorMessage) {
@@ -681,25 +682,25 @@
                 IDLE: 1,
                 CLAIMING: 2
             };
-
+  
             let timestamp = null;
             let timeWaiting = 0;
             let uiUpdatesInterval;
             let status = STATUS.INITIALIZING;
             let processTimer;
             let workingTab;
-
+  
             let webList = [];
             let userWallet = [];
             let groups = [];
             groups.push({
-                name: 'Default',
-                color: '#fff',
-                siteList: [], // ids?
-                currentSite: null,
-                status: STATUS.INITIALIZING
+              name: 'Default',
+              color: '#fff',
+              siteList: [], // ids?
+              currentSite: null,
+              status: STATUS.INITIALIZING
             });
-
+  
             const sites = [
                 { id: '1', name: 'CF ADA', cmc: '2010', coinRef: 'ADA', url: new URL('https://freecardano.com/free'), rf: '?ref=335463', type: K.WebType.CRYPTOSFAUCETS, clId: 45 },
                 { id: '2', name: 'CF BNB', cmc: '1839', coinRef: 'BNB', url: new URL('https://freebinancecoin.com/free'), rf: '?ref=161127', type: K.WebType.CRYPTOSFAUCETS, clId: 42 },
@@ -758,8 +759,8 @@
                 // { id: '55', name: 'Bitking.biz', cmc: '1', url: new URL('https://bitking.biz/'), rf: 'signup?r=90003', type: K.WebType.KINGBIZ, clId: 165 },
                 // { id: '56', name: 'OK Bch', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://faucetok.net/bch/'), rf: '?r=qz742nf2c30ktehlmn0pg6quqe8yuwp3evd75y8c0k', type: K.WebType.OKFAUCET }
                 // { id: '57', name: 'OurBitco.in', cmc: '1', url: new URL('https://ourbitco.in/dashboard'), rf: '?r=gebcjvwpky', type: K.WebType.OURBITCOIN },
-                { id: '58', name: 'BF BTC', cmc: '1', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
-                { id: '59', name: 'BF BNB', cmc: '1839', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
+                { id: '58', name: 'BetFury BTC', cmc: '1', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BETFURYBOX, clId: 1 },
+                { id: '59', name: 'BetFury BNB', cmc: '1839', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BETFURYBOX, clId: 1 },
                 // { id: '60', name: 'Free-Doge.io', cmc: '74', url: new URL('https://www.free-doge.io/'), rf: '?referer=6695', type: K.WebType.FREEDOGEIO, clId: 166 },
                 { id: '61', name: 'Dutchy', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
                 { id: '62', name: 'Dutchy Monthly Coin', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/coin_roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
@@ -767,7 +768,7 @@
                 // { id: '64', name: 'Express Monthly Coin', cmc: '-1', url: new URL('https://express.dutchycorp.space/coin_roll.php'), rf: '?r=EC-UserId-428378', type: K.WebType.DUTCHYROLL },
                 { id: '65', name: 'FCrypto Roll', cmc: '-1', url: new URL('https://faucetcrypto.com/dashboard'), rf: 'ref/704060', type: K.WebType.FCRYPTO, clId: 27 },
                 // WIP { id: '66', name: 'CPU', cmc: '-1', url: new URL('https://www.coinpayu.com/dashboard'), rf: '?r=corecrafting', type: K.WebType.CPU },
-                { id: '67', name: 'BF BFG', cmc: '11038', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
+                { id: '67', name: 'BetFury BFG', cmc: '11038', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BETFURYBOX, clId: 1 },
                 { id: '68', name: 'CF SHIBA', cmc: '5994', coinRef: 'SHIBA', url: new URL('https://freeshibainu.com/free'), rf: '?ref=18226', type: K.WebType.CRYPTOSFAUCETS, clId: 167 },
                 { id: '69', name: 'Bagi SOL', cmc: '5426', wallet: K.WalletType.FP_SOL, url: new URL('https://bagi.co.in/solana/'), rf: ['?ref=2838'], type: K.WebType.BAGIKERAN, clId: 149 },
                 { id: '70', name: 'Keran SOL', cmc: '5426', wallet: K.WalletType.FP_SOL, url: new URL('https://keran.co/SOL/'), rf: ['?ref=4249'], type: K.WebType.BAGIKERAN, clId: 131 },
@@ -785,9 +786,10 @@
                 { id: '82', name: 'Heli', cmc: '-1', url: new URL('https://helidrops.io/coins.php'), rf: 'OLPUAO', type: K.WebType.HELI, clId: 211 },
                 // { id: '83', name: 'FreeBCH', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://freebch.fun/page/dashboard'), rf: ['?r=satology'], type: K.WebType.FPB, clId: 212 },
                 { id: '84', name: 'JTFey', cmc: '-1', url: new URL('https://james-trussy.com/faucet'), rf: ['?r=corecrafting'], type: K.WebType.VIE, clId: 213 },
-                { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 }
+                { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
+                { id: '86', name: 'BF BABY', cmc: '10334', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BETFURYBOX, clId: 1 }
             ];
-
+  
             const wallet = [
                 { id: '101', name: 'FaucetPay BTC (Bitcoin)', type: K.WalletType.FP_BTC },
                 { id: '102', name: 'FaucetPay BNB (Binance Coin)', type: K.WalletType.FP_BNB },
@@ -806,7 +808,7 @@
                 { id: '1', name: 'BTC Alternative Address', type: K.WalletType.BTC }
                 //                { id: '2', name: 'LTC Address', type: K.WalletType.LTC }
             ];
-
+  
             async function start() {
                 await loader.initialize();
                 ui.init(getCFlist());
@@ -815,7 +817,7 @@
                 uiUpdatesInterval = setInterval(readUpdateValues, 10000);
                 processTimer = setTimeout(manager.process, 2000);
             };
-
+  
             let loader = function() {
                 async function initialize() {
                     setTimestamp();
@@ -847,17 +849,17 @@
                         //     username: '',
                         //     password: ''
                         // };
-
+  
                         // TODO: review
                         if(arr[idx].type == K.WebType.BAGIKERAN) {
                             arr[idx].lastWithdraw = new Date();
                         }
-
+  
                         if (element.id == '17') { //17: FB.in
                             arr[idx].params['custom.useWofRp'] = 0;
                             arr[idx].params['custom.useFunRp'] = 0;
                         }
-
+  
                         if (element.id == '15') { //15: SG
                             arr[idx].params['defaults.nextRun.override'] = true;
                             arr[idx].params['defaults.nextRun.useCountdown'] = true;
@@ -888,7 +890,7 @@
                             arr[idx].params['defaults.nextRun.min'] = 15;
                             arr[idx].params['defaults.nextRun.max'] = 18;
                         }
-                        if (element.id == '58' || element.id == '59' || element.id == '67') { //58, 59: BF x2 + 67: BFG
+                        if (element.id == '58' || element.id == '59' || element.id == '67' || element.id == '86') { //58, 59: BetFury x2 + 67: BFG
                             arr[idx].params['defaults.nextRun.override'] = true;
                             arr[idx].params['defaults.nextRun.useCountdown'] = false;
                             arr[idx].params['defaults.nextRun'] = 0;
@@ -960,13 +962,13 @@
                                 webList[idx].stats = element.stats ?? webList[idx].stats;
                                 webList[idx].enabled = element.enabled ?? webList[idx].enabled;
                                 webList[idx].schedule = element.schedule ?? webList[idx].schedule;
-
+  
                                 if(!webList[idx].enabled) {
                                     webList[idx].nextRoll = null;
                                 } else {
                                     webList[idx].nextRoll = element.nextRoll ? new Date(element.nextRoll) : new Date();
                                 }
-
+  
                                 if(element.lastWithdraw) {
                                     webList[idx].lastWithdraw = new Date(element.lastWithdraw);
                                 }
@@ -988,7 +990,7 @@
                 };
                 function splitInSchedules() {
                     let schedules = [];
-
+  
                     webList.forEach((x, idx, elm) => {
                         if (x.type == 1) {
                             x.schedule = '#a0a0a0';
@@ -996,10 +998,10 @@
                         if(!schedules[x.schedule]) {
                             schedules[x.schedule] = []
                         };
-
+  
                         schedules[x.schedule].push(elm);
                     });
-
+  
                 };
                 function initializeUserWallet() {
                     addWallets();
@@ -1059,11 +1061,11 @@
             function readUpdateValues(forceCheck = false) {
                 readPromoCodeValues();
                 readModalData();
-
+  
                 if(groups[0].status == STATUS.IDLE || forceCheck) {
                     let updateDataElement = document.getElementById('update-data');
                     let updateValues = updateDataElement.innerText.clean();
-
+  
                     if (updateValues != '') {
                         updateDataElement.innerText = '';
                         let updateObj = JSON.parse(updateValues);
@@ -1084,7 +1086,7 @@
                                 try {
                                     let itemIndex = webList.findIndex(x => x.id == element.id);
                                     webList[itemIndex].name = element.displayName;
-
+  
                                     if (webList[itemIndex].enabled != element.enabled) {
                                         webList[itemIndex].enabled = element.enabled;
                                         if(webList[itemIndex].enabled) {
@@ -1099,23 +1101,23 @@
                                 }
                             });
                         }
-
+  
                         if(updateObj.wallet.changed) {
                             updateObj.wallet.items.forEach(function (element) {
                                 try {
                                     let itemIndex = userWallet.findIndex(x => x.id == element.id);
                                     userWallet[itemIndex].address = element.address;
-
+  
                                     ui.log(`Wallet Address updated [${userWallet[itemIndex].name}]: ${userWallet[itemIndex].address}`);
                                 } catch (err) {
                                     ui.log(`Error updating wallet/address: ${err}`);
                                 }
                             });
-
+  
                             ui.refresh(null, null, userWallet);
                             saveUserWallet();
                         }
-
+  
                         if(updateObj.config.changed) {
                             try {
                                 shared.updateConfig(updateObj.config.items);
@@ -1125,9 +1127,9 @@
                             } catch (err) {
                                 ui.log(`Error updating config: ${err}`);
                             }
-
+  
                         }
-
+  
                         if(updateObj.site.changed) {
                             // console.log(JSON.stringify(updateObj));
                             updateObj.site.list.forEach( (x) => {
@@ -1138,7 +1140,7 @@
                                 }
                             });
                         }
-
+  
                         if(updateObj.runAsap.changed || updateObj.editSingle.changed || updateObj.site.changed) {
                             update(true);
                             process();
@@ -1196,7 +1198,7 @@
                     });
                     groups[0].currentSite = webList[0];
                 }
-
+  
                 saveWebList();
                 ui.refresh(webList, CFPromotions.getAll());
                 updateRollStatsSpan();
@@ -1214,14 +1216,14 @@
                         enabled: x.enabled,
                         params: x.params
                     };
-
+  
                     if (x.lastWithdraw) {
                         ret.lastWithdraw = x.lastWithdraw;
                     }
-
+  
                     return ret;
                 });
-
+  
                 persistence.save('webList', data, true);
             }
             function saveUserWallet() {
@@ -1230,7 +1232,7 @@
                         id: x.id,
                         address: x.address
                     };});
-
+  
                 persistence.save('userWallet', data, true);
             }
             function process() {
@@ -1244,7 +1246,7 @@
                     groups[0].status = STATUS.IDLE;
                     return;
                 }
-
+  
                 if(groups[0].currentSite.nextRoll.getTime() < Date.now()) {
                     ui.log(`Opening ${groups[0].currentSite.name}`);
                     clearTimeout(processTimer);
@@ -1252,7 +1254,7 @@
                     open();
                 } else {
                     let timeUntilNext = groups[0].currentSite.nextRoll.getTime() - Date.now() + helpers.randomMs(1000, 2000);
-
+  
                     // PROCESSING AGAIN LAST 'FORCE CLOSED' IN CASE WE HAVE A WINDOW OF TIME (MORE THAN TIMEOUT/2):
                     if (timeUntilNext > (shared.getConfig()['defaults.timeout'] * 60 * 1000 / 2)) {
                         let idx = -1;
@@ -1269,7 +1271,7 @@
                             return;
                         }
                     }
-
+  
                     ui.log(`Waiting ${(timeUntilNext/1000/60).toFixed(2)} minutes...`);
                     clearTimeout(processTimer);
                     processTimer = setTimeout(manager.process, timeUntilNext);
@@ -1287,20 +1289,18 @@
             };
             function open(promoCode) {
                 let navUrl = groups[0].currentSite.url;
-                console.log('About to open')
-                console.log(groups[0].currentSite.url)
                 try {
                     if(promoCode) {
                         navUrl = new URL('promotion/' + promoCode, groups[0].currentSite.url.origin);
                         ui.log(`Opening ${groups[0].currentSite.name} with Promo Code [${promoCode}]`);
                     }
-
+  
                     if (groups[0].currentSite.firstRun) {
                         if(Array.isArray(groups[0].currentSite.rf) && groups[0].currentSite.rf.length > 0) {
                             navUrl = new URL(navUrl.href + groups[0].currentSite.rf[helpers.randomInt(0, groups[0].currentSite.rf.length - 1)]);
                         }
                     }
-
+  
                     let params = groups[0].currentSite.params || {};
                     if (groups[0].currentSite.wallet) {
                         //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
@@ -1323,7 +1323,7 @@
                         params.trackUrl = groups[0].currentSite.url;
                     }
                     params.cmc = groups[0].currentSite.cmc;
-
+  
                     if(groups[0].currentSite.type == K.WebType.FPB) {
                         switch(groups[0].currentSite.id) {
                             case '77':
@@ -1332,12 +1332,12 @@
                             case '83':
                                 params.sitePrefix = 'fbch';
                                 break;
-                                // case '84':
-                                //     params.sitePrefix = 'jtfey';
-                                //     break;
+                            // case '84':
+                            //     params.sitePrefix = 'jtfey';
+                            //     break;
                         }
                     }
-
+  
                     // TODO: create credentials on site level
                     if(groups[0].currentSite.type == K.WebType.VIE) {
                         params.credentials = {
@@ -1346,10 +1346,10 @@
                             password: shared.getConfig()['jtfey.credentials.password']
                         };
                     }
-
+  
                     shared.setFlowControl(groups[0].currentSite.id, navUrl, groups[0].currentSite.type, params);
                     setTimeout(manager.resultReader, 15000);
-
+  
                     // Try to close old workingTab if still opened
                     if (workingTab && !workingTab.closed) {
                         try {
@@ -1361,7 +1361,7 @@
                     } else {
                         shared.devlog(`No open tabs detected`);
                     }
-
+  
                     timer.startCheck(groups[0].currentSite.type);
                     let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24 ];
                     let hrefOpener = navUrl.href;
@@ -1373,7 +1373,7 @@
                     ui.log(`Error opening tab: ${err}`)
                 }
             };
-
+  
             function getDoWithdraw(lastWithdraw) {
                 switch (shared.getConfig()['bk.withdrawMode']) {
                     case "0":
@@ -1393,14 +1393,14 @@
                 }
                 return false;
             }
-
+  
             function resultReaderV2() {
                 if(isObsolete()) {
                     return;
                 }
-
+  
                 let active = shared.getCurrent();
-
+  
                 switch(active.status) {
                     case 'STARTING':
                         return;
@@ -1412,13 +1412,13 @@
                         return;
                 }
             }
-
+  
             // REFACTOR
             function resultReader() {
                 if(isObsolete()) {
                     return;
                 }
-
+  
                 if ( ( (groups[0].currentSite.type == K.WebType.FAUCETPAY && timeWaiting < shared.getConfig()['fp.maxTimeInMinutes'] * 60) )
                     && workingTab && !workingTab.closed ) {
                     timeWaiting += 15;
@@ -1426,18 +1426,18 @@
                     setTimeout(manager.resultReader, 15000);
                     return;
                 }
-
+  
                 if(shared.wasVisited(groups[0].currentSite.id)) {
                     let result = shared.getResult();
-
+  
                     if (result) {
                         updateWebListItem(result);
-
+  
                         if (result.closeParentWindow) {
                             ui.log(`Closing working tab per process request`);
                             closeWorkingTab();
                         }
-
+  
                         if ( (groups[0].currentSite.type == K.WebType.CRYPTOSFAUCETS) &&
                             ( (result.claimed) || (result.promoStatus && result.promoStatus != K.CF.PromoStatus.ACCEPTED) )) {
                             let promoCode = CFPromotions.hasPromoAvailable(groups[0].currentSite.id);
@@ -1448,38 +1448,38 @@
                                 return;
                             }
                         }
-
+  
                         if ( groups[0].currentSite.type == K.WebType.BAGIKERAN && shared.getCurrent().params.doWithdraw && !result.withdrawnAmount) {
                             if(!result.withdrawing) {
                                 shared.updateWithoutClosing({ withdrawing: true });
                                 update(false);
                                 timeWaiting = 0;
                             }
-
+  
                             if (hasTimedOut()) {
                                 if(groups[0].currentSite.stats.countTimeouts) {
                                     groups[0].currentSite.stats.countTimeouts += 1;
                                 } else {
                                     groups[0].currentSite.stats.countTimeouts = 1;
                                 }
-
+  
                                 ui.log(`Waited too much time for ${groups[0].currentSite.name} results: triggering timeout`);
                                 moveNextAfterTimeoutOrError();
                                 return;
                             }
-
+  
                             if (shared.hasErrors(groups[0].currentSite.id)) {
                                 groups[0].currentSite.stats.errors = shared.getResult();
                                 ui.log(`${groups[0].currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType, groups[0].currentSite.stats.errors.errorType)} ${groups[0].currentSite.stats.errors.errorMessage}`);
-
+  
                                 if(sleepIfBan()) {
                                     return;
                                 }
-
+  
                                 moveNextAfterTimeoutOrError();
                                 return;
                             }
-
+  
                             timeWaiting += 15;
                             ui.log(`Waiting for ${groups[0].currentSite.name} withdraw...`, timeWaiting);
                             setTimeout(manager.resultReader, 15000);
@@ -1488,20 +1488,20 @@
                     } else {
                         ui.log(`Unable to read last run result, for ID: ${groups[0].currentSite.id} > ${groups[0].currentSite.name}`);
                     }
-
+  
                     timeWaiting = 0;
                     update(true);
                     readUpdateValues(true);
                     return;
                 } else {
-
+  
                     timeWaiting += 15;
                     if (!shared.hasErrors(groups[0].currentSite.id) && !hasTimedOut()) {
                         ui.log(`Waiting for ${groups[0].currentSite.name} results...`, timeWaiting);
                         setTimeout(manager.resultReader, 15000);
                         return;
                     }
-
+  
                     if (shared.hasErrors(groups[0].currentSite.id)) {
                         groups[0].currentSite.stats.errors = shared.getResult();
                         ui.log(`${groups[0].currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,groups[0].currentSite.stats.errors.errorType)} ${groups[0].currentSite.stats.errors.errorMessage}`);
@@ -1509,27 +1509,27 @@
                             ui.log(`Closing working tab per process request`);
                             closeWorkingTab();
                         }
-
+  
                         if(sleepIfBan()) {
                             return;
                         }
                     }
-
+  
                     if (hasTimedOut()) {
                         if(groups[0].currentSite.stats.countTimeouts) {
                             groups[0].currentSite.stats.countTimeouts += 1;
                         } else {
                             groups[0].currentSite.stats.countTimeouts = 1;
                         }
-
+  
                         ui.log(`Waited too much time for ${groups[0].currentSite.name} results: triggering timeout`);
                     }
-
+  
                     moveNextAfterTimeoutOrError();
                     return;
                 }
             };
-
+  
             function errorTreatment() {
                 //TODO: validate that stats.errors.errorType exists
                 shared.devlog(`@errorTreatment`);
@@ -1547,7 +1547,7 @@
                 } catch {}
                 return false;
             }
-
+  
             function sleepIfBan() {
                 if( (groups[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN && shared.getConfig()['cf.sleepHoursIfIpBan'] > 0)
                    || ( (groups[0].currentSite.stats.errors.errorType == K.ErrorType.IP_RESTRICTED || groups[0].currentSite.stats.errors.errorType == K.ErrorType.IP_BAN) && shared.getConfig()['bk.sleepMinutesIfIpBan'] > 0) ) {
@@ -1557,14 +1557,14 @@
                             el.nextRoll = sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['cf.sleepHoursIfIpBan'] * 60, 2)).toDate());
                         });
                     }
-
+  
                     if(groups[0].currentSite.type == K.WebType.BAGIKERAN) {
                         webList.filter(x => x.enabled && x.type == K.WebType.BAGIKERAN && x.url.host == groups[0].currentSite.url.host)
                             .forEach( function(el) {
                             el.nextRoll = sleepCheck(helpers.addMs(helpers.getRandomMs(shared.getConfig()['bk.sleepMinutesIfIpBan'], 2)).toDate());
                         });
                     }
-
+  
                     shared.clearFlowControl();
                     update(true);
                     timeWaiting = 0;
@@ -1573,10 +1573,10 @@
                 }
                 return false;
             }
-
+  
             function getCustomOrDefaultVal(param, useOverride = false) {
                 let val;
-
+  
                 if (useOverride) {
                     if (groups[0].currentSite.params && groups[0].currentSite.params.hasOwnProperty(param)) {
                         val = groups[0].currentSite.params[param];
@@ -1585,27 +1585,27 @@
                         }
                     }
                 }
-
+  
                 // console.log(`Using Default for ${param}: ${shared.getConfig()[param]}`);
                 return shared.getConfig()[param];
             }
-
+  
             function useOverride(param) {
                 let overrideFlag = param  + '.override';
                 return groups[0].currentSite.params && groups[0].currentSite.params[overrideFlag];
             }
-
+  
             function sleepCheck(nextRun) {
                 // console.log(`sleepCheck for next run: ${nextRun}`);
                 let useCustom = useOverride('defaults.sleepMode');
                 // console.log(`Using Overide for sleepCheck: ${useCustom}`);
                 let sleepMode = getCustomOrDefaultVal('defaults.sleepMode', useCustom);
-
+  
                 if (sleepMode) {
                     let intNextRunTime = nextRun.getHours() * 100 + nextRun.getMinutes();
                     let min = getCustomOrDefaultVal('defaults.sleepMode.min', useCustom).replace(':', '');
                     let max = getCustomOrDefaultVal('defaults.sleepMode.max', useCustom).replace(':', '');
-
+  
                     if (+min < +max) {
                         if (+min < intNextRunTime && intNextRunTime < +max) {
                             shared.devlog(`Sleep Mode [${min} to ${max}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
@@ -1624,7 +1624,7 @@
                 }
                 return nextRun;
             }
-
+  
             function getNextRun(nextRollFromCountdown) {
                 let useCustom = useOverride('defaults.nextRun');
                 let useCountdown = getCustomOrDefaultVal('defaults.nextRun.useCountdown', useCustom);
@@ -1632,58 +1632,58 @@
                 let min = getCustomOrDefaultVal('defaults.nextRun.min', useCustom);
                 let max = getCustomOrDefaultVal('defaults.nextRun.max', useCustom);
                 let nextRun;
-
+  
                 if (useCountdown && nextRollFromCountdown) {
                     nextRun = nextRollFromCountdown;
                 } else {
                     let minutes = (nextRunMode == 0) ? helpers.randomInt(min, max) : nextRunMode;
                     let msDelay = helpers.getRandomMs(minutes, 1);
-
+  
                     nextRun = helpers.addMs(msDelay).toDate();
                 }
                 nextRun = sleepCheck(nextRun)
-
+  
                 shared.devlog(`@getNextRun: ${nextRun}`);
                 return nextRun;
             }
-
+  
             function moveNextAfterTimeoutOrError() {
                 let useCustom = useOverride('defaults.postponeMinutes');
-
+  
                 let mode = getCustomOrDefaultVal('defaults.postponeMinutes', useCustom);
                 let min = getCustomOrDefaultVal('defaults.postponeMinutes.min', useCustom);
                 let max = getCustomOrDefaultVal('defaults.postponeMinutes.max', useCustom);
-
+  
                 let minutes = (mode == 0) ? helpers.randomInt(min, max) : mode;
                 let msDelay = helpers.getRandomMs(minutes, 5);
-
-
+  
+  
                 groups[0].currentSite.nextRoll = sleepCheck(helpers.addMs(msDelay).toDate());
                 if(errorTreatment()) {
                     shared.devlog(`@moveNextAfterTimeoutOrError: errorTreatment => true`);
                 }
                 shared.devlog(`@moveNextAfterTimeoutOrError: ${groups[0].currentSite.nextRoll}`);
-
+  
                 shared.clearFlowControl();
                 update(true);
                 timeWaiting = 0;
                 readUpdateValues(true);
             }
-
+  
             function hasTimedOut() {
                 let val = getCustomOrDefaultVal('defaults.timeout', useOverride('defaults.timeout')) * 60;
                 return (timeWaiting > val);
             };
-
+  
             function updateWebListItem(result) {
                 if (result.withdrawing) {
                     return;
                 }
-
+  
                 ui.log(`Updating data: ${JSON.stringify(result)}`);
                 groups[0].currentSite.stats.countTimeouts = 0;
                 groups[0].currentSite.stats.errors = null;
-
+  
                 if (result.withdrawnAmount && result.withdrawnAmount > 0) {
                     groups[0].currentSite.lastWithdraw = new Date();
                     groups[0].currentSite.balance += result.withdrawnAmount;
@@ -1691,7 +1691,7 @@
                     groups[0].currentSite.aggregate = 0;
                     return;
                 }
-
+  
                 if (result.claimed) {
                     try {
                         result.claimed = parseFloat(result.claimed);
@@ -1712,17 +1712,17 @@
                     CFHistory.addRoll(result.rolledNumber);
                 }
             };
-
+  
             function readPromoCodeValues() {
                 let promoCodeElement = document.getElementById('promo-code-new');
                 let promoDataStr = promoCodeElement.innerText.clean();
-
+  
                 if (promoDataStr == '') {
                     return;
                 }
-
+  
                 let promoData = JSON.parse(promoDataStr);
-
+  
                 if(promoData.action) {
                     switch (promoData.action) {
                         case 'FORCESTOPFAUCET':
@@ -1730,7 +1730,7 @@
                             groups[0].currentSite.enabled = false;
                             update(true);
                             window.location.reload();
-
+  
                             promoCodeElement.innerText = '';
                             //ui.refresh with reload
                             break;
@@ -1761,12 +1761,12 @@
                     }
                 }
             };
-
+  
             function updateRollStatsSpan() {
                 let rollsSpanElement = document.getElementById('rolls-span');
                 rollsSpanElement.innerText = CFHistory.getRollsMeta().join(',');
             };
-
+  
             function getCFlist() {
                 let items;
                 items = webList.filter(f => f.type === K.WebType.CRYPTOSFAUCETS);
@@ -1776,7 +1776,7 @@
                         name: x.coinRef
                     };});
                 items.sort((a, b) => (a.name > b.name) ? 1 : -1);
-
+  
                 return items;
             };
             function closeWorkingTab() {
@@ -1792,13 +1792,13 @@
             };
         },
         createUi: function() {
-
+  
             let injectables = {
                 managerJs: function () {
-
+  
                     window.myBarChart = null;
                     window.landing = window.location.host;
-
+  
                     window.sendErrorReport = function sendErrorReport() {
                         try {
                             let header = new Headers();
@@ -1814,7 +1814,7 @@
                             });
                         } catch { }
                     };
-
+  
                     window.loadDlg = function loadDlg(id, siteId = null) {
                         document.querySelectorAll("#modal-dlg .modal-content").forEach(x => x.classList.add('d-none'));
                         if (id == "modal-ereport" || id == "modal-config" || id == "modal-site") {
@@ -1827,7 +1827,7 @@
                             document.getElementById(id).classList.remove("d-none");
                         }
                     };
-
+  
                     window.savePromoCode = function savePromoCode() {
                         var promoText = document.getElementById("promo-text-input");
                         var promoCode = document.getElementById("promo-code-new");
@@ -1837,14 +1837,14 @@
                         toastr["info"]("Adding promo code: " + promoObject.code + "...");
                         promoText.value = '';
                     };
-
+  
                     window.removePromoCode = function removePromoCode(id, code) {
                         var promoCode = document.getElementById("promo-code-new");
                         var promoObject = { action: "REMOVE", id: id, code: code };
                         promoCode.innerHTML =JSON.stringify(promoObject);
                         toastr["info"]("Removing promo code " + code);
                     };
-
+  
                     window.getUpdateObject = function getUpdateObject() {
                         let updateObject;
                         var updateData = document.getElementById("update-data");
@@ -1855,7 +1855,7 @@
                         }
                         return updateObject;
                     };
-
+  
                     window.editList = function editList() {
                         document.querySelectorAll("#schedule-table-body td.em-input span").forEach(function (x) {
                             let val = x.innerHTML;
@@ -1868,7 +1868,7 @@
                         document.querySelectorAll(".em-only").forEach(x => x.classList.remove("d-none"));
                         document.querySelectorAll(".em-hide").forEach(x => x.classList.add("d-none"));
                     };
-
+  
                     window.editListSave = function editListSave() {
                         let updateObject = getUpdateObject();
                         document.querySelectorAll("#schedule-table-body tr:not(.fake-row)").forEach(function (row) {
@@ -1892,11 +1892,11 @@
                             document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
                             toastr["info"]("Data will be updated as soon as possible");
                         }
-
+  
                         document.querySelectorAll(".em-only").forEach(x => x.classList.add("d-none"));
                         document.querySelectorAll(".em-hide").forEach(x => x.classList.remove("d-none"));
                     };
-
+  
                     window.editListCancel = function editListCancel() {
                         document.querySelectorAll("#schedule-table-body td.em-input input").forEach(function(x) {
                             x.parentNode.innerHTML = x.dataset.original;
@@ -1904,7 +1904,7 @@
                         document.querySelectorAll(".em-only").forEach(x => x.classList.add("d-none"));
                         document.querySelectorAll(".em-hide").forEach(x => x.classList.remove("d-none"));
                     };
-
+  
                     window.editWallet = {
                         save: function() {
                             let updateObject = getUpdateObject();
@@ -1956,7 +1956,7 @@
                             });
                         }
                     };
-
+  
                     window.editConfig = {
                         save: function() {
                             let updateObject = getUpdateObject();
@@ -1987,7 +1987,7 @@
                             });
                         }
                     };
-
+  
                     window.editSite = {
                         save: function() {
                             let updateObject = getUpdateObject();
@@ -2009,7 +2009,7 @@
                                 document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
                                 toastr["info"]("Site will be updated as soon as possible");
                             }
-
+  
                         },
                         cancel: function() {
                             document.querySelectorAll("#modal-site [data-original][data-site-prop]").forEach(function(elm) {
@@ -2021,7 +2021,7 @@
                             });
                         }
                     };
-
+  
                     window.editEreport = {
                         save: function() {
                             sendErrorReport();
@@ -2029,7 +2029,7 @@
                         cancel: function() {
                         }
                     };
-
+  
                     window.modalSave = function modalSave(content) {
                         switch(content) {
                             case "wallet":
@@ -2049,7 +2049,7 @@
                                 break;
                         }
                     };
-
+  
                     window.modalCancel = function modalCancel(content) {
                         if(content == "wallet") {
                             editWallet.cancel();
@@ -2058,7 +2058,7 @@
                         }
                         document.querySelectorAll("modal-content").forEach(x => x.classList.add("d-none"));
                     };
-
+  
                     window.updateValues = function updateValues(type, values) {
                         let updateObject = getUpdateObject();
                         if (type == "runAsap") {
@@ -2068,14 +2068,14 @@
                             toastr["info"]("Faucet will be updated to run as soon as possible");
                         }
                     };
-
+  
                     window.confirmable = {
                         open: function (req, details = null, params = null) {
                             // open modal with req/action reference
                             let btn = document.getElementById("confirm-req-btn");
                             btn.setAttribute('data-request', req);
                             btn.setAttribute('data-params', params ? JSON.stringify(params) : '{}');
-
+  
                             if(details) {
                                 document.querySelector("#confirmable-modal p").innerText = details;
                             }
@@ -2098,14 +2098,14 @@
                             }
                         }
                     }
-
+  
                     window.removeAllPromos = function removeAllPromos() {
                         var promoCode = document.getElementById("promo-code-new");
                         var promoObject = { action: "REMOVEALLPROMOS" };
                         promoCode.innerHTML =JSON.stringify(promoObject);
                         toastr["info"]("This could take around a minute", "Removing all promo codes");
                     };
-
+  
                     window.forceStopFaucet = function removeAllPromos() {
                         console.log('stopping current');
                         var promoCode = document.getElementById("promo-code-new");
@@ -2113,7 +2113,7 @@
                         promoCode.innerHTML =JSON.stringify(promoObject);
                         toastr["info"]("Please wait for reload...", "Trying to stop");
                     };
-
+  
                     window.openStatsChart = function openStatsChart() {
                         if(myBarChart) { myBarChart.destroy(); }
                         let statsFragment = document.getElementById("stats-fragment");
@@ -2130,12 +2130,12 @@
                             myBarChart = new Chart(ctx, { type: "doughnut", data: data, options: options });
                         }
                     };
-
+  
                     window.shortlinkAlert = {
                         load: function(id, destination) {
                             let hideShortlinkAlerts = localStorage.getItem("hideShortlinkAlerts");
                             hideShortlinkAlerts = hideShortlinkAlerts ? JSON.parse(hideShortlinkAlerts) : false;
-
+  
                             if (hideShortlinkAlerts) {
                                 //do alert action without warning (go to SL)
                             } else {
@@ -2148,7 +2148,7 @@
                             window.open("https://example.com", "_blank");
                         }
                     }
-
+  
                     window.hiddenSites = {
                         load: function () {
                             let hsi = localStorage.getItem("hiddenSiteIds");
@@ -2191,7 +2191,7 @@
                     };
                 }
             };
-
+  
             let logLines = ['', '', '', '', ''];
             function init(cfFaucets) {
                 appendCSS();
@@ -2200,17 +2200,17 @@
                 $('#promo-daily').bootstrapSwitch();
                 createPromoTable(cfFaucets);
                 try {
-                    document.querySelector('.page-title h1').innerHTML = 'Auto Claim';
+                document.querySelector('.page-title h1').innerHTML = 'Auto Claim';
                 } catch (err) {}
             };
             function appendCSS() {
                 let css = document.createElement('style');
                 css.innerHTML = `
-              td.em-input {
-                padding-top: 0;
-                padding-bottom: 0;
-              }
-              `;
+                td.em-input {
+                  padding-top: 0;
+                  padding-bottom: 0;
+                }
+                `;
                 document.head.appendChild(css);
             };
             function appendJavaScript() {
@@ -2224,15 +2224,15 @@
             };
             function addRandomBetween(propSelect, propMin, propMax) {
                 return `<table><tr><td>
-                  <select class="form-control" ${propSelect.name}="${propSelect.value}">
-                   <option value="0">Random between...</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="35">35 minutes</option><option value="45">45 minutes</option><option value="65">65 minutes</option><option value="90">90 minutes</option><option value="120">120 minutes</option>
-                  </select></td>
-                  <td><input type="number" data-original="" ${propMin.name}="${propMin.value}" min="1" value="15" step="5" class="form-control"></td><td>and</td><td><input type="number" data-original="" ${propMax.name}="${propMax.value}" value="65" step="5" class="form-control"></td><td>minutes</td></tr></table>`;
+                    <select class="form-control" ${propSelect.name}="${propSelect.value}">
+                     <option value="0">Random between...</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="35">35 minutes</option><option value="45">45 minutes</option><option value="65">65 minutes</option><option value="90">90 minutes</option><option value="120">120 minutes</option>
+                    </select></td>
+                    <td><input type="number" data-original="" ${propMin.name}="${propMin.value}" min="1" value="15" step="5" class="form-control"></td><td>and</td><td><input type="number" data-original="" ${propMax.name}="${propMax.value}" value="65" step="5" class="form-control"></td><td>minutes</td></tr></table>`;
             }
             function appendHtml() {
                 let html ='';
                 let cardBody ='';
-
+  
                 html += '<div class="modal fade" id="confirmable-modal" tabindex="-1" role="dialog" aria-hidden="true">';
                 html += '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">';
                 html += '<div class="modal-header"><h4 class="modal-title">Are you sure?</h4><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button></div>';
@@ -2241,14 +2241,14 @@
                 html += '<button type="button" class="btn btn-primary" data-dismiss="modal" id="confirm-req-btn" onclick="confirmable.accept()">Yes</button></div>';
                 html += '</div></div>';
                 html += '</div>';
-
+  
                 html += '<div class="modal fade" id="modal-dlg" tabindex="-1" role="dialog" data-backdrop="static" aria-hidden="true">';
                 html += ' <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">';
-
+  
                 // MODAL CONTENTS
                 //[Loading]
                 html += '<div class="modal-content bg-beige" id="modal-spinner"><div class="modal-body"><div class="d-flex justify-content-center"><span id="target-spinner" class="d-none"></span><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>Loading data</div></div></div>';
-
+  
                 //Error report
                 html += '  <div class="modal-content bg-beige d-none" id="modal-ereport">';
                 html += '   <div class="modal-header"><h5 class="modal-title">Submit an Error</h5></div>';
@@ -2261,7 +2261,7 @@
                 html += '    <div class="modal-footer"><a class="btn m-2 anchor btn-outline-danger align-middle" onclick="modalCancel(\'ereport\')" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
                 html += '    <a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'ereport\')" data-dismiss="modal"><i class="fa fa-paper-plane"></i> Send</a></div>';
                 html += '  </div>';
-
+  
                 //Wallet
                 html += '  <div class="modal-content bg-beige d-none" id="modal-wallet">';
                 html += '   <div class="modal-header"><h5 class="modal-title">Your Addresses</h5></div>';
@@ -2279,7 +2279,7 @@
                 html += '<a class="btn m-2 anchor btn-outline-danger align-middle" onclick="modalCancel(\'wallet\')" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
                 html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'wallet\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div></div>';
                 html += '   </div>';
-
+  
                 //Info
                 html += '  <div class="modal-content bg-beige d-none" id="modal-info">';
                 html += '   <div class="modal-header"><h5 class="modal-title">Info</h5></div>';
@@ -2297,7 +2297,7 @@
                 html += '<div class="modal-footer">';
                 html += '<a class="btn m-2 anchor btn-outline-warning align-middle" data-dismiss="modal"><i class="fa fa-edit"></i> Close</a></div>';
                 html += '   </div>';
-
+  
                 //Alert Msg
                 html += '  <div class="modal-content bg-beige d-none" id="modal-slAlert">';
                 html += '   <div class="modal-header"><h5 class="modal-title">Attention</h5></div>';
@@ -2309,14 +2309,14 @@
                 html += '<div class="modal-footer"><a class="btn m-2 anchor btn-outline-danger align-middle" onclick="modalCancel(\'slAlert\')" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
                 html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'slAlert\')" data-dismiss="modal"><i class="fa fa-external-link-alt"></i> Lets Go!</a></div>';
                 html += '   </div>';
-
+  
                 //Edit Site / single faucet
                 html += '  <div class="modal-content bg-beige d-none" id="modal-site">';
                 html += '    <div class="modal-header"><h5 class="modal-title">Edit <span id="faucet-name" data-id=""></span> Configuration</h5></div>';
                 html += '    <div class="modal-body">';
                 html += '     <div class="alert alert-warning">Override Settings for the selected faucet.<br>Faucet-specific configurations will be moved here soon.</div>';
                 html += '     <div class="row">';
-
+  
                 html += '     <div class="col-md-12 col-sm-12">';
                 html += addCardHtml({
                     header: addSliderHtml('data-site-prop', 'defaults.workInBackground.override', 'Override Work Mode'),
@@ -2332,7 +2332,7 @@
                     header: addSliderHtml('data-site-prop', 'defaults.sleepMode.override', 'Override Sleep Mode'),
                     body: addSliderHtml('data-site-prop', 'defaults.sleepMode', 'Sleep mode') +
                     `<table><tr><td>Don't claim between </td><td><input type="time" data-original="" data-site-prop="defaults.sleepMode.min" class="form-control"></td><td>and</td>
-                  <td><input type="time" data-original="" data-site-prop="defaults.sleepMode.max" class="form-control"></td></tr></table>`
+                    <td><input type="time" data-original="" data-site-prop="defaults.sleepMode.max" class="form-control"></td></tr></table>`
                 });
                 html += '         <div class="card m-1"><div class="card-header">Timeout</div>';
                 html += '           <div class="card-body px-4">';
@@ -2353,7 +2353,7 @@
                 html += '<div class="modal-footer"><a class="btn m-2 anchor btn-outline-danger align-middle" onclick="modalCancel(\'site\')" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
                 html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'site\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div>';
                 html += '   </div>';
-
+  
                 //Config
                 html += '<div class="modal-content bg-beige d-none" id="modal-config">';
                 html += '  <div class="modal-header"><h5 class="modal-title">Settings</h5></div>';
@@ -2361,13 +2361,13 @@
                 html += '     <div class="alert alert-danger alert-dismissible fade show" id="alert-settings-01">This form does not upload data. Values are added to a span, then read by the script and locally stored by Tampermonkey using GM_setValue.<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
                 html += '     <div class="alert alert-danger alert-dismissible fade show" id="alert-settings-02">Time values are estimated and will be randomly modified by +/-2% aprox.<br>The script will trigger a reload of the page after updating the data.<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
                 html += '     <div class="row">';
-
+  
                 html += '     <div class="col-md-12 col-sm-12">';
                 html += '         <div class="card card-info m-1"><div class="card-header">Defaults<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-minus"></i></button></div></div>';
                 html += '           <div class="card-body px-4">';
                 html += `<div>${addSliderHtml('data-prop', 'defaults.workInBackground', 'Open tabs in background')}</div>`;
                 html += `<div>${addSliderHtml('data-prop', 'defaults.extraInterval', 'Use extra timer to detect ad redirects faster')}</div>`;
-
+  
                 html += addCardHtml({
                     header: 'Next Run',
                     body: `<div>${addSliderHtml('data-prop', 'defaults.nextRun.useCountdown', 'Use faucet countdown when possible')}</div>` +
@@ -2388,15 +2388,15 @@
                 html += addCardHtml({
                     header: addSliderHtml('data-prop', 'defaults.sleepMode', 'Sleep mode'),
                     body: `<table><tr><td>Don't claim between </td><td><input type="time" data-original="" data-prop="defaults.sleepMode.min" class="form-control"></td><td>and</td>
-                  <td><input type="time" data-original="" data-prop="defaults.sleepMode.max" class="form-control"></td></tr></table>`
+                    <td><input type="time" data-original="" data-prop="defaults.sleepMode.max" class="form-control"></td></tr></table>`
                 });
                 html += '       </div></div>';
                 html += '     </div>';
-
+  
                 html += '     <div class="col-md-12 col-sm-12">';
                 html += '         <div class="card card-info m-1"><div class="card-header">Site Specifics<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-minus"></i></button></div></div>';
                 html += '           <div class="card-body px-4">';
-
+  
                 html += '         <div class="card m-1 collapsed-card"><div class="card-header">CryptosFaucets<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
                 html += '           <div class="card-body px-4" style="display: none;">';
                 html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.autologin" ><span class="slider round"></span></label> Autologin when neccessary</div>';
@@ -2412,7 +2412,7 @@
                 html += '            <option value="0">Disabled</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="24">24</option><option value="26">26</option>';
                 html += '           </select>';
                 html += '       </div></div>';
-
+  
                 html += '         <div class="card m-1 collapsed-card"><div class="card-header">FPig<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
                 html += '           <div class="card-body px-4" style="display: none;">';
                 html += '           <label class="control-label">Login Mode</label>';
@@ -2424,7 +2424,7 @@
                 html += '           <label class="control-label">Password</label>';
                 html += '           <input maxlength="200" type="password" data-prop="fpb.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
                 html += '       </div></div>';
-
+  
                 html += '         <div class="card m-1 collapsed-card"><div class="card-header">FreeBCH<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
                 html += '           <div class="card-body px-4" style="display: none;">';
                 html += '           <label class="control-label">Login Mode</label>';
@@ -2436,7 +2436,7 @@
                 html += '           <label class="control-label">Password</label>';
                 html += '           <input maxlength="200" type="password" data-prop="fbch.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
                 html += '       </div></div>';
-
+  
                 html += '         <div class="card m-1 collapsed-card"><div class="card-header">JTFey<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
                 html += '           <div class="card-body px-4" style="display: none;">';
                 html += '           <label class="control-label">Login Mode</label>';
@@ -2448,7 +2448,7 @@
                 html += '           <label class="control-label">Password</label>';
                 html += '           <input maxlength="200" type="password" data-prop="jtfey.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
                 html += '       </div></div>';
-
+  
                 html += '         <div class="card m-1 collapsed-card"><div class="card-header">FaucetPay PTC<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
                 html += '           <div class="card-body px-4" style="display: none;">';
                 html += '           <label class="control-label">Max duration per run:</label>';
@@ -2456,7 +2456,7 @@
                 html += '            <option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option>';
                 html += '           </select>';
                 html += '       </div></div>';
-
+  
                 html += '         <div class="card m-1 collapsed-card"><div class="card-header">BestChange<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
                 html += '           <div class="card-body px-4" style="display: none;">';
                 html += '           <label class="control-label">BTC Address:</label>';
@@ -2487,11 +2487,11 @@
                 html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'config\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div>';
                 html += '   </div>';
                 //END OF MODAL CONTENTS
-
+  
                 html += '</div>';
                 html += '</div>';
-
-
+  
+  
                 html += '<div style="width:100%; padding-left: 1em;" id="console-log"><b>Loading...</b></div>';
                 html += '<section id="table-struct" class="fragment "><div class="container-fluid "><div class="py-1 "><div class="row mx-0 justify-content-center">';
                 if (shared.getConfig()['devlog.enabled']) {
@@ -2503,30 +2503,30 @@
                 html += '<a class="btn m-2 anchor btn-outline-danger align-middle" data-toggle="modal" data-target="#confirmable-modal" onclick="confirmable.open(\'forceStopFaucet\', \'Running faucet will be disabled and the manager will reload.\')"><i class="fa fa-stop-circle"></i> Force Stop</a>';
                 // html += '<a class="btn m-2 anchor btn-outline-primary align-middle" data-toggle="modal" data-target="#modal-dlg" onclick="loadDlg(\'modal-slAlert\')"><i class="fa fa-ad"></i> New CF Promo Code</a>';
                 html += '</div>';
-
-
+  
+  
                 html += '<div class="card"><div class="card-header"><h3 class="card-title font-weight-bold">Schedule</h3>';
                 html += '<div class="card-tools">';
-
-                html += `<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 align-middle${localStorage.getItem("hiddenSiteIds") ? '' : ' d-none'}" id="unhide-btn" onclick="showHidden()"><i class="fa fa-eye"></i> Show Hidden</button>`;
+  
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-success em-only d-none mx-1" onclick="editListSave()"><i class="fa fa-check-circle"></i> Save</button>';
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-danger em-only d-none mx-1" onclick="editListCancel()"><i class="fa fa-times-circle"></i> Cancel</button>';
+                html += `<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 em-hide align-middle${localStorage.getItem("hiddenSiteIds") ? '' : ' d-none'}" id="unhide-btn" onclick="showHidden()"><i class="fa fa-eye"></i> Show Hidden</button>`;
                 html += '<button type="button" class="btn btn-tool-colorless btn-outline-primary mx-1 em-hide" onclick="editList()"><i class="fa fa-edit"></i> Edit</button>';
                 html += '<button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>';
                 html += '<button type="button" class="btn btn-tool mx-1" data-card-widget="maximize"><i class="fas fa-expand"></i></button>';
                 html += '</div></div>';
-
-                html += '<div class="card-body table-responsive p-0" style="height: 400px;" id="schedule-container">';
-
+  
+                    html += '<div class="card-body table-responsive p-0" style="height: 400px;" id="schedule-container">';
+  
                 html += '</div></div>';
-
+  
                 html += '</div>';
                 html += '<span id="update-data" style="display:none;"></span></section>';
                 html += '<section id="table-struct-promo" class="fragment "><div class="container-fluid "><div class="py-1 ">';
-
+  
                 html += '<div class="card"><div class="card-header"><h3 class="card-title font-weight-bold">Promo Codes</h3><span id="promo-code-new" style="display:none;"></span>';
                 html += '<div class="card-tools">';
-
+  
                 html += '<div class="input-group input-group-sm btn-tool">';
                 html += '<input id="promo-text-input" type="text" name="table_search" class="form-control float-right" list="promoCode_list" placeholder="CF Promo Code..." style="width:130px;">';
                 html += '<input type="checkbox" data-toggle="switch" title="Check if the code can be reused every 24hs" id="promo-daily" data-on-text="Daily" data-off-text="1 Time">';
@@ -2537,31 +2537,31 @@
                 K.CF.ReusableCodeSuggestions.forEach( function(x) { html += '<option>' + x + '</option>' });
                 html += '</datalist>';
                 html += '</div>';
-
+  
                 html += '</div>';
                 html += '<div class="card-body table-responsive p-0" id="promo-container">';
                 html += '</div></div>';
-
+  
                 html +='</div></div></section>';
                 html += '<section class="fragment"><div class="container-fluid ">';
                 html += '<div class="row justify-content-center"><a class="btn  m-2 anchor btn-outline-primary" id="stats-button" onclick="openStatsChart()">CF Lucky Number Stats</a></div>';
                 html +='<div class="py-1" id="stats-fragment" style="display:none;"><div class="row align-items-center text-center justify-content-center">';
                 html += '<div class="col-md-12 col-lg-8"><canvas id="barChart"></canvas><span id="rolls-span" style="display:none;"></span></div></div></div></div></div></section>';
-
+  
                 let wrapper = document.createElement('div');
                 wrapper.innerHTML = html.trim();
-
+  
                 let tgt = document.querySelector('div.row.py-3');
                 if (tgt) {
                     let rowDiv = document.createElement('div');
                     rowDiv.innerHTML = '<div class="row py-3 ac-log"><div class="col-12 justify-content-center"><div class="card"><div class="card-body" id="referral-table"></div></div></div></div>';
                     tgt.after(rowDiv);
                 }
-
+  
                 let target = document.getElementById('referral-table');
                 target.parentNode.insertBefore(wrapper, target);
                 document.getElementById('schedule-container').appendChild( createScheduleTable() );
-
+  
                 if (document.querySelector('.main-header .navbar-nav.ml-auto')) {
                     let discord = document.createElement('li');
                     discord.classList.add('nav-item');
@@ -2578,16 +2578,16 @@
                 let inner = '';
                 table.classList.add('table', 'table-striped');
                 table.setAttribute('id','promo-table');
-
+  
                 inner += '<caption style="text-align: -webkit-center;">⏳ Pending ✔️ Accepted 🕙 Used Before ❌ Invalid code ❗ Unknown error ⚪ No code</caption>';
                 inner += '<thead><tr><th class="">Code</th><th class="">Added</th>';
-
+  
                 for (let i = 0, all = faucets.length; i < all; i++) {
                     inner += '<th data-faucet-id="' + faucets[i].id + '">' + faucets[i].name + '</th>';
                 }
-
+  
                 inner += '</tr></thead><tbody id="promo-table-body"></tbody></table>';
-
+  
                 table.innerHTML = inner
                 document.getElementById('promo-container').appendChild( table );
             };
@@ -2596,21 +2596,21 @@
                 let inner;
                 table.classList.add('table', 'table-striped', 'table-head-fixed', 'text-nowrap');
                 table.setAttribute('id','schedule-table');
-
+  
                 inner = '<thead><tr>';
                 inner += '<th scope="col" class="edit-status d-none em-only" style="">Active</th><th class="">Next Roll</th><th class=""></th><th class="">Name</th><th class="">Last Claim</th>';
                 inner += '<th class="">Aggregate</th><th class="">Balance</th><th class="" id="converted-balance-col">FIAT</th>';
                 inner += '<th scope="col" class="">Msgs</th><th scope="col" class="em-hide" style="">Actions</th></tr></thead><tbody id="schedule-table-body"></tbody>';
                 table.innerHTML = inner;
-
+  
                 return table;
             };
             function loadScheduleTable(data) {
                 let hsi = localStorage.getItem("hiddenSiteIds");
                 hsi = hsi ? JSON.parse(hsi) : [];
-
+  
                 let tableBody = '';
-
+  
                 for(let i=0, all = data.length; i < all; i++) {
                     if(hsi.indexOf(data[i].id) > -1) {
                         tableBody += '<tr class="fake-row d-none"></tr>'; // nth background styling workaround
@@ -2640,10 +2640,10 @@
                         }
                     }
                     tableBody += ' <span class="px-1">' + data[i].name + '</span></div></td>';
-
+  
                     tableBody +='<td class="align-middle">' + data[i].lastClaim.toFixed(Number.isInteger(data[i].lastClaim) ? 0 : 8) + '</td>';
                     tableBody +='<td class="align-middle">' + data[i].aggregate.toFixed(Number.isInteger(data[i].aggregate) ? 0 : 8) + '</td>';
-
+  
                     tableBody +='<td class="align-middle">';
                     if (data[i].balance) {
                         if(typeof data[i].balance == 'string') {
@@ -2659,24 +2659,24 @@
                     tableBody +='<a class="px-2" title="Run ASAP" href="javascript:updateValues(\'runAsap\', { id: ' + data[i].id + ' })" onclick=""><i class="fa fa-redo"></i></a>';
                     tableBody +=`<a class="px-2 ${Object.keys(data[i].params).some( k => k.endsWith('.override') && data[i].params[k] == true ) ? 'text-warning' : ''}" title="Edit..." data-toggle="modal" data-target="#modal-dlg" onclick="loadDlg('modal-site', '${data[i].id}')"><i class="fa fa-edit"></i></a>`;
                     tableBody += !data[i].enabled ? `<a class="px-2" title="Hide..." href="javascript:hideRow('${data[i].id}')" onclick=""><i class="fa fa-eye-slash"></i></a>` : ``;
-
+  
                     tableBody +='</td></tr>';
                 }
-
+  
                 document.getElementById('schedule-table-body').innerHTML = tableBody;
-
+  
                 location.href = 'javascript:convertToFiat();';
             };
-
+  
             function addBadges(stats) {
                 let consecutiveTimeout = stats.countTimeouts;
                 let otherErrors = stats.errors;
                 let html = ' ';
-
+  
                 if (consecutiveTimeout) {
                     html += `<span class="badge badge-pill badge-warning" title="${consecutiveTimeout} consecutive timeouts">${consecutiveTimeout}</span>`;
                 }
-
+  
                 if (otherErrors) {
                     html += `<span class="badge badge-pill badge-warning" title="${otherErrors.errorMessage}">${helpers.getEnumText(K.ErrorType, otherErrors.errorType)}</span>`;
                 }
@@ -2684,7 +2684,7 @@
             }
             function loadPromotionTable(codes) {
                 let tableBody = '';
-
+  
                 for(let c=0; c < codes.length; c++) {
                     let data = codes[c];
                     tableBody += '<tr data-promotion-id="' + data.id + '">';
@@ -2692,25 +2692,25 @@
                     tableBody += '<a data-toggle="tooltip" data-placement="left" title="Remove" href="javascript:removePromoCode(' + data.id + ', \'' + data.code + '\')" onclick=""><i class="fa fa-times-circle"></i></a> ';
                     tableBody += '<span  title="' + (data.repeatDaily ? 'Reusable Code' : 'One-time-only Code') + '">' + data.code + '</span></td>';
                     tableBody +='<td class="align-middle" title="' + (data.repeatDaily ? 'Reusable Code' : 'One-time-only Code') + '">' + helpers.getPrintableDateTime(data.added) + '</td>';
-
+  
                     for(let i=0, all = data.statusPerFaucet.length; i < all; i++) {
                         tableBody +='<td class="align-middle" title="Runned @' + helpers.getPrintableDateTime(data.statusPerFaucet[i].execTimeStamp) + '">' + helpers.getEmojiForPromoStatus(data.statusPerFaucet[i].status ?? 0) + '</td>';
                     }
                     tableBody +='</tr>';
                 }
-
+  
                 document.getElementById('promo-table-body').innerHTML = tableBody;
             };
             function loadWalletTable(data) {
                 let tableBody = '';
-
+  
                 for(let i=0, all = data.length; i < all; i++) {
                     tableBody += '<tr class="align-middle" data-id="'+ data[i].id + '">';
                     tableBody += '<td class="align-middle">' + data[i].name + '</td>';
                     tableBody += '<td class="align-middle em-input"><input type="text" class="w-100" onfocus="this.select();" data-field="address" data-original="' + data[i].address + '" value="' + data[i].address + '"></td>';
                     tableBody += '</tr>';
                 }
-
+  
                 document.getElementById('wallet-table-body').innerHTML = tableBody;
             };
             function loadConfigData(data) {
@@ -2726,7 +2726,7 @@
                         }
                     }
                 }
-
+  
                 let elCredentialsAutologin = document.querySelector('[data-prop="cf.autologin"]');
                 let elCredentialsMode = document.querySelector('[data-prop="cf.credentials.mode"]');
                 let elCredentialsEmail = document.querySelector('[data-prop="cf.credentials.email"]');
@@ -2744,7 +2744,7 @@
                 let elJtfeyCredentialsMode = document.querySelector('[data-prop="jtfey.credentials.mode"]');
                 let elJtfeyCredentialsUsername = document.querySelector('[data-prop="jtfey.credentials.username"]');
                 let elJtfeyCredentialsPassword = document.querySelector('[data-prop="jtfey.credentials.password"]');
-
+  
                 let elPostpone = document.querySelector('[data-prop="defaults.postponeMinutes"]');
                 let elPostponeMin = document.querySelector('[data-prop="defaults.postponeMinutes.min"]');
                 let elPostponeMax = document.querySelector('[data-prop="defaults.postponeMinutes.max"]');
@@ -2762,7 +2762,7 @@
                         document.querySelector('[data-prop="defaults.postponeMinutes.max"]').value = e.target.value;
                     }
                 }
-
+  
                 let elNextRun = document.querySelector('[data-prop="defaults.nextRun"]');
                 let elNextRunMin = document.querySelector('[data-prop="defaults.nextRun.min"]');
                 let elNextRunMax = document.querySelector('[data-prop="defaults.nextRun.max"]');
@@ -2781,7 +2781,7 @@
                         document.querySelector('[data-prop="defaults.nextRun.max"]').value = e.target.value;
                     }
                 }
-
+  
                 let elSleepMode = document.querySelector('[data-prop="defaults.sleepMode"]');
                 let elSleepModeMin = document.querySelector('[data-prop="defaults.sleepMode.min"]');
                 let elSleepModeMax = document.querySelector('[data-prop="defaults.sleepMode.max"]');
@@ -2791,14 +2791,14 @@
                     document.querySelector('[data-prop="defaults.sleepMode.min"]').disabled = !e.target.checked;
                     document.querySelector('[data-prop="defaults.sleepMode.max"]').disabled = !e.target.checked;
                 }
-
+  
                 elCredentialsMode.disabled = !elCredentialsAutologin.checked;
-
+  
                 elCredentialsEmail.disabled = ( (!elCredentialsAutologin.checked || elCredentialsMode.value == "2") ? true : false);
                 elCredentialsPassword.disabled = ( (!elCredentialsAutologin.checked || elCredentialsMode.value == "2") ? true : false);
-
+  
                 elHoursBetweenWithdraws.disabled = ( (elWithdrawMode.value == "0" || elWithdrawMode.value == "2") ? true : false);
-
+  
                 elCredentialsAutologin.onchange = function (e) {
                     document.querySelector('[data-prop="cf.credentials.mode"]').disabled = !e.target.checked;
                     if (elCredentialsMode.value == "2") {
@@ -2809,7 +2809,7 @@
                         document.querySelector('[data-prop="cf.credentials.password"]').disabled = false;
                     }
                 }
-
+  
                 elCredentialsMode.onchange = function (e) {
                     if (e.target.value == "2") {
                         document.querySelector('[data-prop="cf.credentials.email"]').disabled = true;
@@ -2819,7 +2819,7 @@
                         document.querySelector('[data-prop="cf.credentials.password"]').disabled = false;
                     }
                 }
-
+  
                 elFpigCredentialsUsername.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
                 elFpigCredentialsPassword.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
                 elFpigCredentialsMode.onchange = function (e) {
@@ -2831,7 +2831,7 @@
                         document.querySelector('[data-prop="fpb.credentials.password"]').disabled = false;
                     }
                 }
-
+  
                 elFBchCredentialsUsername.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
                 elFBchCredentialsPassword.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
                 elFBchCredentialsMode.onchange = function (e) {
@@ -2843,7 +2843,7 @@
                         document.querySelector('[data-prop="fbch.credentials.password"]').disabled = false;
                     }
                 }
-
+  
                 elJtfeyCredentialsUsername.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
                 elJtfeyCredentialsPassword.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
                 elJtfeyCredentialsMode.onchange = function (e) {
@@ -2855,7 +2855,7 @@
                         document.querySelector('[data-prop="jtfey.credentials.password"]').disabled = false;
                     }
                 }
-
+  
                 elWithdrawMode.onchange = function (e) {
                     if (e.target.value == "0" || e.target.value == "2") {
                         document.querySelector('[data-prop="bk.hoursBetweenWithdraws"]').disabled = true;
@@ -2863,25 +2863,25 @@
                         document.querySelector('[data-prop="bk.hoursBetweenWithdraws"]').disabled = false;
                     }
                 }
-
+  
                 elDevlogMaxLines.disabled = !elDevlogEnabled.checked;
                 elDevlogEnabled.onchange = function (e) {
                     document.querySelector('[data-prop="devlog.maxLines"]').disabled = !e.target.checked;
                 }
-
+  
             };
             function loadSiteData(site, config) {
                 document.querySelector('#faucet-name').innerHTML = site.name;
                 document.querySelector('#faucet-name').dataset.id = site.id;
                 let data = site.params || {};
-
+  
                 for (const prop in config) {
                     let overrideElement = document.querySelector('[data-site-prop="' + prop + '.override"]');
                     if (overrideElement) {
                         overrideElement.dataset.original = (data[prop + '.override'] ? "1" : "0");
                         overrideElement.checked = data[prop + '.override'];
                     }
-
+  
                     let element = document.querySelector('[data-site-prop="' + prop + '"]');
                     if(element) {
                         if(element.type == 'select-one' || element.type == 'text' || element.type == 'password' || element.type == 'number' || element.type == 'time') {
@@ -2894,21 +2894,21 @@
                         element.disabled = true;
                     }
                 }
-
+  
                 let elWorkInBackgroundOverride = document.querySelector('[data-site-prop="defaults.workInBackground.override"]');
                 let elWorkInBackground = document.querySelector('[data-site-prop="defaults.workInBackground"]');
                 elWorkInBackground.disabled = !elWorkInBackgroundOverride.checked;
                 elWorkInBackgroundOverride.onchange = function (e) {
                     document.querySelector('[data-site-prop="defaults.workInBackground"]').disabled = !e.target.checked;
                 }
-
+  
                 let elTimeoutOverride = document.querySelector('[data-site-prop="defaults.timeout.override"]');
                 let elTimeout = document.querySelector('[data-site-prop="defaults.timeout"]');
                 elTimeout.disabled = !elTimeoutOverride.checked;
                 elTimeoutOverride.onchange = function (e) {
                     document.querySelector('[data-site-prop="defaults.timeout"]').disabled = !e.target.checked;
                 }
-
+  
                 let elPostponeOverride = document.querySelector('[data-site-prop="defaults.postponeMinutes.override"]');
                 let elPostpone = document.querySelector('[data-site-prop="defaults.postponeMinutes"]');
                 let elPostponeMin = document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]');
@@ -2930,7 +2930,7 @@
                         document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').value = e.target.value;
                     }
                 }
-
+  
                 let elNextRunOverride = document.querySelector('[data-site-prop="defaults.nextRun.override"]');
                 let elNextRun = document.querySelector('[data-site-prop="defaults.nextRun"]');
                 let elNextRunMin = document.querySelector('[data-site-prop="defaults.nextRun.min"]');
@@ -2955,7 +2955,7 @@
                         document.querySelector('[data-site-prop="defaults.nextRun.max"]').value = e.target.value;
                     }
                 }
-
+  
                 let elSleepOverride = document.querySelector('[data-site-prop="defaults.sleepMode.override"]');
                 let elSleep = document.querySelector('[data-site-prop="defaults.sleepMode"]');
                 let elSleepMin = document.querySelector('[data-site-prop="defaults.sleepMode.min"]');
@@ -2974,7 +2974,7 @@
                     document.querySelector('[data-site-prop="defaults.sleepMode.min"]').disabled = !e.target.checked;
                     document.querySelector('[data-site-prop="defaults.sleepMode.max"]').disabled = !e.target.checked;
                 }
-
+  
                 return;
             };
             function refresh(scheduleData, promotionData, walletData, configData, siteData) {
@@ -3016,7 +3016,7 @@
         },
         createCFPromotions: function() {
             let codes = [];
-
+  
             function PromotionCode(id, code, repeatDaily = false) {
                 this.id = id;
                 this.code = code;
@@ -3025,7 +3025,7 @@
                 this.repeatDaily = repeatDaily;
                 this.lastExecTimeStamp = null;
             };
-
+  
             function getFaucetStatusInPromo(promo, faucetId) {
                 let faucet = promo.statusPerFaucet.find(x => x.id == faucetId);
                 if (faucet.status && promo.repeatDaily) {
@@ -3037,7 +3037,7 @@
                 }
                 return faucet.status ?? K.CF.PromoStatus.NOCODE;
             };
-
+  
             function addNew(code, repeatDaily = false) {
                 let newPromo = new PromotionCode(codes.length, code, repeatDaily);
                 newPromo.statusPerFaucet = manager.getFaucetsForPromotion().map(x => {
@@ -3048,16 +3048,16 @@
                     arr[idx].status = K.CF.PromoStatus.PENDING;
                     arr[idx].execTimeStamp = null;
                 });
-
+  
                 codes.push(newPromo);
                 codes.sort((a, b) => (a.id < b.id) ? 1 : -1);
                 save();
             };
-
+  
             function getAll() {
                 return codes;
             };
-
+  
             function updateFaucetForCode(code, faucetId, newStatus) {
                 let promo = codes.find(x => x.code == code);
                 let faucet = promo.statusPerFaucet.find(x => x.id == faucetId);
@@ -3068,7 +3068,7 @@
                 }
                 save();
             };
-
+  
             function hasPromoAvailable(faucetId) {
                 let resp = false;
                 codes.forEach(function (promotion, idx, arr) {
@@ -3080,30 +3080,30 @@
                 });
                 return resp;
             };
-
+  
             function save() {
                 persistence.save('CFPromotions', getAll(), true);
             };
-
+  
             function load(data) {
                 codes = data;
             };
-
+  
             function removeAll() {
                 codes = [];
                 save();
             };
-
+  
             function remove(id, code) {
                 let idx = codes.findIndex(x => x.id == id && x.code == code);
                 if(idx != -1) {
                     codes.splice(idx, 1);
                     save();
                 }
-
+  
                 return idx;
             };
-
+  
             return {
                 addNew: addNew,
                 removeAll: removeAll,
@@ -3131,7 +3131,7 @@
                     },
                     function() {
                         let element = interactions.selectableElements[helpers.randomInt(0, interactions.selectableElements.length - 1)];
-
+  
                         try {
                             if (document.body.createTextRange) {
                                 const range = document.body.createTextRange();
@@ -3145,12 +3145,12 @@
                                 selection.addRange(range);
                             }
                         } catch (err) { }
-
+  
                         interactions.addPerformed();
                     }
                 ]
             };
-
+  
             function start(selectableElements) {
                 performedActions = 0;
                 switch(randomInteractionLevel) {
@@ -3170,7 +3170,7 @@
                 interactions.selectableElements = selectableElements;
                 performActions();
             }
-
+  
             function performActions() {
                 if(performedActions >= maxActions) {
                     return;
@@ -3181,14 +3181,14 @@
                     setTimeout(actions.available[helpers.randomInt(0, actions.available.length - 1)], delay);
                 }
             }
-
+  
             function addPerformed() {
                 performedActions++;
             }
             function completed() {
                 return (performedActions >= maxActions);
             }
-
+  
             return {
                 start: start,
                 completed: completed,
@@ -3233,7 +3233,7 @@
             };
             function isMinerActive() {
                 timerSpans = document.querySelector('.font-bold.text-center.text-accent.w-11-12.text-18 span');
-
+  
                 if(timerSpans) {
                     shared.devlog(`SG: Miner is active`);
                     return true;
@@ -3254,7 +3254,7 @@
                     processRunDetails()
                 }
             };
-
+  
             function processRunDetails() {
                 let result = {};
                 shared.devlog(`SG: @processRunDetails`);
@@ -3262,7 +3262,7 @@
                 result.balance = readBalance();
                 shared.closeWindow(result);
             };
-
+  
             function readCountdown() {
                 shared.devlog(`SG: @readCountdown`);
                 let synchronizing = document.querySelector('.text-15.font-bold.text-center.text-accent'); // use
@@ -3274,7 +3274,7 @@
                     }
                     shared.devlog(`SG Countdown timeLeft spans:`);
                     shared.devlog(timeLeft);
-
+  
                     if(timeLeft.length === 3) {
                         mins = parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
                     }
@@ -3306,7 +3306,7 @@
             let promotionTag;
             let timeWaiting= 0;
             let loopingForErrors = false;
-
+  
             function init() {
                 let urlType = helpers.cf.getUrlType(window.location.href);
                 switch(urlType) {
@@ -3321,12 +3321,12 @@
                         interactions = objectGenerator.createInteractions();
                         run();
                         break;
-
+  
                     case K.CF.UrlType.PROMOTION:
                         interactions = objectGenerator.createInteractions();
                         runPromotion();
                         break;
-
+  
                     case K.CF.UrlType.HOME:
                         if (shared.getConfig()['cf.autologin']) {
                             addJS_Node (null, null, overrideSelectNativeJS_Functions);
@@ -3335,7 +3335,7 @@
                             shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
                         }
                         break;
-
+  
                     case K.CF.UrlType.CONTACTTWITTER:
                         shared.closeWithError(K.ErrorType.IP_BAN, '');
                         break;
@@ -3344,21 +3344,21 @@
                 }
                 return;
             }
-
+  
             function run() {
                 navigationProcess = NavigationProcess.ROLLING;
                 displayStatusUi();
-
+  
                 setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
             };
-
+  
             function doLogin() {
                 navigationProcess = NavigationProcess.LOGIN;
                 displayStatusUi();
-
+  
                 setTimeout(findLoginForm, helpers.randomMs(2000, 5000));
             };
-
+  
             function isFullyLoaded() { //Waits 55 seconds max
                 if(document.readyState == 'complete' || timeWaiting == -1) {
                     document.getElementById('process-status').innerHTML = 'Interacting';
@@ -3396,7 +3396,7 @@
                         shared.closeWithError(K.ErrorType.TIMEOUT, '');
                         return;
                     }
-
+  
                     timeWaiting += 3000;
                     setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
                 }
@@ -3432,18 +3432,18 @@
                         }
                     }
                 }
-
+  
                 if (timeWaiting/1000 > shared.getConfig()['defaults.timeout'] * 60) {
                     shared.closeWithError(K.ErrorType.TIMEOUT, '');
                     return;
                 }
-
+  
                 timeWaiting += 3000;
                 setTimeout(findLoginForm, helpers.randomMs(2000, 5000));
             };
             function interact() {
                 let selectables = [].concat([...document.querySelectorAll('td')], [...document.querySelectorAll('p')], [...document.querySelectorAll('th')]);
-
+  
                 interactions.start(selectables);
                 setTimeout(waitInteractions, helpers.randomMs(2000, 4000));
             }
@@ -3560,7 +3560,7 @@
                 return promoStatus;
             };
             function validatePromoString() {
-
+  
             };
             function readPromoCode() {
                 var urlSplit = window.location.href.split('/');
@@ -3584,14 +3584,14 @@
                 { id: 4, range: '9998-9999', count: 0 },
                 { id: 5, range: '10000', count: 0 }
             ];
-
+  
             function initOrLoad() {
                 let storedData = persistence.load('CFHistory', true);
                 if(storedData) {
                     rollsMeta = storedData;
                 }
             };
-
+  
             function addRoll(number) {
                 switch(true) {
                     case (number <= 9885):
@@ -3617,15 +3617,15 @@
                 }
                 save();
             };
-
+  
             function getRollsMeta() {
                 return rollsMeta.map(x => x.count);
             };
-
+  
             function save() {
                 persistence.save('CFHistory', rollsMeta, true);
             };
-
+  
             return {
                 initOrLoad: initOrLoad,
                 addRoll: addRoll,
@@ -3636,7 +3636,7 @@
             let countdownMinutes;
             let timeout = new Timeout(this.maxSeconds);
             let captcha = new HCaptchaWidget();
-
+  
             function run() {
                 setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
             };
@@ -3647,11 +3647,11 @@
                     let result = {};
                     result.balance = readBalance();
                     result.nextRoll = helpers.addMinutes(countdownMinutes.toString());
-
+  
                     shared.closeWindow(result);
                     return;
                 }
-
+  
                 if ( isRollButtonVisible() ) {
                     // if (shared.getConfig()['fb.activateRPBonus']) {
                     //     if (!document.getElementById('bonus_container_free_points')) {
@@ -3659,7 +3659,7 @@
                     //         activateBonus(0);
                     //     }
                     // }
-
+  
                     try {
                         let doBonus = false; // true;
                         if (doBonus) {
@@ -3670,7 +3670,7 @@
                             }
                         }
                     } catch { }
-
+  
                     /* For 'Play without captcha accounts' */
                     if (!captcha.isUserFriendly) {
                         clickRoll()
@@ -3705,7 +3705,7 @@
             function processRunDetails() {
                 if (document.getElementById('winnings').isVisible()) {
                     closePopup();
-
+  
                     let result = {};
                     result.claimed = readClaimed();
                     result.balance = readBalance();
@@ -3715,22 +3715,22 @@
                     shared.closeWindow(result);
                     return;
                 }
-
+  
                 if (document.querySelector('.free_play_result_error').isVisible()) {
                     shared.closeWithError(K.ErrorType.ROLL_ERROR, document.querySelector('.free_play_result_error').innerHTML);
                     return;
                 }
-
+  
                 if(document.getElementById('free_play_error').isVisible()) {
                     shared.closeWithError(K.ErrorType.ROLL_ERROR, document.querySelector('.free_play_error').innerHTML);
                     return;
                 }
-
+  
                 if (document.getElementById('same_ip_error').isVisible()) {
                     shared.closeWithError(K.ErrorType.ROLL_ERROR, document.getElementById('same_ip_error').innerHTML);
                     return;
                 }
-
+  
                 setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
             };
             function closePopup() {
@@ -3760,36 +3760,36 @@
                 } catch { }
                 return claimed;
             };
-            //             function activateBonus(i) {
-            //                 if(document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_error')) {
-            //                     let closeBtn = document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_box_close')
-            //                     if (closeBtn.isVisible()) {
-            //                         closeBtn.click();
-            //                     }
-            //                 } else if (document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_success')) {
-            //                     let closeBtn = document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_box_close')
-            //                     if (closeBtn.isVisible()) {
-            //                         closeBtn.click();
-            //                         document.querySelector('#free_play_link_li a').click();
-            //                         setTimeout(findCountdownOrRollButton, helpers.randomMs(10000, 12000));
-            //                         return;
-            //                     }
-            //                 }
-
-            //                 try {
-            //                     let redeemButtons = document.querySelectorAll('#free_points_rewards button');
-            //                     redeemButtons[i].click();
-            //                     i = i + 1;
-            //                 } catch (err) {
-            //                 }
-
-            //                 if(i > 4) {
-            //                     document.querySelector('#free_play_link_li a').click();
-            //                     setTimeout(findCountdownOrRollButton, helpers.randomMs(10000, 12000));
-            //                     return;
-            //                 }
-            //                 setTimeout(activateBonus.bind(null, i), 5000);
-            //             };
+  //             function activateBonus(i) {
+  //                 if(document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_error')) {
+  //                     let closeBtn = document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_box_close')
+  //                     if (closeBtn.isVisible()) {
+  //                         closeBtn.click();
+  //                     }
+  //                 } else if (document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_success')) {
+  //                     let closeBtn = document.querySelector('#reward_point_redeem_result_container_div .reward_point_redeem_result_box_close')
+  //                     if (closeBtn.isVisible()) {
+  //                         closeBtn.click();
+  //                         document.querySelector('#free_play_link_li a').click();
+  //                         setTimeout(findCountdownOrRollButton, helpers.randomMs(10000, 12000));
+  //                         return;
+  //                     }
+  //                 }
+  
+  //                 try {
+  //                     let redeemButtons = document.querySelectorAll('#free_points_rewards button');
+  //                     redeemButtons[i].click();
+  //                     i = i + 1;
+  //                 } catch (err) {
+  //                 }
+  
+  //                 if(i > 4) {
+  //                     document.querySelector('#free_play_link_li a').click();
+  //                     setTimeout(findCountdownOrRollButton, helpers.randomMs(10000, 12000));
+  //                     return;
+  //                 }
+  //                 setTimeout(activateBonus.bind(null, i), 5000);
+  //             };
             return {
                 run: run
             };
@@ -3797,7 +3797,7 @@
         createFPProcessor: function() {
             let timeout = new Timeout(this.maxSeconds);
             let captcha = new HCaptchaWidget();
-
+  
             function init() {
                 if(window.location.href.includes('ptc/view')) {
                     addDuration();
@@ -3811,7 +3811,7 @@
                 }
                 return;
             }
-
+  
             function tryLogin() {
                 let username = document.querySelector('input[name="user_name"');
                 let password = document.querySelector('input[name="password"');
@@ -3828,7 +3828,7 @@
                     shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
                 }
             }
-
+  
             function addDuration() {
                 let duration = document.querySelector('#duration');
                 if(duration && !isNaN(duration.innerText)) {
@@ -3837,7 +3837,7 @@
                     setTimeout(addDuration, 10000);
                 }
             }
-
+  
             function ptcList() {
                 let result;
                 let runMsgDiv = document.querySelector('.alert.alert-info');
@@ -3857,23 +3857,23 @@
                         } catch { }
                     }
                 }
-
+  
                 if ([...document.querySelectorAll('b')].filter(x => x.innerText.includes('Whoops!')).length > 0) {
                     result = shared.getResult();
                     shared.closeWindow(result);
                     return;
                 }
-
+  
                 let adButtons = [...document.querySelectorAll('button')].filter(x => x .innerHTML.includes('VISIT AD FOR'));
-
+  
                 if (adButtons.length > 0) {
                     adButtons[helpers.randomInt(0, adButtons.length-1)].click();
                     return;
                 }
-
+  
                 setTimeout(ptcList, helpers.randomMs(10000, 12000));
             }
-
+  
             function ptcSingle() {
                 if(document.querySelector('input[name="complete"]').isVisible()) {
                     captcha.isSolved().then(() => { clickClaim(); });
@@ -3883,7 +3883,7 @@
                     setTimeout(ptcSingle, helpers.randomMs(5000, 6000));
                 }
             }
-
+  
             function clickClaim() {
                 let input = document.querySelector('input[name="complete"]');
                 input.focus();
@@ -3892,7 +3892,7 @@
                 //force close with timeout in case it's still opened
                 setTimeout(shared.closeWithError.bind(null, 'TIMEOUT', 'Timed out after clicking a CLAIM button.'), helpers.minToMs(shared.getConfig()['defaults.timeout']));
             }
-
+  
             return {
                 init: init
             };
@@ -3943,7 +3943,7 @@
                     return document.querySelector('a.btn.btn-primary.btn-block');
                 }
             };
-
+  
             function init() {
                 if(shared.getCurrent().params.doSignOut) { // Unexpected behavior with BCH @ Bagi: seems it didn't login when the previous run was TRX/USDT so it saved the roll with that address and you couldn't withdraw:
                     //Before you can receive payments at FaucetPay.io with this address you must link it to an account. Create an account at FaucetPay.io and link your address, then come back and claim again
@@ -3964,27 +3964,27 @@
                     return;
                 }
             }
-
+  
             function run() {
                 readAlerts();
                 processIndex();
             };
-
+  
             function runCaptchaPage() {
                 readAlerts();
                 shared.clearRetries();
                 processCaptchaPage();
             }
-
+  
             function runWithdraw() {
                 readAlerts();
                 shared.clearRetries();
                 processWithdraw();
             }
-
+  
             function readAlerts() {
                 let elm;
-
+  
                 elements.warningDivs().forEach(function (elem) {
                     if (elem && elem.innerText.includes('already claimed')) { // "You have already claimed in the last 60 minutes.<br>You can claim again in 59 minutes.<br>"
                         let result = {};
@@ -3992,7 +3992,7 @@
                             let mins = elem.innerText.split('\n')[1].replace(/\D/g, '');
                             result.nextRoll = helpers.addMinutes(mins);
                         } catch { } // result.nextRoll = helpers.addMinutes(60);
-
+  
                         if (shared.getCurrent().params.doWithdraw) {
                             shared.updateWithoutClosing(result);
                             window.location.href = (new URL('withdraw.php', window.location.href)).href;
@@ -4002,14 +4002,14 @@
                         return;
                     }
                 });
-
+  
                 elements.successDivs().forEach(function (elem) {
                     if (elem) {
                         if (elem.innerText.includes('claimed successfully')) { // "You've claimed successfully 2 Satoshi BTC." ...
                             let result = {};
                             // result.nextRoll = helpers.addMinutes(60);
                             result.claimed = 0;
-
+  
                             try {
                                 let val = elem.innerText.split('\n')[0].replace(/\D/g, '');
                                 if (typeof val == 'string') {
@@ -4018,15 +4018,15 @@
                                 if (Number.isInteger(val)) {
                                     val = val / 100000000;
                                 }
-
+  
                                 result.claimed = val;
                             } catch { }
-
+  
                             try {
                                 let mins = elem.innerText.split('\n')[1].replace(/\D/g, '');
                                 result.nextRoll = helpers.addMinutes(mins);
                             } catch { }
-
+  
                             if (shared.getCurrent().params.doWithdraw) {
                                 shared.updateWithoutClosing(result);
                                 let link = elem.querySelector('a');
@@ -4049,26 +4049,26 @@
                             if (Number.isInteger(val)) {
                                 val = val / 100000000;
                             }
-
+  
                             result.withdrawnAmount = val;
                             shared.closeWindow(result);
                             return;
                         }
                     }
                 });
-
+  
                 elm = elements.blockCloudflare();
                 if (elm) {
                     shared.closeWithError(K.ErrorType.IP_BAN, document.title + ' | ' + elm.innerText); // "Sorry, you have been blocked"
                     return;
                 }
-
+  
                 elm = elements.errorCloudflare();
                 if (elm) {
                     shared.closeWithError(K.ErrorType.IP_RESTRICTED, document.title + ' | ' + elm.innerText); // "Access denied | bagi.co.in used Cloudflare to restrict access" @document.title
                     return;
                 }
-
+  
                 elements.errorDivs().forEach(function (elem) {
                     if (elem) {
                         if (elem.innerText.toLowerCase().includes('vpn/proxy/tor')) { // "VPN/Proxy/Tor is not allowed on this faucet." ...
@@ -4125,7 +4125,7 @@
                         }
                     }
                 });
-
+  
                 elm = elements.linkWithdrawMinNotReached();
                 if (elm) {
                     if(elm.innerText.toLowerCase().includes('minimum withdraw')) { // Minimum Withdraw is ...
@@ -4134,7 +4134,7 @@
                     }
                 }
             }
-
+  
             function processIndex() {
                 if (elements.modal() && elements.addressInput() && elements.submitButton()) { // 2. Fill address & click Login
                     if(elements.addressInput().value != '') {
@@ -4164,24 +4164,24 @@
                     setTimeout(run, helpers.randomMs(2000, 4000));
                     return;
                 }
-
+  
                 if (elements.openLoginModalButton()) { // 1. Click the Get Started Button
                     elements.openLoginModalButton().click();
                     timeout.restart();
                     setTimeout(processIndex, helpers.randomMs(1000, 3000));
                     return;
                 }
-
+  
                 if (elements.openClaimModalButton()) { // Claim Bitcoin Button
                     elements.openClaimModalButton().click();
                     timeout.restart();
                     setTimeout(processIndex, helpers.randomMs(2000, 4000));
                     return;
                 }
-
+  
                 setTimeout(run, helpers.randomMs(2000, 4000));
             };
-
+  
             function processCaptchaPage() {
                 shared.devlog(`@processCaptchaPage`);
                 if(elements.modal()) {
@@ -4205,7 +4205,7 @@
                     });
                     return;
                 }
-
+  
                 if (elements.openLoginModalButton()) { // 1. Click the Claim Button to open the modal w/the hCaptcha
                     elements.openLoginModalButton().click();
                     timeout.restart();
@@ -4214,7 +4214,7 @@
                 }
                 setTimeout(runCaptchaPage, helpers.randomMs(2000, 4000));
             }
-
+  
             function processWithdraw() {
                 if(elements.modal()) {
                     captcha.isSolved().then(() => {
@@ -4237,7 +4237,7 @@
                     });
                     return;
                 }
-
+  
                 if (elements.openWithdrawModal()) { // 1. Click the Withdraw to FaucetPay submit button to open the modal w/the hCaptcha
                     elements.openWithdrawModal().click();
                     timeout.restart();
@@ -4246,10 +4246,151 @@
                 }
                 setTimeout(runWithdraw, helpers.randomMs(2000, 4000));
             }
-
+  
             return {
                 init: init
             };
+        },
+        createOkFaucetProcessor: function() {
+            let timeout = new Timeout(this.maxSeconds);
+            let countdownMinutes;
+            let captcha = new HCaptchaWidget();
+  
+            let selectElement = {
+                addressInput: function() {
+                    return document.querySelector('input[type="text"]');
+                },
+                rollButton: function() {
+                    return document.querySelector('input[type="submit"');
+                },
+                countdown: function() { // "You have to wait\n60 minutes"
+                    let successDivs = document.querySelectorAll(".alert.alert-success");
+                    if(successDivs.length == 1 && successDivs[0].isVisible()) {
+                        return parseInt(successDivs[0].innerText.replace(/\D/g, ''));
+                    }
+                    return null;
+                },
+                rolledNumber: function() {
+                    let successDivs = document.querySelectorAll(".alert.alert-success");
+                    if(successDivs && successDivs.length > 1 && successDivs[0].isVisible()) {
+                        return parseInt(successDivs[0].innerText);
+                    } else {
+                        return null;
+                    }
+                },
+                claimedAmount: function() {
+                    let successDivs = document.querySelectorAll(".alert.alert-success");
+                    if(successDivs && successDivs.length > 1 && successDivs[0].isVisible()) {
+                        let val = parseInt(successDivs[1].innerText.replace(/\D/g, ''));
+                        if (Number.isInteger(val)) {
+                            val = val / 100000000;
+                        }
+  
+                        return val;
+                    } else {
+                        return null;
+                    }
+                },
+                error: function () {
+                    let errorDiv = document.querySelector(".alert.alert-danger");
+                    if(errorDiv) {
+                        if (errorDiv.innerText.toLowerCase().includes('not have sufficient funds')) {
+                            shared.closeWithError(K.ErrorType.NO_FUNDS, errorDiv.innerText);
+                        } else {
+                            shared.closeWithError(K.ErrorType.ERROR, errorDiv.innerText);
+                        }
+                    } else {
+                        return null;
+                    }
+                }
+            };
+  
+            function init() {
+                run();
+            }
+  
+            function run() {
+                try {
+                    setTimeout(findResultCountdownOrRollButton, helpers.randomMs(12000, 15000));
+                } catch (err) {
+                    shared.closeWithErrors(K.ErrorType.ERROR, err);
+                }
+            };
+            function findResultCountdownOrRollButton() {
+                selectElement.error();
+  
+                if ( selectElement.countdown() ) {
+                    shared.devlog(`Ok: countdown found`);
+                    timeout.restart();
+                    let result = {};
+                    result.nextRoll = helpers.addMinutes(selectElement.countdown().toString());
+  
+                    shared.closeWindow(result);
+                    return;
+                }
+  
+                if ( isRollButtonVisible() ) {
+                    startRoll();
+                    return;
+                }
+  
+                if (selectElement.claimedAmount()) {
+                    processRunDetails();
+                    return;
+                }
+                setTimeout(findResultCountdownOrRollButton, helpers.randomMs(10000, 12000));
+            };
+            function startRoll() {
+                shared.devlog(`Ok: rollbutton found`);
+                let addressInput = selectElement.addressInput();
+                if (addressInput && addressInput.value != shared.getCurrent().params.address) {
+                    addressInput.value = shared.getCurrent().params.address;
+                    shared.devlog(`Ok: address filled`);
+                }
+  
+                captcha.isSolved().then(() => { clickRoll(); });
+            };
+            function isHCaptchaVisible() {
+                let hCaptchaFrame = document.querySelector('.h-captcha > iframe');
+                if (hCaptchaFrame && hCaptchaFrame.isVisible()) {
+                    return true;
+                }
+                return false;
+            };
+            function isRollButtonVisible() {
+                let rollButton = selectElement.rollButton();
+                return rollButton && rollButton.isVisible();
+            };
+            function clickRoll() {
+                try {
+                    shared.devlog(`Clicking roll button`);
+                    selectElement.rollButton().click();
+                    return;
+                } catch (err) {
+                    shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
+                }
+            };
+            function processRunDetails() {
+                shared.devlog(`Ok: claimedAmount found`);
+                let claimedAmount = selectElement.claimedAmount();
+                let rolledNumber = selectElement.rolledNumber();
+  
+                if (claimedAmount && rolledNumber) {
+                    let result = {};
+                    result.claimed = claimedAmount;
+                    result.rolledNumber = rolledNumber;
+  
+                    shared.closeWindow(result);
+                    return;
+                }
+  
+                setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
+            };
+  
+            return {
+                init: init
+            };
+  
         },
         createBigBtcProcessor: function() {
             let timeout = new Timeout(this.maxSeconds);
@@ -4287,7 +4428,7 @@
                         if (Number.isInteger(val)) {
                             val = val / 100000000;
                         }
-
+  
                         return val;
                     } else {
                         return null;
@@ -4300,7 +4441,7 @@
                         if (Number.isInteger(val)) {
                             val = val / 100000000;
                         }
-
+  
                         return val;
                     } else {
                         return null;
@@ -4310,7 +4451,7 @@
                     return null;
                 }
             };
-
+  
             function init() {
                 if (window.location.href.includes('/faucet')) {
                     setTimeout(runFaucet, helpers.randomMs(12000, 14000));
@@ -4320,7 +4461,7 @@
                     return;
                 }
             }
-
+  
             function run() {
                 try {
                     setTimeout(waitIfLoading, helpers.randomMs(12000, 15000));
@@ -4346,7 +4487,7 @@
                 } else {
                     shared.devlog(`BigBtc: waiting for login form`);
                 }
-
+  
                 setTimeout(waitIfLoading, helpers.randomMs(5000, 7000));
             };
             function runFaucet() {
@@ -4359,7 +4500,7 @@
                     // need to wait
                     shared.devlog(`@runFaucet: has countdown: ${selectElement.countdown()}`);
                     let result = {};
-
+  
                     shared.closeWindow(result);
                 } else {
                     shared.devlog(`BigBtc: waiting for captcha`);
@@ -4380,20 +4521,20 @@
                 let claimedAmount = selectElement.claimedAmount();
                 let balance = selectElement.balance();
                 let countdown = selectElement.countdown();
-
+  
                 if (claimedAmount && balance) {
                     let result = {};
                     result.claimed = claimedAmount;
                     result.balance = balance;
                     // result.nextRoll = getDelayedNext();
-
+  
                     shared.closeWindow(result);
                     return;
                 }
-
+  
                 setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
             };
-
+  
             return {
                 init: init
             };
@@ -4450,11 +4591,11 @@
                     }
                 }
             };
-
+  
             function init() {
                 run();
             }
-
+  
             function run() {
                 try {
                     if (!elements.container().isUserFriendly()) {
@@ -4474,13 +4615,13 @@
                 if(countdown) {
                     let result = { };
                     result.nextRoll = helpers.addMinutes(countdown.toString());
-
+  
                     shared.closeWindow(result);
                     return;
                 }
-
+  
                 let ai = elements.addressInput();
-
+  
                 if (ai.isUserFriendly()) {
                     if (ai.value != shared.getCurrent().params.address) {
                         ai.value = shared.getCurrent().params.address;
@@ -4488,10 +4629,10 @@
                     captcha.isSolved().then(() => { clickClaim(); });
                     return;
                 }
-
+  
                 setTimeout(findCountdownOrRoll, helpers.randomMs(10000, 12000));
             };
-
+  
             function clickClaim() {
                 try {
                     shared.devlog('Clicking claim button');
@@ -4505,30 +4646,30 @@
                     shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
                 }
             };
-
+  
             function processRunDetails() {
                 let claimedAmount = elements.claimedAmount();
                 let balance = elements.balance();
-
+  
                 if (claimedAmount && balance) {
                     let result = {};
                     result.claimed = claimedAmount;
                     result.balance = balance;
                     // result.nextRoll = helpers.addMinutes(60);
-
+  
                     shared.closeWindow(result);
                     return;
                 }
-
+  
                 setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
             };
-
+  
             return {
                 init: init
             };
         },
     };
-
+  
     function overrideSelectNativeJS_Functions () {
         window.alert = function alert (message) {
             console.log (message);
@@ -4543,7 +4684,7 @@
         var element = document.getElementsByTagName ('head')[0] || document.body || document.documentElement;
         element.appendChild (scriptNode);
     }
-
+  
     function detectWeb() {
         // Temp until JTFey logo size is fixed
         try {
@@ -4551,15 +4692,15 @@
                 document.querySelector('.navbar-brand img.img-fluid').style.maxWidth = "75px";
             }
         } catch(err) {}
-
+  
         if(!shared.isOpenedByManager()) {
             shared.devlog(`${window.location.href} dismissed`);
             return;
         }
         shared.devlog(`${window.location.href} accepted`);
-
+  
         let typeFromManager = shared.getCurrent().type;
-
+  
         timer = new Timer(false, 20, typeFromManager);
         switch( typeFromManager ) {
             case K.WebType.STORMGAIN:
@@ -4590,6 +4731,10 @@
                 SiteProcessor = objectGenerator.createFPProcessor();
                 setTimeout(SiteProcessor.init, helpers.randomMs(2000, 5000));
                 break;
+            case K.WebType.OKFAUCET:
+                SiteProcessor = objectGenerator.createOkFaucetProcessor();
+                setTimeout(SiteProcessor.init, helpers.randomMs(4000, 6000));
+                break;
             case K.WebType.BIGBTC:
                 SiteProcessor = objectGenerator.createBigBtcProcessor();
                 setTimeout(SiteProcessor.init, helpers.randomMs(2000, 4000));
@@ -4606,8 +4751,8 @@
                 SiteProcessor = new FreeDogeIo();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(2000, 5000));
                 break;
-            case K.WebType.BFBOX:
-                SiteProcessor = new BFRoll(helpers.getEnumText(K.CMC, shared.getCurrent().params.cmc).toLowerCase());
+            case K.WebType.BETFURYBOX:
+                SiteProcessor = new BetFuryBox(helpers.getEnumText(K.CMC, shared.getCurrent().params.cmc).toLowerCase());
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.DUTCHYROLL:
@@ -4650,8 +4795,25 @@
                 break;
         }
     }
-
+  
     // CLASSES (WIP)
+    class ServerErrorRefresh {
+        constructor () {
+            this._refreshableTitles = [/500.*server error/, /524.*timeout/];
+            this._interval = setInterval( () => {
+                try {
+                    let title = window.document.title;
+                    if(title) {
+                        if(this._refreshableTitles.some( (exp) => title.toLowerCase().match(exp) )) {
+                            shared.devlog(`Refreshing site with title: ${title}`);
+                            window.location.reload();
+                        }
+                        clearInterval(this._interval);
+                    }
+                } catch {}
+            }, 15000);
+        }
+    }
     class Timeout {
         constructor(seconds) {
             this.wait = seconds || shared.getConfig()['defaults.timeout'] * 60;
@@ -4659,12 +4821,13 @@
             this.interval;
             this.cb = (() => { shared.closeWithError(K.ErrorType.TIMEOUT, '') });
             this.restart();
+            this._serverErrorRefresh = new ServerErrorRefresh();
         }
-
+  
         get elapsed() {
             return Date.now() - this.startedAt;
         }
-
+  
         restart(addSeconds = false) {
             if(this.interval) {
                 clearTimeout(this.interval);
@@ -4676,23 +4839,23 @@
             this.interval = setTimeout( () => { this.cb() }, this.wait * 1000);
         }
     }
-
+  
     class Timer {
         constructor(isManager, delaySeconds, webType) {
             if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
                 return;
             }
             this.delay = delaySeconds * 1000;
-
+  
             if(!isManager) {
                 this.tick();
                 this.interval = setInterval(
                     () => { this.tick() }, this.delay);
             }
         }
-
+  
         static webTypes() { return [K.WebType.FREELITECOIN, K.WebType.FREEETHEREUMIO, K.WebType.BAGIKERAN, K.WebType.BIGBTC, K.WebType.FCRYPTO, K.WebType.FPB] };
-
+  
         startCheck(webType) {
             if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
                 return;
@@ -4701,21 +4864,21 @@
             this.interval = setInterval(
                 () => { this.isAlive() }, this.delay);
         }
-
+  
         stopCheck() {
             if(!useTimer) {
                 return;
             }
             clearInterval(timer.interval);
         }
-
+  
         tick() {
             if(!useTimer) {
                 return;
             }
             persistence.save('lastAccess', Date.now());
         }
-
+  
         isAlive() {
             if(!useTimer) {
                 return;
@@ -4730,10 +4893,10 @@
             }
         }
     }
-
-
+  
+  
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms || 3000));
-
+  
     class Parsers {
         static innerText(elm) { // '0.12341234' => '0.12341234'
             try {
@@ -4767,7 +4930,7 @@
                 if (timeLeft[0] == 'Synchronizing') {
                     //TODO: should retry to load the value
                 }
-
+  
                 if(timeLeft.length === 3) {
                     return parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
                 }
@@ -4816,11 +4979,11 @@
                 return parseFloat(line.slice(idx, idx + 10));
             } catch (err) { }
         }
-        static bfBoxClaimed(elm) {
+        static betFuryBoxClaimed(elm) {
             try {
                 let currency = elm.querySelector('.free-box__withdraw-currency').innerText;
                 let val = elm.querySelector('.free-box__need-sum').innerText.replace(/ /g,'').split('/')[1];
-
+  
                 // if (val.length < 10) {
                 if (currency == 'Satoshi') {
                     val = val/100000000;
@@ -4882,7 +5045,7 @@
             } catch (err) { shared.devlog(`Error @Parsers.splitAndIdxToInt: ${err}`); }
         }
     }
-
+  
     class CrawlerWidget {
         constructor(params) {
             if (!params || !params.selector) {
@@ -4891,7 +5054,7 @@
             this.context = this.context || document;
             Object.assign(this, params);
         }
-
+  
         get isUserFriendly() {
             // Changed to select the element each time
             this.element = this.context.isUserFriendly(this.selector);
@@ -4900,7 +5063,7 @@
             // return this.element;
         }
     }
-
+  
     class ReadableWidget extends CrawlerWidget {
         constructor(params) {
             if (params && !params.parser) {
@@ -4908,7 +5071,7 @@
             }
             super(params);
         }
-
+  
         get value() {
             if (this.isUserFriendly) {
                 return this.parser(this.element, this.options);
@@ -4918,7 +5081,7 @@
             }
         }
     }
-
+  
     class TextboxWidget extends CrawlerWidget {
         get value() {
             if (!this.isUserFriendly) {
@@ -4927,7 +5090,7 @@
             }
             return this.element.value;
         }
-
+  
         set value(newValue) {
             if (!this.isUserFriendly) {
                 shared.devlog(`TextboxWidget (selector: '${this.selector}') cannot be access with the assigned parser`);
@@ -4937,14 +5100,14 @@
             return '';
         }
     }
-
+  
     class ButtonWidget extends CrawlerWidget {
         // Overriding to select the button again, just in case fake buttons are used by the faucet
         // get isUserFriendly() {
         //     this.element = this.context.isUserFriendly(this.selector);
         //     return this.element;
         // }
-
+  
         click() {
             if (this.isUserFriendly) {
                 this.element.click();
@@ -4954,7 +5117,7 @@
             }
         }
     }
-
+  
     class SubmitWidget extends CrawlerWidget {
         click() {
             shared.devlog(`SubmitWidget: click attempt`);
@@ -4976,7 +5139,7 @@
             }
         }
     }
-
+  
     class CountdownWidget extends CrawlerWidget {
         constructor(params) {
             if (params && !params.parser) {
@@ -4984,7 +5147,7 @@
             }
             super(params);
         }
-
+  
         get timeLeft() {
             if (this.isUserFriendly) {
                 return this.parser(this.element, this.options);
@@ -4993,17 +5156,17 @@
             }
         }
     }
-
+  
     class CaptchaWidget extends CrawlerWidget {
         constructor(params) {
             super(params);
         }
-
+  
         solve() { return true; }
-
+  
         async isSolved() { return false; }
     }
-
+  
     class HCaptchaWidget extends CaptchaWidget {
         constructor(params) {
             let defaultParams = {
@@ -5016,7 +5179,7 @@
             }
             super(defaultParams);
         }
-
+  
         async isSolved() {
             return wait().then( () => {
                 if (this.isUserFriendly && this.element.hasAttribute('data-hcaptcha-response') && this.element.getAttribute('data-hcaptcha-response').length > 0) {
@@ -5026,16 +5189,16 @@
             });
         }
     }
-
+  
     class ImageProcessor {
         constructor(img) {
             this._img = img;
         }
-
+  
         isImageComplete() {
             return this._img && this._img.complete;
         }
-
+  
         createDrawer(width, height) {
             let canvas = document.createElement('canvas');
             canvas.setAttribute('width', width);
@@ -5046,25 +5209,25 @@
                 ctx: ctx
             };
         }
-
+  
         getDrawer() {
             return this._drawer;
         }
-
+  
         toCanvas() {
             this._drawer = this.createDrawer(this._img.width, this._img.height);
             this._drawer.ctx.drawImage(this._img, 0, 0);
         }
-
+  
         foreach(filter) {
             let imgData = this._drawer.ctx.getImageData(0, 0, this._drawer.canvas.width, this._drawer.canvas.height);
             for (var x = 0; x < imgData.width; x++) {
                 for (var y = 0; y < imgData.height; y++) {
                     var i = x * 4 + y * 4 * imgData.width;
                     var pixel = { r: imgData.data[i + 0], g: imgData.data[i + 1], b: imgData.data[i + 2] };
-
+  
                     pixel = filter(pixel);
-
+  
                     imgData.data[i + 0] = pixel.r;
                     imgData.data[i + 1] = pixel.g;
                     imgData.data[i + 2] = pixel.b;
@@ -5073,7 +5236,7 @@
             }
             this._drawer.ctx.putImageData(imgData, 0, 0);
         }
-
+  
         binarize (threshold) {
             var image = this._drawer.canvas.getContext('2d').getImageData(0, 0, this._drawer.canvas.width, this._drawer.canvas.height);
             for (var x = 0; x < image.width; x++) {
@@ -5088,7 +5251,7 @@
             }
             this._drawer.canvas.getContext('2d').putImageData(image, 0, 0);
         }
-
+  
         invert(filter) {
             this.foreach(function (p) {
                 p.r = 255 - p.r;
@@ -5097,7 +5260,7 @@
                 return p;
             });
         }
-
+  
         imgDataToBool(imgData) {
             let character = [];
             const data = imgData.data;
@@ -5108,7 +5271,7 @@
             return character;
         }
     }
-
+  
     class BKCaptchaWidget extends CaptchaWidget {
         constructor() {
             let defaultParams = {
@@ -5120,7 +5283,7 @@
             this._imgProcessor;
             this._characters = [];
         }
-
+  
         charList() {
             return [{"answer":"g","width":8,"height":9,"bools":[false,true,true,true,true,true,false,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
                     {"answer":"5","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
@@ -5208,7 +5371,7 @@
                     {"answer":"X","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
                     {"answer":"Q","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,true,true,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,true]}];
         }
-
+  
         async isReady() {
             return wait().then( () => {
                 let img = document.querySelector(this.selector);
@@ -5221,7 +5384,7 @@
                 return this.isReady();
             });
         }
-
+  
         async isSolved() {
             shared.devlog(`@BKCaptcha isSolved`);
             return this.isReady()
@@ -5229,37 +5392,37 @@
                 .then( (solution) => {
                 document.querySelector('input[name="kodecaptcha"]').value = solution;
                 return Promise.resolve(true);
-            })
+                })
                 .catch(err => {
-                shared.devlog(`@BKCaptcha error ${err}`);
-                return Promise.reject(`Error ${err}`);
-            });
+                    shared.devlog(`@BKCaptcha error ${err}`);
+                    return Promise.reject(`Error ${err}`);
+                });
         }
-
+  
         preProcessImage() {
             this._imgProcessor.toCanvas();
             this._imgProcessor.binarize(200);
             this._imgProcessor.invert();
             shared.devlog(`@BKCaptcha preProcessImage: finished`);
         }
-
+  
         cropCharacter(startFrom = 0) {
             let imgData = this._imgProcessor.getDrawer().ctx.getImageData(startFrom, 0, this._imgProcessor.getDrawer().canvas.width - startFrom, this._imgProcessor.getDrawer().canvas.height);
             let newBounds = { left: null, right:null, top: null, bottom: null };
             let readingCharacter = false;
             let endOfCharacter = null;
-
+  
             for (var x = 0; x < imgData.width; x++) {
                 if (endOfCharacter) {
                     newBounds.right = endOfCharacter;
                     break;
                 }
-
+  
                 let isColumnEmpty = true;
                 for (var y = 0; y < imgData.height; y++) {
                     var i = x * 4 + y * 4 * imgData.width;
                     var pixel = { r: imgData.data[i + 0], g: imgData.data[i + 1], b: imgData.data[i + 2] };
-
+  
                     if (pixel.r + pixel.g + pixel.b == 0) {
                         if (newBounds.left == null || newBounds.left > x) {
                             newBounds.left = x;
@@ -5267,11 +5430,11 @@
                         if (newBounds.right == null || newBounds.right < x) {
                             newBounds.right = x;
                         }
-
+  
                         if (newBounds.top == null || newBounds.top > y) {
                             newBounds.top = y;
                         }
-
+  
                         if (newBounds.bottom == null || newBounds.bottom < y) {
                             newBounds.bottom = y;
                         }
@@ -5279,13 +5442,13 @@
                         isColumnEmpty = false;
                     }
                 }
-
+  
                 if (isColumnEmpty && readingCharacter) {
                     endOfCharacter = x - 1;
                     break;
                 }
             }
-
+  
             return {
                 x: startFrom + newBounds.left,
                 y: newBounds.top,
@@ -5294,7 +5457,7 @@
                 nextBegins: startFrom + newBounds.right + 1
             };
         }
-
+  
         splitInCharacters() {
             let chars = [];
             let i =0;
@@ -5303,19 +5466,19 @@
                 let copy = document.createElement('canvas').getContext('2d');
                 copy.canvas.width = chars[i].width;
                 copy.canvas.height = chars[i].height;
-
+  
                 let trimmedData = this._imgProcessor.getDrawer().ctx.getImageData(chars[i].x, chars[i].y, chars[i].width, chars[i].height);
                 copy.putImageData(trimmedData, 0, 0);
-
+  
                 chars[i].bools = this._imgProcessor.imgDataToBool(trimmedData);
                 chars[i].dataUrl = copy.canvas.toDataURL("image/png");
-
+  
                 i++;
             } while(i < 5);
-
+  
             this._characters = chars;
         }
-
+  
         guess(charElm) {
             let bestGuess = {
                 answer: '',
@@ -5324,7 +5487,7 @@
                 percentageBlacks: 0,
                 exactMatch: false
             };
-
+  
             let totalPixels = charElm.width * charElm.height;
             let totalBlacks = charElm.bools.filter(x => x === true).length;
             // console.log('Total Pixels:', totalPixels);
@@ -5345,7 +5508,7 @@
                         };
                         return;
                     }
-
+  
                     let blacksMatched = 0;
                     let blacksMissed = 0;
                     let percentageBlacks = 0;
@@ -5358,11 +5521,11 @@
                             }
                         }
                     }
-
+  
                     if (blacksMatched != 0 || blacksMissed != 0) {
                         percentageBlacks = blacksMatched/(blacksMatched + blacksMissed);
                     }
-
+  
                     if (percentageBlacks > bestGuess.percentageBlacks) {
                         bestGuess = {
                             answer: elm.answer,
@@ -5375,14 +5538,14 @@
             });
             return bestGuess;
         }
-
+  
         async solve() {
             shared.devlog(`@BKCaptcha solve`);
             let solution = '';
             if(this._imgProcessor.isImageComplete()) {
                 this.preProcessImage();
                 this.splitInCharacters();
-
+  
                 this._characters.forEach( ch => {
                     let bestGuess = this.guess(ch);
                     solution += bestGuess.answer;
@@ -5396,7 +5559,7 @@
             return Promise.resolve(solution);
         }
     }
-
+  
     class NoCaptchaWidget extends CaptchaWidget {
         constructor(params) {
             let defaultParams = {
@@ -5408,7 +5571,7 @@
             }
             super(defaultParams);
         }
-
+  
         async isSolved() {
             return wait().then( () => {
                 if (this.isUserFriendly) {
@@ -5420,7 +5583,7 @@
             });
         }
     }
-
+  
     class CBL01CaptchaWidget extends CaptchaWidget {
         constructor(params) {
             let defaultParams = {
@@ -5432,7 +5595,7 @@
             }
             super(defaultParams);
         }
-
+  
         async isReady() {
             return wait(1).then( () => {
                 if(this.isUserFriendly) {
@@ -5442,7 +5605,7 @@
                 return wait().then( () => { this.isReady(); });
             });
         }
-
+  
         async solve() {
             let answer = document.getElementById('captchainput').value;
             if (answer != '') {
@@ -5451,7 +5614,7 @@
                     answer = answer.slice(3);
                     document.getElementById('captchainput').value = answer;
                 }
-
+  
                 if (answer.length != 6) {
                     shared.devlog(`@CBL1 too short or too long. Refreshing`);
                     document.getElementById('captchainput').value ='';
@@ -5465,17 +5628,17 @@
                 return wait().then( () => { this.solve(); });
             }
         }
-
+  
         async isSolved() {
             return this.isReady()
                 .then( () => this.solve())
                 .then( (solution) => {
-                return Promise.resolve(true);
-            })
+                    return Promise.resolve(true);
+                })
                 .catch(err => { shared.devlog(err); })
         }
     }
-
+  
     class D1CaptchaWidget extends CaptchaWidget {
         constructor() {
             let defaultParams = {
@@ -5493,7 +5656,7 @@
                 answerSpan: new ReadableWidget({selector: '#submit_captcha span'})
             };
         }
-
+  
         async isReady() {
             return wait().then( () => {
                 if(this._elements.submitButton.isUserFriendly) {
@@ -5504,7 +5667,7 @@
                 return this.isReady();
             });
         }
-
+  
         async solve() {
             if (this._elements.answerSpan.isUserFriendly) {
                 let answer = this._elements.answerSpan.value;
@@ -5524,18 +5687,18 @@
                 return Promise.reject('Answer span not found!!!');
             }
         }
-
+  
         async isSolved() {
             return this.isReady()
                 .then( () => this.solve())
                 .then( (solution) => {
-                shared.devlog(`@D1Captcha => Solved`);
-                return Promise.resolve(true);
-            })
+                    shared.devlog(`@D1Captcha => Solved`);
+                    return Promise.resolve(true);
+                })
                 .catch(err => { shared.devlog(err); })
         }
     }
-
+  
     class Faucet {
         constructor(elements, actions = {}) {
             this._url = window.location.href;
@@ -5557,11 +5720,11 @@
             this._params = shared.getCurrent().params || {};
             this._result = this._actions.isMultiClaim ? (shared.getProp('tempResults') || {}) : (shared.getResult() || {});
         }
-
+  
         checkCloudflareError() {
             //TODO
         }
-
+  
         useUrlListener() {
             if (window.onurlchange === null) {
                 window.addEventListener('urlchange', (data) => {
@@ -5573,28 +5736,28 @@
                 });
             }
         }
-
+  
         resetRun() {
             wait().then( () => { this.init(); });
         }
-
+  
         init() {
             throw new Error('Init not implemented!');
         }
-
+  
         login() {
             throw new Error('Login not implemented!'); //return NEED_TO_LOGIN
         }
-
+  
         async run(action = false) {
             if (this._actions.checkIfOutOfFunds) {
                 this.checkIfOutOfFunds();
             }
-
+  
             if (this._actions.preRun) {
                 await wait().then( () => { this.preRun() } );;
             }
-
+  
             if (!action) {
                 this.detectAction().then( (resolve) => {
                     shared.devlog(`@Run - Action detected: ${resolve.action}`);
@@ -5604,7 +5767,7 @@
                 this.perform(action);
             }
         }
-
+  
         perform(action) {
             switch(action) {
                 case 'doRoll':
@@ -5622,7 +5785,7 @@
                     break;
             }
         }
-
+  
         async detectAction() {
             // shared.devlog(`@detectAction`);
             return wait().then( () => {
@@ -5635,27 +5798,27 @@
                 }
             });
         }
-
+  
         preRoll() {
             throw new Error('PreRoll not implemented!');
         }
-
+  
         preRun() {
             throw new Error('PreRun not implemented!');
         }
-
+  
         altValidation() {
             throw new Error('AltValidation not implemented!');
         }
-
+  
         isCountdownVisible() {
             return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly;
         }
-
+  
         isRollButtonVisible() {
             return this._elements.rollButton && this._elements.rollButton.isUserFriendly;
         }
-
+  
         clickRoll() {
             try {
                 shared.devlog('Clicking roll button');
@@ -5666,11 +5829,11 @@
                 shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
             }
         }
-
+  
         failureValidation() {
             throw new Error('FailureValidation not implemented!');
         }
-
+  
         async validateRun() {
             return wait(this._actions.useFailureValidation ? 6000 : null).then( () => {
                 if (this._actions.useFailureValidation) {
@@ -5692,7 +5855,7 @@
                 return wait(2000).then( () => { this.validateRun() });
             });
         }
-
+  
         async updateResult() {
             // if (!this._actions.isMultiClaim) {
             if(this._actions.readClaimed) {
@@ -5724,7 +5887,7 @@
                 shared.closeWindow(this._result);
             }
         }
-
+  
         readNextRoll() {
             try {
                 if (this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly) {
@@ -5735,7 +5898,7 @@
             //return helpers.addMinutes(60);
             return null;
         }
-
+  
         readRolledNumber() {
             let rolled = 0;
             try {
@@ -5745,7 +5908,7 @@
             } catch (err) { shared.devlog(`@readRolledNumber: ${err}`); }
             return rolled;
         }
-
+  
         readBalance() {
             let balance = 0;
             try {
@@ -5755,7 +5918,7 @@
             } catch (err) { shared.devlog(`@readBalance: ${err}`); }
             return balance;
         }
-
+  
         readClaimed() { //TODO: review if previous claimed should be received as arg
             let claimed = this._result.claimed ?? 0;
             if (this._actions.isMultiClaim) {
@@ -5764,7 +5927,7 @@
             } else {
                 shared.devlog(`@readClaimed: oldClaimed not set`);
             }
-
+  
             try {
                 shared.devlog(`@readClaimed: isUserFriendly => ${this._elements.claimed.isUserFriendly}`);
                 if(this._elements.claimed.isUserFriendly) {
@@ -5778,7 +5941,7 @@
             shared.devlog(`@readClaimed: returns ${claimed}`);
             return claimed;
         }
-
+  
         checkIfOutOfFunds() {
             let divAlerts = [...document.querySelectorAll(this._elements.outOfFundsDivSelector)];
             divAlerts.forEach( function (d) {
@@ -5789,7 +5952,7 @@
             });
         }
     }
-
+  
     class FreeEthereumIo extends Faucet {
         constructor() {
             let elements = {
@@ -5807,7 +5970,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             let url = new URL(this._url);
             if (url.pathname == '/free/') {
@@ -5819,7 +5982,7 @@
                 shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
             }
         }
-
+  
         failureValidation() {
             let elm = document.querySelector('#info');
             if (elm && elm.innerText.toLowerCase().includes('incorrect')) {
@@ -5832,7 +5995,7 @@
             }
         }
     }
-
+  
     class FreeLitecoin extends Faucet {
         constructor() {
             let elements = {
@@ -5850,7 +6013,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             let url = new URL(this._url);
             if (url.pathname == '/') {
@@ -5862,7 +6025,7 @@
                 shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
             }
         }
-
+  
         failureValidation() {
             let elm = document.querySelector('#numberroll');
             if (elm && elm.innerText.toLowerCase().includes('incorrect')) {
@@ -5875,7 +6038,7 @@
             }
         }
     }
-
+  
     class FreeDogeIo extends Faucet {
         constructor() {
             let elements = {
@@ -5893,7 +6056,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             let url = new URL(this._url);
             if (url.pathname == '/free/') {
@@ -5905,7 +6068,7 @@
                 shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
             }
         }
-
+  
         failureValidation() {
             let elm = document.querySelector('#info');
             if (elm && elm.innerText.toLowerCase().includes('incorrect')) {
@@ -5918,8 +6081,8 @@
             }
         }
     }
-
-    class BFRoll extends Faucet {
+  
+    class BetFuryBox extends Faucet {
         constructor(coinPrefix, trySpin = false) {
             let elements = {
                 preRunButton: new ButtonWidget({selector: '.free-box.free-box__' + coinPrefix + ' button'}), //'#' + coinPrefix + '_free_box_withdraw_page'}),
@@ -5927,12 +6090,12 @@
                 //rollButton: new ButtonWidget({selector: '.modal__container button.button.button_md.button_red.fullwidth'}), //'#free_box_withdraw_popup'}),
                 rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth'}),
                 success: new ReadableWidget({selector: '.modal:not(.free-box-withdraw,fury-wheel-modal), .vue-notification-template.my-notify.success'}),
-                claimed: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix, parser: Parsers.bfBoxClaimed}),
+                claimed: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix, parser: Parsers.betFuryBoxClaimed}),
                 progressBar: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix + ' .free-box__progress-bar progress'}),
                 // loggedElm: new ReadableWidget({selector: '.btn-container .btn-wallet'}),
                 // notLoggedElm: new ReadableWidget({selector: '.btn-container.no-logged'}),
             };
-
+  
             let actions = {
                 preRun: true,
                 readClaimed: true,
@@ -5943,7 +6106,7 @@
             this.coinPrefix = coinPrefix;
             this.trySpin = trySpin;
         }
-
+  
         init() {
             if (this._url.includes('https://betfury.io/boxes/all')) {
                 this.run();
@@ -5952,7 +6115,7 @@
                 return;
             }
         }
-
+  
         async spin() {
             shared.devlog('Spinning...');
             // TODO: wait for popup
@@ -5966,7 +6129,7 @@
             }
             return;
         }
-
+  
         async preRun() {
             return wait().then( () => {
                 try {
@@ -5978,7 +6141,7 @@
                         popup.click(); // twice
                     }
                 } catch (err) {}
-
+  
                 if (this.trySpin) {
                     let spinUnavailable = document.querySelector('.bonus.bonus_furywheel.wait');
                     if (spinUnavailable) {
@@ -5993,19 +6156,19 @@
                         }
                     }
                 }
-
+  
                 // LOGIN CHECK REMOVED (throwing inconsistences)
                 // if (this._elements.notLoggedElm && this._elements.notLoggedElm.isUserFriendly &&
                 //     this._elements.loggedElm && !this._elements.loggedElm.isUserFriendly) {
                 //     shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
                 //     return;
                 // }
-
+  
                 // wait for progress bar...
                 if (!this._elements.progressBar || !this._elements.progressBar.isUserFriendly) {
                     return this.preRun();
                 }
-
+  
                 if (this._elements.preRunButton.isUserFriendly) {
                     shared.devlog('@preRunButton is userfriendly');
                     if (!this._elements.preRunButton.isUserFriendly.disabled) {
@@ -6024,7 +6187,7 @@
                 return this.preRun();
             });
         }
-
+  
         // Custom Run Validation
         async validateRun() {
             shared.devlog('@validate BF');
@@ -6047,7 +6210,7 @@
                         }
                     } catch (err) {}
                 }
-
+  
                 if (this._elements.success.isUserFriendly) {
                     shared.devlog('@validate BF Successful run');
                     return this.updateResult();
@@ -6061,7 +6224,7 @@
             });
         }
     }
-
+  
     class KingBiz extends Faucet {
         constructor() {
             let elements = {
@@ -6079,7 +6242,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             if (this._url.includes('/faucet')) {
                 this.run();
@@ -6089,10 +6252,10 @@
                 return;
             }
         }
-
+  
         async preRun() {
             let dangerDivs = document.querySelectorAll('.alert.alert-danger');
-
+  
             if (dangerDivs.length > 0) {
                 let flag = [...dangerDivs].find(x => x.innerText.includes('you need to confirm your email'));
                 let txt = dangerDivs[0].innerText;
@@ -6102,7 +6265,7 @@
             }
         }
     }
-
+  
     class CPUFaucet extends Faucet {
         constructor() {
             let elements = {
@@ -6120,7 +6283,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             if (this._url.includes('/faucet')) {
                 // Pick faucet
@@ -6139,7 +6302,7 @@
             }
         }
     }
-
+  
     class Heli extends Faucet {
         constructor() {
             let elements = {
@@ -6157,7 +6320,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             if (this._url.includes('/coins.php')) {
                 this.run();
@@ -6167,11 +6330,11 @@
                 return;
             }
         }
-
+  
         isCountdownVisible() {
             return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly && this._elements.countdownMinutes.isUserFriendly.innerText != '00:00:00';
         }
-
+  
         readClaimed() { // read from doc load function
             shared.devlog(`@Heli readClaimed`);
             let claimed = this._result.claimed ?? 0;
@@ -6191,7 +6354,7 @@
             return claimed;
         }
     }
-
+  
     class CBGRoll extends Faucet {
         constructor() {
             let elements = {
@@ -6212,7 +6375,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             this._docType = (window != window.top ? 'IFRAME' : 'TOP');
             shared.devlog(`@CBG init (${window.location.host}) => ${this._docType}`);
@@ -6228,17 +6391,17 @@
                 return;
             }
         }
-
+  
         async preRun() {
             shared.devlog(`@CBG preRun`);
             //TODO: fill INPUT ADDRESS
-
+  
             let dangerDivs = document.querySelectorAll('div.alert.alert-danger');
-
+  
             if (dangerDivs.length > 0) {
                 return shared.closeWithError(K.ErrorType.ERROR, dangerDivs[0].innerText);
             }
-
+  
             if (this._elements.addressInput.isUserFriendly) {
                 if (this._elements.addressInput.value != shared.getCurrent().params.address) {
                     shared.devlog(`@CBG addressInput Found. Using ${shared.getCurrent().params.address}`);
@@ -6250,10 +6413,10 @@
                 shared.devlog(`@CBG addressInput not found`);
                 return this.preRun();
             }
-
+  
             return true;
         }
-
+  
         async detectAction() {
             shared.devlog(`@CBGdetectAction Custom (${this._docType})`);
             return wait().then( () => {
@@ -6271,7 +6434,7 @@
                 }
             });
         }
-
+  
         clickRoll() {
             try {
                 shared.devlog('Clicking roll button');
@@ -6294,7 +6457,7 @@
                 shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
             }
         }
-
+  
         preSaveResult() {
             if (this._docType == 'IFRAME') {
                 this._result.closeParentWindow = true;
@@ -6303,7 +6466,7 @@
             }
         }
     }
-
+  
     class G8 extends Faucet {
         constructor() {
             let elements = {
@@ -6326,13 +6489,13 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             shared.devlog(`@G8 init`);
             this.run();
             return;
         }
-
+  
         async preRun() {
             shared.devlog(`@G8 preRun`);
             return wait().then( () => {
@@ -6344,7 +6507,7 @@
                         return;
                     }
                 }
-
+  
                 if(this._elements.claimsLeft.isUserFriendly) {
                     shared.devlog(`@G8 ClaimsLeft Check`);
                     try {
@@ -6357,15 +6520,15 @@
                         shared.devlog(`@G8 ClaimsLeft: error reading claims left: ${err}`);
                     }
                 }
-
-
+  
+  
                 if (this._elements.preRunButton.isUserFriendly) {
                     shared.devlog(`@preRunButton is userfriendly`);
                     if (this._elements.addressInput.isUserFriendly) {
                         if (this._elements.addressInput.value != shared.getCurrent().params.address) {
                             this._elements.addressInput.value = shared.getCurrent().params.address;
                         }
-
+  
                         if (!this._elements.preRunButton.isUserFriendly.disabled) {
                             return this._elements.preRunButton.click();
                         }
@@ -6374,7 +6537,7 @@
                 return this.preRun();
             });
         }
-
+  
         async detectAction() {
             shared.devlog(`@detectAction Custom`);
             return wait().then( () => {
@@ -6391,7 +6554,7 @@
             });
         }
     }
-
+  
     class DutchyRoll extends Faucet {
         constructor() {
             let elements = {
@@ -6409,7 +6572,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             switch(window.location.host) {
                 case 'autofaucet.dutchycorp.space':
@@ -6434,7 +6597,7 @@
             this.run();
             return;
         }
-
+  
         async preRun() {
             if (this._elements.captcha.isUserFriendly) {
                 return true;
@@ -6448,7 +6611,7 @@
             }
         }
     }
-
+  
     class FPB extends Faucet {
         constructor(sitePrefix = null) {
             let elements = {
@@ -6465,14 +6628,14 @@
                 },
                 outOfFundsDivSelector: '.alert.alert-info'
             };
-
+  
             if(shared.getConfig()[sitePrefix + '.credentials.mode'] == 1) {
                 elements.login.setCredentials = {
                     username: shared.getConfig()[sitePrefix + '.credentials.username'],
                     password: shared.getConfig()[sitePrefix + '.credentials.password']
                 };
             }
-
+  
             let actions = {
                 readClaimed: true,
                 readBalance: false,
@@ -6481,7 +6644,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             if (this._url.includes('/dashboard')) {
                 this.run();
@@ -6491,7 +6654,7 @@
                 return;
             }
         }
-
+  
         async doLogin() {
             shared.devlog(`@doLogin`);
             return wait().then( () => {
@@ -6499,23 +6662,23 @@
                     shared.devlog(`Waiting form inputs`);
                     return this.doLogin();
                 }
-
+  
                 let loginErrorDiv = document.querySelector('div.alert.alert-info');
                 if (loginErrorDiv && loginErrorDiv.innerText.includes('not valid')) {
                     shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
                     return;
                 }
-
+  
                 if (this._elements.login.setCredentials != false) {
                     shared.devlog(`Setting credentials from var`);
                     this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
                     this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
                 }
-
+  
                 try {
                     this._elements.login.rememberMe.isUserFriendly.checked = true;
                 } catch (err) {}
-
+  
                 if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
                     shared.devlog(`@Run - Captcha`);
                     this._elements.captcha.isSolved().then(() => {
@@ -6528,7 +6691,7 @@
                 }
             });
         }
-
+  
         async detectAction() {
             shared.devlog(`@detectAction Custom`);
             return wait().then( () => {
@@ -6546,7 +6709,7 @@
                 }
             });
         }
-
+  
         clickRoll() {
             try {
                 shared.devlog(`@clickRoll custom`);
@@ -6562,7 +6725,7 @@
             }
         }
     }
-
+  
     class VieRoll extends Faucet {
         constructor() {
             let elements = {
@@ -6578,7 +6741,7 @@
                     inputSubmit: new SubmitWidget({ selector: 'button[type="submit"]' })
                 }
             };
-
+  
             let actions = {
                 readClaimed: true,
                 readBalance: false,
@@ -6589,32 +6752,32 @@
             };
             super(elements, actions);
         }
-
+  
         getClaimsQty() {
             let statWidgets = document.querySelectorAll('.card.mini-stats-wid');
             if (statWidgets.length < 4) return false;
-
+  
             let claimCounts = statWidgets[3].querySelector('p');
             if (!claimCounts) return false;
-
+  
             claimCounts = claimCounts.innerText.split('/');
             if (claimCounts.length != 2) return false;
-
+  
             return claimCounts[0];
         }
-
+  
         async evalClaimsQty() {
             let current = this.getClaimsQty();
-
+  
             if (current) {
                 current = +current;
             } else {
                 return;
             }
-
+  
             let previous = await shared.getProp('tempClaimsQty') || 0;
             if (!isNaN(previous)) previous = +previous;
-
+  
             if (current == previous) {
                 return;
             } else if (current < previous) {
@@ -6623,7 +6786,7 @@
                 await shared.setProp('tempClaimsQty', current);
             }
         }
-
+  
         readClaimed() {
             let claimed = 0.12;
             try {
@@ -6631,10 +6794,10 @@
             } catch (err) { }
             return claimed;
         }
-
+  
         async init() {
             await this.evalClaimsQty();
-
+  
             if (window.location.pathname.includes('/faucet')) {
                 shared.devlog(`@VieRoll => At Faucet starting claim`);
                 this.run();
@@ -6660,7 +6823,7 @@
                 return;
             } else if (this._url.includes('/login')) {
                 shared.devlog(`@VieRoll => At Login`);
-
+  
                 let credentialsMode = this._params.credentials.mode;
                 switch(credentialsMode) {
                     case -1:
@@ -6677,21 +6840,21 @@
                 return;
             }
         }
-
+  
         async preRun() {
             shared.devlog(`@preRun`);
             return;
         }
-
+  
         async solveFirewall() {
             this.closeSwal();
-
+  
             this._elements.captcha.isSolved().then(() => {
                 let btn = new SubmitWidget({selector: 'form:not(.p-3) button[type="submit"]'});
                 btn.click();
             });
         }
-
+  
         async doLogin() {
             shared.devlog(`@doLogin`);
             return wait().then( () => {
@@ -6699,19 +6862,19 @@
                     shared.devlog(`Waiting form inputs`);
                     return this.doLogin();
                 }
-
+  
                 let loginErrorDiv = document.querySelector('div.alert.alert-danger');
                 if (loginErrorDiv) {
                     shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
                     return;
                 }
-
+  
                 if (this._params.credentials.mode == 1) {
                     shared.devlog(`Setting credentials`);
                     this._elements.login.inputUser.value = this._params.credentials.username;
                     this._elements.login.inputPass.value = this._params.credentials.password;
                 }
-
+  
                 if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
                     this._elements.captcha.isSolved().then(() => {
                         this._elements.login.inputSubmit.click();
@@ -6723,11 +6886,11 @@
                 }
             });
         }
-
+  
         preSaveResult() {
             this.closeSwal();
         }
-
+  
         closeSwal() {
             let okButton = document.querySelector('button.swal2-confirm');
             if (okButton) {
@@ -6735,7 +6898,7 @@
             }
         }
     }
-
+  
     class GRCRoll extends Faucet {
         constructor() {
             let elements = {
@@ -6753,7 +6916,7 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             if (this._url.includes('#free_roll')) {
                 if (document.querySelectorAll('a[href="#login"]').length > 0) {
@@ -6767,12 +6930,12 @@
                 return;
             }
         }
-
+  
         isCountdownVisible() {
             return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly && this._elements.countdownMinutes.isUserFriendly.innerText != '';
         }
     }
-
+  
     class O24Roll extends Faucet {
         constructor() {
             let elements = {
@@ -6785,16 +6948,16 @@
             };
             super(elements, actions);
         }
-
+  
         init() {
             if (this.isCountdownVisible() || this.readClaimed() != 0) {
                 this.updateResult();
                 return;
             }
-
+  
             this.solve();
         }
-
+  
         getSpotsAvailable() {
             try {
                 let elm = document.querySelector('.pos.pfree a');
@@ -6809,7 +6972,7 @@
                 shared.devlog(err);
             }
         }
-
+  
         isPrime(num) {
             for(var i = 2; i < num; i++){
                 if(num % i === 0){
@@ -6818,7 +6981,7 @@
             }
             return num > 1;
         }
-
+  
         async solve() {
             let spotsAvailable = this.getSpotsAvailable();
             if(!spotsAvailable) {
@@ -6827,7 +6990,7 @@
                 this.updateResult();
                 return;
             }
-
+  
             let numbers = [...document.querySelectorAll('select[name="pr"] option[value]')].map(x => x.innerText)
             let prime = numbers.find(x => {
                 return this.isPrime(x)
@@ -6838,7 +7001,7 @@
                 this.updateResult();
                 return;
             }
-
+  
             // fill address
             let addrInput = document.querySelector('label input[name="a"]');
             if (addrInput) {
@@ -6849,11 +7012,11 @@
                 return;
             }
             await wait(helpers.randomInt(1500, 3000));
-
+  
             // answer_1:
             document.querySelector('select[name="tt"]').value=(+spotsAvailable-1).toString()
             await wait(helpers.randomInt(400, 5000));
-
+  
             // answer_2:
             let primeSelect = document.querySelector('select[name="pr"]');
             helpers.triggerMouseEvent (primeSelect, "mouseenter");
@@ -6861,28 +7024,28 @@
             helpers.triggerMouseEvent (primeSelect, "mouseout");
             primeSelect.value=prime.toString()
             await wait(helpers.randomInt(1500, 5000));
-
+  
             let claimForm = document.querySelector('form');
             if(claimForm) {
                 claimForm.submit();
             }
         }
-
+  
         isCountdownVisible() {
             let pars = [...document.querySelectorAll('p')];
             if (pars.find(x => x.innerText.includes('please wait until next day'))) {
                 // need to wait a day
                 return true;
             }
-
+  
             if (pars.find(x => x.innerText.includes('PROBLEM'))) {
                 // need to wait at least 5 min
                 return true;
             }
-
+  
             return false;
         }
-
+  
         readClaimed() {
             let pars = [...document.querySelectorAll('p')];
             let claimedElm = pars.find(x => x.innerText.includes('been transferred to your account'));
@@ -6892,7 +7055,7 @@
                 return 0;
             }
         }
-
+  
         readNextRoll() {
             try {
                 let pars = [...document.querySelectorAll('p')];
@@ -6900,12 +7063,12 @@
                     // need to wait
                     return helpers.addMinutes(helpers.randomInt(6, 22));
                 }
-
+  
                 if (pars.find(x => x.innerText.includes('ALL DAILY CLAIMS') || x.innerText.includes('You have 0 claims left'))) {
                     // need to wait a day
                     return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
                 }
-
+  
                 if (pars.find(x => x.innerText.includes('You have'))) {
                     // need to wait a day
                     return helpers.addMinutes(helpers.randomInt(6, 22));
@@ -6915,7 +7078,7 @@
             return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
         }
     }
-
+  
     // TODO: refactor => separate in PTC and FAUCET, using a generic PTC class with PTCList, PTCSingle, etc
     //                   create a container class that has both PTC and FAUCET
     class FCryptoRoll extends Faucet {
@@ -6952,7 +7115,7 @@
             }
             this.useUrlListener();
         }
-
+  
         init() {
             this._elements.captcha = new HCaptchaWidget({selector: '#hcap-script > iframe'});
             this._elements.rollButton = new ButtonWidget({selector: 'button.notranslate.inline-flex.items-center.text-center:not(.hidden)'});
@@ -6962,21 +7125,21 @@
             } else if (this._url.includes(this._paths.faucet)) {
                 shared.devlog(`@FC => @faucet`);
                 return wait().then( () => { this.run(); });
-                // } else if (this._url.endsWith(this._paths.ptcList)) {
-                //     shared.devlog(`@FC => @ptcList`);
-                //     return wait().then( () => { this.runPtcList(); });
-                // } else if (this._url.includes(this._paths.ptcSingleStart)) {
-                //     shared.devlog(`@FC => PTC Single Step 1`);
-                //     return wait().then( () => { this.runPtcSingleStart(); });
-                // } else if (this._url.includes(this._paths.ptcSingleWait)) {
-                //     shared.devlog(`@FC => PTC Single Step 2`);
-                //     return wait().then( () => { this.runPtcSingleWait(); });
+            // } else if (this._url.endsWith(this._paths.ptcList)) {
+            //     shared.devlog(`@FC => @ptcList`);
+            //     return wait().then( () => { this.runPtcList(); });
+            // } else if (this._url.includes(this._paths.ptcSingleStart)) {
+            //     shared.devlog(`@FC => PTC Single Step 1`);
+            //     return wait().then( () => { this.runPtcSingleStart(); });
+            // } else if (this._url.includes(this._paths.ptcSingleWait)) {
+            //     shared.devlog(`@FC => PTC Single Step 2`);
+            //     return wait().then( () => { this.runPtcSingleWait(); });
             }
-
+  
             shared.devlog(`@FC => No url match!`);
             return;
         }
-
+  
         readSections() {
             let sections = {};
             try {
@@ -6989,13 +7152,13 @@
                     }
                 }
             } catch {}
-
+  
             this.sections = sections;
         }
-
+  
         runDashboard() {
             this.readSections();
-
+  
             if (this.sections['Faucet'].elm) {
                 shared.devlog(`@FC => goto faucet`);
                 this.sections['Faucet'].elm.click();
@@ -7006,7 +7169,7 @@
                 return wait().then( () => { this.run(); });
             }
         }
-
+  
         // TODO: refactor and move
         scrollTo() {
             let mainContainer = document.querySelector('main');
@@ -7014,7 +7177,7 @@
                 mainContainer.scrollTo(0, mainContainer.scrollHeight - mainContainer.offsetHeight);
             }
         }
-
+  
         preRoll() { // search for 'You don't need to solve any captcha! The system is telling me that you are a good person :)'
             this.scrollTo();
             let checkCircleSpan = document.querySelector('p.justify-center span.text-green-500 svg.feather-check-circle');
@@ -7026,10 +7189,10 @@
                 }
             }
         }
-
+  
         postRun() {
             shared.devlog(`@FC @postRun in ${window.location.href}`);
-
+  
             // if ( this._url.endsWith(this._paths.dashboard) || (this._oldClaimed && this._result && this._result.claimed && this._oldClaimed != this._result.claimed) ) {
             if (this._url.endsWith(this._paths.dashboard) || this._oldClaimed != this._result.claimed) {
                 shared.devlog(`@FC @postRun => Claim/Action finished [${this._oldClaimed} != ${this._result.claimed}]`);
@@ -7046,10 +7209,10 @@
                         shared.devlog(`@FC @postRun => goto faucet`);
                         this.sections['Faucet'].elm.click();
                         return;
-                        // } else if (this.sections['PtcList'].elm && this.sections['PtcList'].qty > 0) {
-                        //     shared.devlog(`@FC @postRun => has PTCs. goto ptcList`);
-                        //     this.sections['PtcList'].elm.click();
-                        //     return;
+                    // } else if (this.sections['PtcList'].elm && this.sections['PtcList'].qty > 0) {
+                    //     shared.devlog(`@FC @postRun => has PTCs. goto ptcList`);
+                    //     this.sections['PtcList'].elm.click();
+                    //     return;
                     } else {
                         shared.devlog(`@FC @postRun => ignoring @1`);
                     }
@@ -7059,12 +7222,12 @@
             } else {
                 shared.devlog(`@FC @postRun => ignoring @3`);
             }
-
+  
             this._result = shared.getProp('tempResults');
             shared.closeWindow(this._result);
             return;
         }
-
+  
         async runPtcList() {
             shared.devlog(`@FC => @runPtcList`);
             let listItems = [...document.querySelectorAll('.grid.grid-responsive-3 .feather.feather-eye')].map(x => x.parentElement.parentElement).filter(x => x.isUserFriendly());
@@ -7077,12 +7240,12 @@
                 return wait().then( () => { this.runPtcList() } );
             }
         }
-
+  
         runPtcSingleStart() {
             shared.devlog(`@FC => @runPtcSingleStart`);
             return this.run('doRoll');
         }
-
+  
         runPtcSingleWait() {
             shared.devlog(`@FC => @runPtcSingleWait`);
             this._elements.captcha = new NoCaptchaWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
@@ -7090,7 +7253,7 @@
             return this.run('doRoll');
         }
     }
-
+  
     let timer, landing;
     let useTimer;
     async function init() {
@@ -7105,11 +7268,12 @@
             CFPromotions = objectGenerator.createCFPromotions();
             ui = objectGenerator.createUi();
             CFHistory = objectGenerator.createCFHistory();
-
+  
             await manager.init();
         } else {
             detectWeb();
         }
     }
     init();
-})();
+  })();
+  
