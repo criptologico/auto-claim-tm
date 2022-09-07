@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      2.8.1
+// @version      2.8.2
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -117,6 +117,7 @@
 // @match        https://dashfaucet.cryptobaggiver.com/*
 // @match        https://www.only1024.com/f*
 // @match        https://criptologico.com/tools/cc*
+// @match        https://freebittorrent.com/*
 // ==/UserScript==
 
 (function() {
@@ -254,7 +255,8 @@
             CAKE: '7186',
             GRC: '833',
             MATIC: '3890',
-            BABY: '10334'
+            BABY: '10334',
+            BTT: '16086'
         },
         LOCATION: {
             UNKNOWN: 0,
@@ -1330,7 +1332,8 @@
                 // { id: '83', name: 'FreeBCH', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://freebch.fun/page/dashboard'), rf: ['?r=satology'], type: K.WebType.FPB, clId: 212 },
                 { id: '84', name: 'JTFey', cmc: '-1', url: new URL('https://james-trussy.com/faucet'), rf: ['?r=corecrafting'], type: K.WebType.VIE, clId: 213 },
                 { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
-                { id: '86', name: 'BF BABY', cmc: '10334', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 }
+                { id: '86', name: 'BF BABY', cmc: '10334', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
+                { id: '87', name: 'CF BTT', cmc: '16086', coinRef: 'BTT', url: new URL('https://freebittorrent.com/free'), rf: '?ref=2050', type: K.WebType.CRYPTOSFAUCETS, clId: 218 }
             ];
 
             const wallet = [
@@ -7341,7 +7344,7 @@
         if( (idNmbr >= 21 && idNmbr <= 44) || [69, 70].includes(idNmbr) ) { // BKs
             site.schedule = '65329c';
         }
-        if(idNmbr <= 14 || [16, 68, 78, 81].includes(idNmbr)) { // this matches CFs
+        if(idNmbr <= 14 || [16, 68, 78, 81, 87].includes(idNmbr)) { // this matches CFs
             // doing nothing
         }
         if (idNmbr == 84) site.schedule = 'd1671b'; // JTFey
