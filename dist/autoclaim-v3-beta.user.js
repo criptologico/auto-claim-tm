@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.1
+// @version      3.0.2
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -15,6 +15,10 @@
 // @grant        GM_openInTab
 // @grant        window.onurlchange
 // @connect      criptologico.com
+
+// @updateURL   https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-v3-beta.user.js
+// @downloadURL https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-v3-beta.user.js
+
 // @icon         https://www.google.com/s2/favicons?domain=stormgain.com
 // @match        https://app.stormgain.com/crypto-miner/
 // @match        https://freecardano.com/*
@@ -782,7 +786,7 @@
                 { id: '6', name: 'CF LINK', cmc: '1975', coinRef: 'LINK', url: new URL('https://freecryptom.com/free'), rf: '?ref=78652', type: K.WebType.CRYPTOSFAUCETS, clId: 157 },
                 { id: '7', name: 'CF LTC', cmc: '2', coinRef: 'LTC', url: new URL('https://free-ltc.com/free'), rf: '?ref=117042', type: K.WebType.CRYPTOSFAUCETS, clId: 47 },
                 { id: '8', name: 'CF NEO', cmc: '1376', coinRef: 'NEO', url: new URL('https://freeneo.io/free'), rf: '?ref=100529', type: K.WebType.CRYPTOSFAUCETS, clId: 158 },
-                { id: '9', name: 'CF STEAM', cmc: '1230', coinRef: 'STEEM', url: new URL('https://freesteam.io/free'), rf: '?ref=117686', type: K.WebType.CRYPTOSFAUCETS, clId: 49 },
+                { id: '9', name: 'CF STEAM', cmc: '825', coinRef: 'STEEM', url: new URL('https://freesteam.io/free'), rf: '?ref=117686', type: K.WebType.CRYPTOSFAUCETS, clId: 49 },
                 { id: '10', name: 'CF TRX', cmc: '1958', coinRef: 'TRX', url: new URL('https://free-tron.com/free'), rf: '?ref=145047', type: K.WebType.CRYPTOSFAUCETS, clId: 41 },
                 { id: '11', name: 'CF USDC', cmc: '3408', coinRef: 'USDC', url: new URL('https://freeusdcoin.com/free'), rf: '?ref=100434', type: K.WebType.CRYPTOSFAUCETS, clId: 51 },
                 { id: '12', name: 'CF USDT', cmc: '825', coinRef: 'USDT', url: new URL('https://freetether.com/free'), rf: '?ref=181230', type: K.WebType.CRYPTOSFAUCETS, clId: 43 },
@@ -813,7 +817,7 @@
                 { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
                 { id: '93', name: 'YCoin', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
                 { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
-                { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 }
+                { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 },
             ];
 
             const wallet = [
@@ -1501,6 +1505,8 @@
                                 try {
                                     this.closeTab();
                                 } catch (err) { console.error('Unable to close working tab', err); }
+                            this.moveAfterNormalRun();
+                            return;
                         } else {
                             if(this.currentSite.stats.countTimeouts) {
                                 this.currentSite.stats.countTimeouts += 1;
@@ -1641,6 +1647,18 @@
                         }
                     }
                     return nextRun;
+                }
+
+                moveAfterNormalRun() {
+                    this.currentSite.nextRoll = this.getNextRun(null);
+                    shared.devlog(`@moveAfterNormalRun: ${this.currentSite.nextRoll}`);
+
+                    shared.clearFlowControl(this.uuid);
+                    update(true);
+                    this.timeWaiting = 0;
+                    this.status = STATUS.IDLE;
+                    shared.clearFlowControl(this.uuid);
+                    readUpdateValues(true);
                 }
 
                 moveNextAfterTimeoutOrError() {
@@ -3601,50 +3619,6 @@
                 }
 
             };
-            function waitForRollResult() {
-                shared.devlog(`Looking for roll result`);
-                let newNumber = -1;
-                try { // intento leer el rolled number
-                    newNumber = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
-                    newNumber = parseInt(newNumber)
-                    shared.devlog(`Roll #: ${newNumber}`);
-                } catch(err) {
-                    shared.devlog(`Roll #: error reading it`);
-                    newNumber = null;
-                }
-                if (newNumber === null) { // si no logro leerlo, bajo 1 en tempRollNumber
-                    shared.devlog(`Roll # is null`);
-                    if (tempRollNumber < 0) {
-                        tempRollNumber -= 1;
-                    } else {
-                        tempRollNumber = -1;
-                    }
-                    shared.devlog(`Temp Roll Reads: ${tempRollNumber}`);
-                    if (tempRollNumber < -5) {
-                        processRunDetails();
-                        return;
-                    } else {
-                        setTimeout(waitForRollResult, helpers.randomMs(2000, 4000));
-                        return;
-                    }
-                }
-
-                if (newNumber == tempRollNumber) {
-                    timeWaiting = 0;
-                    if (shared.getConfig()['cf.rollOnce']) {
-                        processRunDetails();
-                        return;
-                    } else {
-                        setTimeout(findCountdownOrRollButton, helpers.randomMs(1000, 2000));
-                        return;
-                    }
-                } else {
-                    tempRollNumber = newNumber;
-                    setTimeout(waitForRollResult, helpers.randomMs(2000, 4000));
-                    return;
-                }
-            };
-
             function findCountdownOrRollButton() {
                 if( isCountdownVisible() && !isRollButtonVisible() ) {
                     timeWaiting = 0;
