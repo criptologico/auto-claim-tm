@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.2
+// @version      3.0.3
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -4191,6 +4191,10 @@
             };
 
             function init() {
+                let m = document.getElementById('main'); if (m) { m.style.display='block'; }
+                m = document.getElementById('block-adb-enabled'); if (m) { m.style.display='none'; }
+                m = document.getElementById('ielement'); if (m) { m.style.display='block'; }
+
                 if (window.location.href.includes('/faucet')) {
                     setTimeout(runFaucet, helpers.randomMs(12000, 14000));
                     return;
@@ -4591,7 +4595,11 @@
 
             tds += '<td class="align-middle edit-status d-none em-only"><label class="switch"><input type="checkbox" data-original="' + (site.enabled ? '1' : '0') + '" ' + (site.enabled ? 'checked' : ' ') + '><span class="slider round"></span></label></td>';
             tds += '<td class="align-middle" title="' + helpers.getPrintableDateTime(site.nextRoll) + '"><span><i class="fas fa-square pr-1" style="color: #' + site.schedule + ';"></i></span>' + helpers.getTdPrintableTime(site.nextRoll) + '</td>';
-            tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + (new URL(site.clId, 'https://criptologico.com/goto/')).href + '"><i class="fa fa-external-link-alt"></i></a></td>';
+            if (site.isExternal && site.clId == -1) {
+                tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + site.url + '"><i class="fa fa-external-link-alt"></i></a></td>';
+            } else {
+                tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + (new URL(site.clId, 'https://criptologico.com/goto/')).href + '"><i class="fa fa-external-link-alt"></i></a></td>';
+            }
 
             tds += '<td class="align-middle em-input text-left" data-field="displayName">';
             if (site.cmc) {
