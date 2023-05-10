@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.3
+// @version      3.0.4
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -412,6 +412,17 @@
         }
     }
 
+    class SiteRequirements {
+        constructor(args) {
+            this.name = 'HCaptcha Solver';
+            this.suggested = 'https://...hekt';
+            this.description = 'This site requires an HCaptcha Solver for full automation. There are some free and paid solutions available';
+            this.alternatives = 'claimCaptcha, 2Captcha, nopecha, nocaptcha.ai';
+            this.isCovered = false; // true if the user has an hcaptcha solver
+
+        }
+    }
+
     class Persistence {
         constructor(prefix = 'autoWeb_') {
             this.prefix = prefix;
@@ -644,7 +655,6 @@
             };
             function saveAndclose(runDetails, delay = 0) {
                 markAsVisited(runDetails);
-                shared.devlog(`${window.location.href} closing`);
                 if(delay) {
                     setTimeout(window.close, delay);
                 } else {
@@ -667,19 +677,15 @@
             function saveFlowControl(schedule) {
                 schedule = schedule ? schedule : scheduleUuid;
                 if (!schedule) {
-                    shared.devlog(`Saving from runningSites`);
                     persistence.save('runningSites', runningSites, true);
                     return;
                 }
                 let tempFlow = persistence.load('runningSites', true);
                 tempFlow[schedule] = runningSites[schedule];
-                shared.devlog(`Saving from tempFlow`);
                 persistence.save('runningSites', tempFlow, true);
             };
             function markAsVisited(runDetails, runStatus = 'COMPLETED') {
-                shared.devlog(`@markAsVisited. runStatus=${runStatus}, scheduleUuid=${scheduleUuid}`);
                 if (!scheduleUuid) {
-                    shared.devlog(`ERROR @markAsVisited: no scheduleUuid to reference`);
                     return;
                 }
                 runningSites[scheduleUuid].opened = true;
@@ -703,11 +709,9 @@
             };
             function closeWithError(errorType, errorMessage) {
                 addError(errorType, errorMessage);
-                shared.devlog(`${window.location.href} closing with error msg`);
                 window.close();
             };
             function clearFlowControl(schedule) {
-                shared.devlog(`[${schedule}] clearFlowControl for ${schedule}`);
                 if (schedule) {
                     runningSites[schedule] = {};
                     saveFlowControl(schedule);
@@ -728,18 +732,14 @@
                 return false;
             };
             function setProp(key, val) {
-                shared.devlog(`@setProp, key => ${key}, val => ${val}`);
                 runningSites[scheduleUuid][key] = val;
                 saveFlowControl(scheduleUuid);
             };
             function getProp(key) {
-                shared.devlog(`@getProp, key => ${key}`);
                 return runningSites[scheduleUuid][key];
             };
             function getParam(key) {
-                shared.devlog(`@getParam, key => ${key}`);
                 try {
-                    shared.devlog(`@getParam, returning: ${runningSites[scheduleUuid].params[key]}`);
                 } catch {}
                 return runningSites[scheduleUuid].params[key];
             };
@@ -1404,13 +1404,10 @@
 
                         if (this.tab && !this.tab.closed) {
                             try {
-                                shared.devlog(`Tab closed from Manager`);
                                 this.tab.close();
                             } catch {
-                                shared.devlog(`ERROR: unable to close tab from Manager`);
                             }
                         } else {
-                            shared.devlog(`No open tabs detected`);
                         }
 
                         this.timer.startCheck(this.currentSite.type);
@@ -1597,12 +1594,10 @@
                     }
                     nextRun = this.sleepCheck(nextRun)
 
-                    shared.devlog(`@getNextRun: ${nextRun}`);
                     return nextRun;
                 }
 
                 errorTreatment() { // Move to group custom getNextRoll
-                    shared.devlog(`@errorTreatment`);
                     try {
                         switch(this.currentSite.stats.errors.errorType) {
                             case K.ErrorType.NEED_TO_LOGIN:
@@ -1629,14 +1624,12 @@
 
                         if (+min < +max) {
                             if (+min < intNextRunTime && intNextRunTime < +max) {
-                                shared.devlog(`Sleep Mode [${min} to ${max}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
                                 nextRun.setHours(max.slice(0, 2), max.slice(-2), 10, 10);
                                 ui.log({ schedule: this.uuid, 
                                     msg: `Next run adjusted by Sleep Mode: ${helpers.getPrintableDateTime(nextRun)}` });
                             }
                         } else if (+min > +max) {
                             if (intNextRunTime > +min || intNextRunTime < +max) {
-                                shared.devlog(`Sleep Mode [${max} to ${min}]: adjusting next run. NextRunTimeInt => ${intNextRunTime}`);
                                 nextRun.setHours(max.slice(0, 2), max.slice(-2), 10, 10);
                                 if (nextRun.getTime() < Date.now()) {
                                     nextRun.setDate(nextRun.getDate() + 1);
@@ -1651,7 +1644,6 @@
 
                 moveAfterNormalRun() {
                     this.currentSite.nextRoll = this.getNextRun(null);
-                    shared.devlog(`@moveAfterNormalRun: ${this.currentSite.nextRoll}`);
 
                     shared.clearFlowControl(this.uuid);
                     update(true);
@@ -1673,9 +1665,7 @@
 
                     this.currentSite.nextRoll = this.sleepCheck(helpers.addMs(msDelay).toDate());
                     if(this.errorTreatment()) {
-                        shared.devlog(`@moveNextAfterTimeoutOrError: errorTreatment => true`);
                     }
-                    shared.devlog(`@moveNextAfterTimeoutOrError: ${this.currentSite.nextRoll}`);
 
                     shared.clearFlowControl(this.uuid);
                     update(true);
@@ -3096,9 +3086,7 @@
 
                 if(shared.getConfig()['devlog.enabled']) {
                     if (data.schedule) {
-                        shared.devlog(`[${data.schedule}] ${data.msg}`, data.elapsed || false);
                     } else {
-                        shared.devlog(data.msg, data.elapsed || false);
                     }
                 };
 
@@ -3404,7 +3392,6 @@
             };
             function closePopup() {
                 try {
-                    shared.devlog(`@SG: closing popup`);
                     document.querySelector("div.absolute.flex.top-0.right-0.cursor-pointer.p-4.text-white.md-text-gray-1").click();
                     document.querySelector('svg.flex.w-8.h-8.fill-current').parentElement.click();
                 } catch { shared.devlog(`@SG: error closing popup`); }
@@ -3416,10 +3403,8 @@
                 timerSpans = document.querySelector('.font-bold.text-center.text-accent.w-11-12.text-18 span');
 
                 if(timerSpans) {
-                    shared.devlog(`SG: Miner is active`);
                     return true;
                 } else {
-                    shared.devlog(`SG: Miner is inactive`);
                     return false;
                 }
                 return (!!timerSpans);
@@ -3428,7 +3413,6 @@
                 let activateButton = document.querySelector("#region-main button.activate.block.w-full.h-full.mx-auto.p-0.rounded-full.select-none.cursor-pointer.focus-outline-none.border-0.bg-transparent");
                 if (activateButton) {
                     activateButton.click();
-                    shared.devlog(`SG: Activate miner clicked`);
                     setTimeout(run, helpers.randomMs(10000, 20000));
                 } else {
                     processRunDetails()
@@ -3437,22 +3421,18 @@
 
             function processRunDetails() {
                 let result = {};
-                shared.devlog(`SG: @processRunDetails`);
                 result.nextRoll = helpers.addMinutes(readCountdown().toString());
                 result.balance = readBalance();
                 shared.closeWindow(result);
             };
 
             function readCountdown() {
-                shared.devlog(`SG: @readCountdown`);
                 let synchronizing = document.querySelector('.text-15.font-bold.text-center.text-accent'); // use
                 let mins = 15;
                 try {
                     let timeLeft = timerSpans.innerText.split(':');
                     if (timeLeft[0] == 'Synchronizing') {
                     }
-                    shared.devlog(`SG Countdown timeLeft spans:`);
-                    shared.devlog(timeLeft);
 
                     if(timeLeft.length === 3) {
                         mins = parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
@@ -3461,7 +3441,6 @@
                 return mins;
             };
             function readBalance() {
-                shared.devlog(`SG: @readBalance`);
                 let balance = "";
                 try {
                     balance = document.querySelector('span.text-accent').innerText + " BTC";
@@ -3558,7 +3537,6 @@
             function tryClosePopup() {
                 let popupBtn = document.querySelector('.popup-close');
                 if (popupBtn && popupBtn.isVisible()) {
-                    shared.devlog(`Closing popup`);
                     popupBtn.click();
                 }
             };
@@ -3569,24 +3547,19 @@
             };
             let waitRollNumberCount = 0;
             async function waitForRollNumber() {
-                shared.devlog(`Waiting for rolled number`);
                 let newNumber = -1;
                 try { // intento leer el rolled number
                     newNumber = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
                     newNumber = parseInt(newNumber)
-                    shared.devlog(`Roll #: ${newNumber}`);
                 } catch(err) {
-                    shared.devlog(`Roll #: error reading it`);
                     newNumber = null;
                 }
                 if (newNumber === null) { // si no logro leerlo, bajo 1 en tempRollNumber
-                    shared.devlog(`Roll # is null`);
                     if (tempRollNumber < 0) {
                         tempRollNumber -= 1;
                     } else {
                         tempRollNumber = -1;
                     }
-                    shared.devlog(`Temp Roll Reads: ${tempRollNumber}`);
                     if (tempRollNumber < -5) {
                         processRunDetails();
                         return;
@@ -3608,7 +3581,6 @@
                 } else {
                     waitRollNumberCount++;
                     if (waitRollNumberCount > 15) {
-                        shared.devlog(`Waited too much for the rolls to stop. Forcing refresh}`);
                         setTimeout(() => { location.reload(); }, 5000);
                         return;
                     }
@@ -4191,6 +4163,7 @@
             };
 
             function init() {
+                window.scrollTo(0, document.body.scrollHeight);
                 let m = document.getElementById('main'); if (m) { m.style.display='block'; }
                 m = document.getElementById('block-adb-enabled'); if (m) { m.style.display='none'; }
                 m = document.getElementById('ielement'); if (m) { m.style.display='block'; }
@@ -4223,11 +4196,9 @@
             };
             function waitIfLoading() {
                 if ( !selectElement.loadingDiv() ) {
-                    shared.devlog(`BigBtc: doing log in`);
                     doLogin();
                     return;
                 } else {
-                    shared.devlog(`BigBtc: waiting for login form`);
                 }
 
                 setTimeout(waitIfLoading, helpers.randomMs(5000, 7000));
@@ -4235,22 +4206,18 @@
             function runFaucet() {
                 let claimedAmount = selectElement.claimedAmount();
                 if(claimedAmount) {
-                    shared.devlog(`@runFaucet: has claimed amount: ${claimedAmount}`);
                     processRunDetails();
                     return;
                 } else if (selectElement.countdown()) {
-                    shared.devlog(`@runFaucet: has countdown: ${selectElement.countdown()}`);
                     let result = {};
 
                     shared.closeWindow(result);
                 } else {
-                    shared.devlog(`BigBtc: waiting for captcha`);
                     captcha.isSolved().then(() => { clickClaim(); });
                 }
             }
             function clickClaim() {
                 try {
-                    shared.devlog('Clicking roll button');
                     selectElement.claimButton().click();
                     return;
                 } catch (err) {
@@ -4258,7 +4225,6 @@
                 }
             };
             function processRunDetails() {
-                shared.devlog(`BigBtc: processing results`);
                 let claimedAmount = selectElement.claimedAmount();
                 let balance = selectElement.balance();
                 let countdown = selectElement.countdown();
@@ -4375,14 +4341,11 @@
 
             function clickClaim() {
                 try {
-                    shared.devlog('Clicking claim button');
                     let btn = elements.claimButton();
                     if(btn.isUserFriendly()) {
-                        shared.devlog('Button found');
                         btn.click();
                         setTimeout(processRunDetails, helpers.randomMs(4000, 8000));
                     } else {
-                        shared.devlog('Button not found. Retrying in 5 secs');
                         setTimeout(clickClaim, helpers.randomMs(4000, 8000));
                     }
                     return;
@@ -4429,11 +4392,9 @@
 
     function detectWeb() {
         if(!shared.isOpenedByManager()) {
-            shared.devlog(`${window.location.href} dismissed`);
             return;
         }
         instance = K.LOCATION.SITE;
-        shared.devlog(`${window.location.href} accepted`);
 
         let typeFromManager = shared.getCurrent().type;
 
@@ -5838,7 +5799,6 @@
             let now = Date.now();
             let newAccess = persistence.load(this.uuid + '_lastAccess');
             if(newAccess && (now - newAccess > this.delay)) {
-                shared.devlog(`Trying to reload original site instead of FORCE_CLOSED`);
                 manager.reloadWorkingTab(schedule);
             }
         }
@@ -5898,13 +5858,10 @@
         }
         static freeGrcCountdown(elm) { // 'Wait for 53:31 before next roll' => 53
             try {
-                shared.devlog(`@Parsers.freeGrcCountdown: with element [${elm}]`);
                 let val = elm.innerText.split(':')[0];
                 val = val.replace(/[^\d.-]/g, '');
-                shared.devlog(`@Parsers.freeGrcCountdown returning`);
                 return parseInt(val);
             } catch (err) {
-                shared.devlog(`@Parsers.freeGrcCountdown error: ${err}`);
                 return null;
             }
         }
@@ -5946,11 +5903,9 @@
                     let val = elm.innerText.split('\nYou have ')[1].split(' ')[0];
                     return val;
                 } else {
-                    shared.devlog(`@Parsers.g8ClaimsLeft not read: with element [${elm}]`);
                     return null;
                 }
             } catch (err) {
-                shared.devlog(`@Parsers.g8ClaimsLeft not read: with element [${elm}] Error: ${err}`);
                 return null;
             }
         }
@@ -5963,11 +5918,9 @@
                     }
                     return val;
                 } else {
-                    shared.devlog(`@Parsers.cbgClaimed not read: with element [${elm}]`);
                     return null;
                 }
             } catch (err) {
-                shared.devlog(`@Parsers.cbgClaimed read error: with element [${elm}] Error: ${err}`);
                 return null;
             }
         }
@@ -6026,7 +5979,6 @@
             if (this.isUserFriendly) {
                 return this.parser(this.element, this.options);
             } else {
-                shared.devlog(`ReadableWidget (selector: '${this.selector}') cannot be read with the assigned parser`);
                 return '';
             }
         }
@@ -6035,7 +5987,6 @@
     class TextboxWidget extends CrawlerWidget {
         get value() {
             if (!this.isUserFriendly) {
-                shared.devlog(`TextboxWidget (selector: '${this.selector}') cannot be access with the assigned parser`);
                 return '';
             }
             return this.element.value;
@@ -6043,7 +5994,6 @@
 
         set value(newValue) {
             if (!this.isUserFriendly) {
-                shared.devlog(`TextboxWidget (selector: '${this.selector}') cannot be access with the assigned parser`);
                 return '';
             }
             this.element.value = newValue;
@@ -6058,29 +6008,24 @@
                 this.element.click();
                 return Promise.resolve(true);
             } else {
-                shared.devlog(`ButtonWidget (selector: '${this.selector}') cannot be clicked`);
             }
         }
     }
 
     class SubmitWidget extends CrawlerWidget {
         click() {
-            shared.devlog(`SubmitWidget: click attempt`);
             if (this.isUserFriendly) {
                 let frm = this.element;
                 while(frm.nodeName != 'FORM' && frm.nodeName != null) {
                     frm = frm.parentElement;
                 }
                 if (frm.nodeName == 'FORM') {
-                    shared.devlog(`SubmitWidget submitting`);
                     frm.submit();
                 } else {
-                    shared.devlog(`SubmitWidget form not found`);
                     return;
                 }
                 return Promise.resolve(true);
             } else {
-                shared.devlog(`SubmitWidget (selector: '${this.selector}') cannot be trigger`);
             }
         }
     }
@@ -6321,17 +6266,14 @@
             return wait().then( () => {
                 let img = document.querySelector(this.selector);
                 if(img && img.complete) {
-                    shared.devlog(`@BKCaptcha isReady : true`);
                     this._imgProcessor = new ImageProcessor(img);
                     return Promise.resolve(true);
                 }
-                shared.devlog(`@BKCaptcha isReady : false`);
                 return this.isReady();
             });
         }
 
         async isSolved() {
-            shared.devlog(`@BKCaptcha isSolved`);
             return this.isReady()
                 .then( () => this.solve())
                 .then( (solution) => {
@@ -6339,7 +6281,6 @@
                 return Promise.resolve(true);
             })
                 .catch(err => {
-                shared.devlog(`@BKCaptcha error ${err}`);
                 return Promise.reject(`Error ${err}`);
             });
         }
@@ -6348,7 +6289,6 @@
             this._imgProcessor.toCanvas();
             this._imgProcessor.binarize(200);
             this._imgProcessor.invert();
-            shared.devlog(`@BKCaptcha preProcessImage: finished`);
         }
 
         cropCharacter(startFrom = 0) {
@@ -6480,7 +6420,6 @@
         }
 
         async solve() {
-            shared.devlog(`@BKCaptcha solve`);
             let solution = '';
             if(this._imgProcessor.isImageComplete()) {
                 this.preProcessImage();
@@ -6489,9 +6428,7 @@
                 this._characters.forEach( ch => {
                     let bestGuess = this.guess(ch);
                     solution += bestGuess.answer;
-                    shared.devlog(`@BKCaptcha Guessing: ${bestGuess.answer}`);
                 });
-                shared.devlog(`@BKCaptcha SOLUTION: ${solution}`);
             }
             return Promise.resolve(solution);
         }
@@ -6512,10 +6449,8 @@
         async isSolved() {
             return wait().then( () => {
                 if (this.isUserFriendly) {
-                    shared.devlog(`@NoCaptcha solved`);
                     return Promise.resolve(true);
                 }
-                shared.devlog(`@NoCaptcha waiting`);
                 return this.isSolved();
             });
         }
@@ -6536,7 +6471,6 @@
         async isReady() {
             return wait(1).then( () => {
                 if(this.isUserFriendly) {
-                    shared.devlog(`@CBL01 isReady`);
                     return Promise.resolve(true);
                 }
                 return wait().then( () => { this.isReady(); });
@@ -6552,12 +6486,10 @@
                 }
 
                 if (answer.length != 6) {
-                    shared.devlog(`@CBL1 too short or too long. Refreshing`);
                     document.getElementById('captchainput').value ='';
                     window.location.reload();
                     return wait(10000).then( () => { this.solve(); });
                 } else {
-                    shared.devlog(`@CBL1 answer: ${answer}`);
                     return wait().then( () => { return true; } );
                 }
             } else {
@@ -6596,10 +6528,8 @@
         async isReady() {
             return wait().then( () => {
                 if(this._elements.submitButton.isUserFriendly) {
-                    shared.devlog(`@D1Captcha isReady`);
                     return Promise.resolve(true);
                 }
-                shared.devlog(`@D1Captcha waiting to be ready`);
                 return this.isReady();
             });
         }
@@ -6608,18 +6538,14 @@
             if (this._elements.answerSpan.isUserFriendly) {
                 let answer = this._elements.answerSpan.value;
                 answer = answer ? answer.trim() : answer;
-                shared.devlog(`@D1Captcha answer: ${answer}`);
                 let input = document.querySelector(`input[value="${answer}"`);
                 if (input) {
-                    shared.devlog(`@D1Captcha input for answer found!`);
                     helpers.alternativeClick(input.parentElement.querySelector('i'));
                     return wait().then( () => { return true; } );
                 } else {
-                    shared.devlog(`@D1Captcha input for answer NOT FOUND!`);
                     return Promise.reject(`@D1Captcha input NOT FOUND for answer: ${answer}`);
                 }
             } else {
-                shared.devlog(`@D1Captcha Answer span not found!!!`);
                 return Promise.reject('Answer span not found!!!');
             }
         }
@@ -6628,7 +6554,6 @@
             return this.isReady()
                 .then( () => this.solve())
                 .then( (solution) => {
-                shared.devlog(`@D1Captcha => Solved`);
                 return Promise.resolve(true);
             })
                 .catch(err => { shared.devlog(err); })
@@ -6664,7 +6589,6 @@
             if (window.onurlchange === null) {
                 window.addEventListener('urlchange', (data) => {
                     if (this._url != window.location.href) {
-                        shared.devlog(`Url changed from ${this._url} to ${window.location.href}`);
                         this._url = window.location.href;
                         this.resetRun();
                     }
@@ -6695,7 +6619,6 @@
 
             if (!action) {
                 this.detectAction().then( (resolve) => {
-                    shared.devlog(`@Run - Action detected: ${resolve.action}`);
                     this.perform(resolve.action);
                 });
             } else {
@@ -6707,10 +6630,8 @@
             switch(action) {
                 case 'doRoll':
                     if(this._actions.preRoll) {
-                        shared.devlog(`@Run - PREROLL`);
                         this.preRoll();
                     }
-                    shared.devlog(`@Run - Captcha`);
                     this._elements.captcha.isSolved().then(() => { this.clickRoll() });
                     break;
                 case 'needToWait':
@@ -6755,7 +6676,6 @@
 
         clickRoll() {
             try {
-                shared.devlog('Clicking roll button');
                 this._elements.rollButton.click();
                 this.validateRun();
             } catch (err) {
@@ -6770,18 +6690,14 @@
         async validateRun() {
             return wait(this._actions.useFailureValidation ? 6000 : null).then( () => {
                 if (this._actions.useFailureValidation) {
-                    shared.devlog('@Doing FailureValidation');
                     if (this.failureValidation()) {
-                        shared.devlog('@FailureValidation true => @Incorrect captcha');
                         return;
                     }
                 }
                 if (this._elements.success.isUserFriendly) {
-                    shared.devlog('Successful run');
                     return this.updateResult();
                 } else if(this._actions.altValidation) {
                     if(this.altValidation()) {
-                        shared.devlog('Alt validated');
                         return this.updateResult();
                     }
                 }
@@ -6802,9 +6718,7 @@
             if(this._actions.readRolledNumber) {
                 this._result.rolledNumber = this.readRolledNumber();
             }
-            shared.devlog(`Result: ${JSON.stringify(this._result)}`);
             if (this._actions.isMultiClaim) {
-                shared.devlog(`@updateResult as MultiClaim`);
                 shared.setProp('tempResults', this._result);
                 return this._actions.postRun ? this.postRun() : true;
             }
@@ -6822,7 +6736,6 @@
         readNextRoll() {
             try {
                 if (this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly) {
-                    shared.devlog(`@readNextRoll: ${helpers.addMinutes(this._elements.countdownMinutes.timeLeft)}`);
                     return helpers.addMinutes(this._elements.countdownMinutes.timeLeft);
                 }
             } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
@@ -6853,20 +6766,15 @@
             let claimed = this._result.claimed ?? 0;
             if (this._actions.isMultiClaim) {
                 this._oldClaimed = claimed;
-                shared.devlog(`@readClaimed: oldClaimed set to ${this._oldClaimed}`);
             } else {
-                shared.devlog(`@readClaimed: oldClaimed not set`);
             }
 
             try {
-                shared.devlog(`@readClaimed: isUserFriendly => ${this._elements.claimed.isUserFriendly}`);
                 if(this._elements.claimed.isUserFriendly) {
                     claimed = +claimed + +this._elements.claimed.value;
                 } else {
-                    shared.devlog(`@readClaimed: NOT isUserFriendly`);
                 }
             } catch (err) { shared.devlog(`@readClaimed: ${err}`); }
-            shared.devlog(`@readClaimed: returns ${claimed}`);
             return claimed;
         }
 
@@ -6913,7 +6821,6 @@
         }
 
         async spin() {
-            shared.devlog('Spinning...');
             let clickables = document.querySelectorAll('.fury-wheel__wheel-btn, .fury-wheel__btn-wrap, .fury-wheel__btn-content, .fury-wheel__btn-img');
             if (clickables.length > 0) {
                 clickables[Math.floor(Math.random()*clickables.length)].click();
@@ -6935,11 +6842,9 @@
                 if (this.trySpin) {
                     let spinUnavailable = document.querySelector('.bonus.bonus_furywheel.wait');
                     if (spinUnavailable) {
-                        shared.devlog('Spin not available');
                     } else {
                         let spinBtn = document.querySelector('.wheel-amin'); //bonus bonus_furywheel wait
                         if (spinBtn) {
-                            shared.devlog('Attempting spin');
                             spinBtn.click();
                             wait(10000).then ( () => { this.spin() } );
                             return wait(60000).then ( () => { this.preRun(); } );
@@ -6952,9 +6857,7 @@
                 }
 
                 if (this._elements.preRunButton.isUserFriendly) {
-                    shared.devlog('@preRunButton is userfriendly');
                     if (!this._elements.preRunButton.isUserFriendly.disabled) {
-                        shared.devlog('@preRunButton is userfriendly and enabled');
                         return this._elements.preRunButton.click();
                     } else {
                         this._timeout.restart();
@@ -6962,7 +6865,6 @@
                         return;
                     }
                 } else if (document.querySelectorAll('.free-box').length > 1) {
-                    shared.devlog('list of boxes is userfriendly');
                     shared.closeWithError(K.ErrorType.ERROR, 'Box might not exist for your account.');
                     return;
                 }
@@ -6971,26 +6873,20 @@
         }
 
         async validateRun() {
-            shared.devlog('@validate BF');
             return wait(7000).then( () => {
                 let gtHook = document.querySelector('div.geetest_slice_bg');
                 if (gtHook) {
                     if (gtHook.isUserFriendly()) {
-                        shared.devlog('@validate: gt hook present');
                         return this.validateRun();
                     }
-                    shared.devlog('@validate: gt hook present but not user friendly');
                 }
                 let popup = document.querySelector('.modal-wrapper .modal:not(.free-box-withdraw,fury-wheel-modal) .modal__btn-close');
                 if (!popup) {
-                    shared.devlog('@validate post run popup not found');
                     if (this._elements.preRunButton.isUserFriendly && !this._elements.preRunButton.isUserFriendly.disabled) {
-                        shared.devlog('@valide trying re-click');
                         this._elements.preRunButton.click();
                         return this.validateRun();
                     }
                 } else {
-                    shared.devlog('@validate post run popup found');
                     try {
                         if (popup) {
                             popup.click();
@@ -7000,11 +6896,9 @@
                 }
 
                 if (this._elements.success.isUserFriendly) {
-                    shared.devlog('@validate BF Successful run');
                     return this.updateResult();
                 } else if(this._actions.altValidation) {
                     if(this.altValidation()) {
-                        shared.devlog('Alt validated');
                         return this.updateResult();
                     }
                 }
@@ -7062,11 +6956,8 @@
                     this._elements.rollButton = new ButtonWidget({selector: '#unlockbutton'});
                     this._elements.confirmBoost = new ButtonWidget({selector: '#claim_boosted'});
                     setInterval(() => {
-                        shared.devlog(`@boost wait`);
                         try {
-                            shared.devlog(`this._elements.confirmBoost`);
                             if (this._elements.confirmBoost.isUserFriendly) {
-                                shared.devlog(`@boost clicking`);
                                 this._elements.confirmBoost.click();
                             }
                         } catch (err) {}
@@ -7113,11 +7004,9 @@
         }
 
         async preRun() {
-            shared.devlog(`@preRun`);
             let msgDiv;
             msgDiv = document.querySelector('p.info.success');
             if (msgDiv && msgDiv.innerText.includes('has been transferred')) {
-                shared.devlog(`custom closing`);
                 let result = {};
                 if (msgDiv.innerText.includes('0 claims')) {
                     result.nextRoll = helpers.addMinutes(60 * 24 + helpers.randomInt(10, 50));
@@ -7133,13 +7022,11 @@
             msgDiv = document.querySelector('p.info.warn');
             if (msgDiv) {
                 if (msgDiv.innerText.includes('can claim only')) {
-                    shared.devlog(`@preRun -> wait 24 hs`);
                     let result = {};
                     result.nextRoll = helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
                     shared.closeWindow(result);
                     return;
                 } else if (msgDiv.innerText.includes('Please wait')) {
-                    shared.devlog(`@preRun -> please wait found`);
                     let result = {};
                     try {
                         let unit = msgDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
@@ -7158,11 +7045,8 @@
             }
 
             if (this._elements.captcha.isUserFriendly) {
-                shared.devlog(`Captcha found`);
             } else {
-                shared.devlog(`Captcha not found`);
                 if (this._elements.rollButton) {
-                    shared.devlog(`Click getFreeCrypto no captcha`);
                     this._elements.rollButton.click();
                     return;
                 }
@@ -7170,11 +7054,9 @@
         }
 
         async init() {
-            shared.devlog(`@init`);
             if (this._url.includes('/faucet')) {
                 let needToLoginButton = document.querySelector('input[type="submit"][value="Login / Signup"]');
                 if (needToLoginButton) {
-                    shared.devlog(`GoTo Login`);
                     needToLoginButton.click();
                     return;
                 }
@@ -7188,11 +7070,9 @@
         }
 
         async doLogin() {
-            shared.devlog(`@doLogin`);
             return wait().then( () => {
                 let container = document.querySelector('#cc');
                 if (container.innerText.includes('You are now logged in as account')) {
-                    shared.devlog(`@logged in OK`);
                     let toFaucetButton = document.querySelector('#mmenu a[href="/faucet"]');
                     if (toFaucetButton) {
                         toFaucetButton.click();
@@ -7201,7 +7081,6 @@
                     return this.doLogin();
                 }
                 if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    shared.devlog(`Waiting form inputs`);
                     return this.doLogin();
                 }
 
@@ -7212,7 +7091,6 @@
                 }
 
                 if (this._elements.login.setCredentials != false) {
-                    shared.devlog(`Setting credentials from var`);
                     this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
                     this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
                 }
@@ -7255,7 +7133,6 @@
 
             let claimed = this.readClaimed();
             if (claimed != 0) {
-                shared.devlog(`closing because claim was read`);
                 let result = {
                     claimed: claimed,
                     nextRoll: this.readNextRoll()
@@ -7266,7 +7143,6 @@
 
             let nextRoll = this.readNextRoll();
             if(nextRoll) {
-                shared.devlog(`closing with next roll`);
                 let result = {
                     nextRoll: nextRoll
                 };
@@ -7288,25 +7164,21 @@
         async doFirstStep() {
             let form = document.querySelector('form');
             if (!form) {
-                shared.devlog(`Form element not found`);
                 this.updateResult();
                 return;
             }
             let coinSelect = form.querySelector('select[name="coin"]');
             if (!coinSelect) {
-                shared.devlog(`coinSelect not found`);
                 this.updateResult();
                 return;
             }
             let userInput = form.querySelector('input[name="ado"]');
             if (!userInput) {
-                shared.devlog(`userInput not found`);
                 this.updateResult();
                 return;
             }
             let submitButton = form.querySelector('input[type="submit"]');
             if (!submitButton) {
-                shared.devlog(`submitButton not found`);
                 this.updateResult();
                 return;
             }
@@ -7332,13 +7204,10 @@
         }
 
         async solve() {
-            shared.devlog(`@solve`);
             if (this.isSecondStep()) {
-                shared.devlog(`@2nd step`);
                 return this.run();
             }
             if (this.isFirstStep()) {
-                shared.devlog(`@1st step`);
                 return this.doFirstStep();
             }
         }
@@ -7360,7 +7229,6 @@
             if (successDiv) {
                 return successDiv.innerText.split(' ')[0];
             } else {
-                shared.devlog(`successDiv not found`);
                 return 0;
             }
         }
@@ -7373,7 +7241,6 @@
                     try {
                         claimsLeft = successDiv.innerText.split(' claims')[0].split('have ')[1];
                     } catch (err) {}
-                    shared.devlog(`claimsLeft: ${claimsLeft}`);
                     if (claimsLeft) {
                         return helpers.addMinutes(helpers.randomInt(6, 22));
                     } else if (claimsLeft === '0') {
@@ -7403,7 +7270,6 @@
                         try {
                             claimsLeft = warnDiv.innerText.split(' seconds')[0].split('wait ')[1];
                         } catch (err) {}
-                        shared.devlog(`claimsLeft: ${claimsLeft}`);
                         if (claimsLeft) {
                             return helpers.addMinutes(helpers.randomInt(6, 22));
                         }
@@ -7451,7 +7317,6 @@
                 this.run();
                 return;
             } else if (this._url.includes('/faucet')) {
-                shared.devlog('@faucet pre/post step');
                 this.doPrePostFaucet();
                 return;
             } else if (this._url.includes('/login')) {
@@ -7467,12 +7332,10 @@
             return wait(10000).then( () => {
                 let button = document.querySelector('button.btn.btn-primary.btn-lg');
                 if (button) {
-                    shared.devlog('pre-faucet button click');
                     button.click();
                     return;
                 }
                 if (!button) {
-                    shared.devlog('post-faucet');
                     return this.run();
 
                 }
@@ -7480,16 +7343,13 @@
         }
 
         async doLogin() {
-            shared.devlog(`@doLogin`);
             if (document.body.innerText.toLowerCase().includes('please wait during')) {
                 return wait(8000).then( () => {
-                    shared.devlog(`redirecting to faucet from login countdown`);
                     location.replace('faucet');
                 });
             }
             return wait().then( () => {
                 if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    shared.devlog(`Waiting form inputs`);
                     return this.doLogin();
                 }
 
@@ -7500,7 +7360,6 @@
                 }
 
                 if (this._elements.login.setCredentials != false) {
-                    shared.devlog(`Setting credentials from var`);
                     this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
                     this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
                 }
@@ -7510,7 +7369,6 @@
                 } catch (err) {}
 
                 if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    shared.devlog(`@Run - Captcha`);
                     this._elements.captcha.isSolved().then(() => {
                         this._elements.login.inputSubmit.click();
                         return;
@@ -7570,10 +7428,8 @@
         }
 
         async doLogin() {
-            shared.devlog(`@doLogin`);
             return wait().then( () => {
                 if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    shared.devlog(`Waiting form inputs`);
                     return this.doLogin();
                 }
 
@@ -7584,7 +7440,6 @@
                 }
 
                 if (this._elements.login.setCredentials != false) {
-                    shared.devlog(`Setting credentials from var`);
                     this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
                     this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
                 }
@@ -7594,7 +7449,6 @@
                 } catch (err) {}
 
                 if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    shared.devlog(`@Run - Captcha`);
                     this._elements.captcha.isSolved().then(() => {
                         this._elements.login.inputSubmit.click();
                         return;
@@ -7607,16 +7461,12 @@
         }
 
         async detectAction() {
-            shared.devlog(`@detectAction Custom`);
             return wait().then( () => {
                 if ( this.isCountdownVisible() ) {
-                    shared.devlog('needToWait');
                     return Promise.resolve({action: 'needToWait'});
                 } else if ( this._elements.success.isUserFriendly ) {
-                    shared.devlog('Successful run');
                     return this.updateResult();
                 } else if ( this.isRollButtonVisible() ) {
-                    shared.devlog('doRoll');
                     return Promise.resolve({action: 'doRoll'});
                 } else {
                     return this.detectAction();
@@ -7626,7 +7476,6 @@
 
         clickRoll() {
             try {
-                shared.devlog(`@clickRoll custom`);
                 try {
                     window.scrollTo(0, document.body.scrollHeight);
                     this._elements.rollButton.scrollIntoView(false);
@@ -7665,7 +7514,6 @@
         }
 
         getClaimsQty() {
-            shared.devlog(`@getClaimsQty`);
             let statWidgets = document.querySelectorAll('.card.mini-stats-wid');
             if (statWidgets.length < 4) return false;
 
@@ -7675,18 +7523,15 @@
             claimCounts = claimCounts.innerText.split('/');
             if (claimCounts.length != 2) return false;
 
-            shared.devlog(`@getClaimsQty => ${claimCounts[0]}`);
             return claimCounts[0];
         }
 
         async evalClaimsQty() {
-            shared.devlog(`@evalClaimsQty`);
             let current = this.getClaimsQty();
 
             if (current) {
                 current = +current;
             } else {
-                shared.devlog(`@evalClaimsQty => no current`);
                 return;
             }
 
@@ -7694,13 +7539,10 @@
             if (!isNaN(previous)) previous = +previous;
 
             if (current == previous) {
-                shared.devlog(`@evalClaimsQty => current == previous`);
                 return;
             } else if (current < previous) {
-                shared.devlog(`@evalClaimsQty => to updateResult`);
                 return this.updateResult();
             } else {
-                shared.devlog(`@evalClaimsQty => to setProp`);
                 await shared.setProp('tempClaimsQty', current);
             }
         }
@@ -7717,15 +7559,12 @@
             await this.evalClaimsQty();
 
             if (window.location.pathname.includes('/faucet')) {
-                shared.devlog(`@VieRoll => At Faucet starting claim`);
                 this.run();
                 return;
             } else if (window.location.pathname.includes('/firewall')) {
-                shared.devlog(`@VieRoll => At Firewall`);
                 this.solveFirewall();
                 return;
             } else if (window.location.pathname.includes('/dashboard')) {
-                shared.devlog(`@VieRoll => At Dashboard`);
                 window.location.href = (new URL('faucet', window.location)).href;
                 return;
             } else if (window.location.pathname == '/') {
@@ -7734,12 +7573,10 @@
                     loginBtn.click();
                     return;
                 } else {
-                    shared.devlog(`@VieRoll => Home => Login button not found`);
                     window.location.href = (new URL('login', window.location)).href;
                 }
                 return;
             } else if (this._url.includes('/login')) {
-                shared.devlog(`@VieRoll => At Login`);
 
                 let credentialsMode = this._params.credentials.mode;
                 switch(credentialsMode) {
@@ -7750,7 +7587,6 @@
                         shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'Login required and autologin is not configured.');
                         break;
                     default:
-                        shared.devlog(`@VieRoll: Login attempt`);
                         this.doLogin();
                         break;
                 }
@@ -7759,7 +7595,6 @@
         }
 
         async preRun() {
-            shared.devlog(`@preRun`);
             return;
         }
 
@@ -7773,10 +7608,8 @@
         }
 
         async doLogin() {
-            shared.devlog(`@doLogin`);
             return wait().then( () => {
                 if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    shared.devlog(`Waiting form inputs`);
                     return this.doLogin();
                 }
 
@@ -7787,7 +7620,6 @@
                 }
 
                 if (this._params.credentials.mode == 1) {
-                    shared.devlog(`Setting credentials`);
                     this._elements.login.inputUser.value = this._params.credentials.username;
                     this._elements.login.inputPass.value = this._params.credentials.password;
                 }
@@ -7879,14 +7711,11 @@
             try {
                 let soldSpots = document.querySelectorAll('.pos:not(.pfree)').length;
                 let available = 1024-soldSpots;
-                shared.devlog(`Spots read => available: ${available}, sold: ${soldSpots}`);
                 return {
                     sold: '' + soldSpots,
                     available: '' + available
                 }
             } catch (err) {
-                shared.devlog(`Unable to read spots sold`);
-                shared.devlog(err);
             }
         }
 
@@ -7902,7 +7731,6 @@
         async solve() {
             let spots = this.getSpotsAvailable();
             if(!spots) {
-                shared.devlog(`Could not find spots available`);
                 this.updateResult();
                 return;
             }
@@ -7920,7 +7748,6 @@
             });
             }
             if(!prime) {
-                shared.devlog(`Could not find ${findNotPrime ? 'not' : ''} prime number`);
                 this.updateResult();
                 return;
             }
@@ -7929,7 +7756,6 @@
             if (addrInput) {
                 addrInput.value = this._params.address;
             } else {
-                shared.devlog(`Could not find address input element`);
                 this.updateResult();
                 return;
             }
@@ -7941,7 +7767,6 @@
             } else if (answersList.includes(spots.available)) {
                 document.querySelector('select[name="tt"]').value=spots.available;
             } else {
-                shared.devlog(`Could not find option for sold/available spots`);
                 this.updateResult();
                 return;
             }
@@ -8034,14 +7859,11 @@
             this._elements.captcha = new HCaptchaWidget({selector: '#hcap-script > iframe'});
             this._elements.rollButton = new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
             if (this._url.endsWith(this._paths.dashboard)) {
-                shared.devlog(`@FC => @dashboard`);
                 return this.runDashboard();
             } else if (this._url.includes(this._paths.faucet)) {
-                shared.devlog(`@FC => @faucet`);
                 return wait().then( () => { this.run(); });
             }
 
-            shared.devlog(`@FC => No url match!`);
             return;
         }
 
@@ -8065,11 +7887,9 @@
             this.readSections();
 
             if (this.sections['Faucet'].elm) {
-                shared.devlog(`@FC => goto faucet`);
                 this.sections['Faucet'].elm.click();
                 return;
             } else {
-                shared.devlog(`@FC => processing faucet results`);
                 return wait().then( () => { this.run(); });
             }
         }
@@ -8086,7 +7906,6 @@
             let checkCircleSpan = document.querySelector('p.font-medium.flex.justify-center.leading-0 span.text-green-500.mr-3 svg');
             if(checkCircleSpan) {
                 if (checkCircleSpan.parentElement.parentElement.innerText.toLowerCase().includes('the system is telling me that you are a good person')) {
-                    shared.devlog(`No captcha needed`);
                     this._elements.captcha = new NoCaptchaWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
                     return;
                 }
@@ -8094,31 +7913,23 @@
         }
 
         postRun() {
-            shared.devlog(`@FC @postRun in ${window.location.href}`);
 
             if (this._url.endsWith(this._paths.dashboard) || this._oldClaimed != this._result.claimed) {
-                shared.devlog(`@FC @postRun => Claim/Action finished [${this._oldClaimed} != ${this._result.claimed}]`);
                 try {
                     this._elements.claimed.isUserFriendly.parentElement.parentElement.parentElement.querySelector('button');
-                    shared.devlog(`@FC @postRun => closing claimed notification`);
                 } catch (err) {
-                    shared.devlog(`@FC @postRun => error closing claimed notification: ${err}`);
                 }
                 this._oldClaimed = null;
                 this.readSections();
                 if (this.sections != {}) {
                     if (this.sections['Faucet'].elm) {
-                        shared.devlog(`@FC @postRun => goto faucet`);
                         this.sections['Faucet'].elm.click();
                         return;
                     } else {
-                        shared.devlog(`@FC @postRun => ignoring @1`);
                     }
                 } else {
-                    shared.devlog(`@FC @postRun => ignoring @2`);
                 }
             } else {
-                shared.devlog(`@FC @postRun => ignoring @3`);
             }
 
             this._result = shared.getProp('tempResults');
@@ -8127,25 +7938,20 @@
         }
 
         async runPtcList() {
-            shared.devlog(`@FC => @runPtcList`);
             let listItems = [...document.querySelectorAll('.grid.grid-responsive-3 .feather.feather-eye')].map(x => x.parentElement.parentElement).filter(x => x.isUserFriendly());
             if (listItems.length > 0) {
-                shared.devlog(`@FC => goto PtcSingleStart`);
                 listItems[0].click();
                 return;
             } else {
-                shared.devlog(`@FC => list invalid. Length: ${listItems.length}`);
                 return wait().then( () => { this.runPtcList() } );
             }
         }
 
         runPtcSingleStart() {
-            shared.devlog(`@FC => @runPtcSingleStart`);
             return this.run('doRoll');
         }
 
         runPtcSingleWait() {
-            shared.devlog(`@FC => @runPtcSingleWait`);
             this._elements.captcha = new NoCaptchaWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
             this._elements.rollButton = new ButtonWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
             return this.run('doRoll');
@@ -8162,7 +7968,6 @@
         if (window.location.host === 'criptologico.com') {
             landing = window.location.host;
             instance = K.LOCATION.MANAGER;
-            shared.devlog('Manager Reloaded');
             manager = objectGenerator.createManager();
             CFPromotions = objectGenerator.createCFPromotions();
             uiRenderer = new UiRenderer();
