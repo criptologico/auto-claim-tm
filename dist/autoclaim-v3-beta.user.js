@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.6
+// @version      3.0.7
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -16,8 +16,8 @@
 // @grant        window.onurlchange
 // @connect      criptologico.com
 
-// @updateURL   https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-v3-beta.user.js
-// @downloadURL https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-v3-beta.user.js
+// @updateURL   https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.js
+// @downloadURL https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.js
 
 // @note         IMPORTANT
 // @note         - To start the script you need to navigate to https://criptologico.com/tools/cc
