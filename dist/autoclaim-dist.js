@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.7
+// @version      3.0.8
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -1244,22 +1244,33 @@
                 }
 
                 static crud(data) {
+                    let isInvalid = false;
                     try {
                         const orphanSites = [];
                         data.forEach(x => {
                             if (x.added) {
-                                Schedule.getAll().push(new Schedule({
-                                    uuid: x.uuid,
-                                    name: x.name,
-                                    order: x.order
-                                }));
+                                if (Schedule.getById(x.uuid)) {
+                                    isInvalid = true;
+                                } else {
+                                    let newSchedule = new Schedule({
+                                        uuid: x.uuid,
+                                        name: x.name,
+                                        order: x.order
+                                    })
+                                    Schedule.getAll().push(newSchedule);
+                                    newSchedule.start();
+                                }
                             } else if (x.removed) {
                                 let pos = Schedule.getAll().findIndex(s => s.uuid == x.originals.uuid);
                                 orphanSites.push(...Schedule.getAll()[pos].sites);
                                 Schedule.getAll().splice(pos, 1);
                             } else {
                                 let sch = Schedule.getAll().find(s => s.uuid == x.originals.uuid);
-                                sch.uuid = x.uuid;
+                                if (Schedule.getById(x.uuid) && (Schedule.getById(x.uuid) != sch)) {
+                                    isInvalid = true;
+                                } else {
+                                    sch.uuid = x.uuid;
+                                }
                                 sch.name = x.name;
                                 sch.order = x.order;
                             }
@@ -1277,6 +1288,9 @@
                         Schedule.saveAll();
                     } catch (err) {
                         console.error(err);
+                        return false;
+                    }
+                    if (isInvalid) {
                         return false;
                     }
                     return true;
@@ -2556,9 +2570,10 @@
                     } else if (actionElement.classList.contains('modal-save')) {
                         let data = uiRenderer.parseTable(modalSchedules.querySelector('table'));
                         let isValid = manager.Schedule.crud(data);
-                        if (isValid) {
-                            updateSchedulesToggler();
-                            manager.resyncAll({withUpdate: true});
+                        updateSchedulesToggler();
+                        manager.resyncAll({withUpdate: true});
+                        if (!isValid) {
+                            uiRenderer.toast('Some schedules might have errors/invalid colors', 'warning');
                         }
                     }
                 });
@@ -2646,6 +2661,7 @@
                 html += '        </button></div>';
                 html += '    </div>';
                 html += '    <div class="modal-body">';
+                html += '<div class="callout callout-warning m-0"><p class="text-justify">Each schedule opens sites in a new/different tab.<br>Colors must be unique.</p></div>';
                 html += '    <table class="table">';
                 html += '        <thead>';
                 html += '        <tr><th></th><th class="text-center" width="35%">Color</th><th class="text-center">Name</th><th></th></tr>';
@@ -5487,8 +5503,8 @@
             this.appendCSS();
         }
 
-        toast(msg) {
-            toastr["info"](msg);
+        toast(msg, msgType = "info") {
+            toastr[msgType](msg);
         }
 
         openModal(id, values = null) {
@@ -6075,6 +6091,35 @@
         solve() { return true; }
 
         async isSolved() { return false; }
+    }
+
+    class RecaptchaWidget extends CaptchaWidget {
+        constructor(params) {
+            this.context = this.context || document;
+            let defaultParams = {
+                waitMs: [1000, 5000],
+                timeoutMs: 4 * 60 * 1000
+            };
+            for (let p in params) {
+                defaultParams[p] = params[p];
+            }
+            Object.assign(this, defaultParams);
+        }
+
+        get isUserFriendly() {
+            this.element = grecaptcha;
+            return this.element;
+        }
+
+        async isSolved() {
+            return wait().then( () => {
+                if (this.isUserFriendly && this.element.hasOwnProperty('getResponse') && (typeof(this.element.getResponse) == 'function')
+                    && this.element.getResponse().length > 0) {
+                    return Promise.resolve(true);
+                }
+                return this.isSolved();
+            });
+        }
     }
 
     class HCaptchaWidget extends CaptchaWidget {
