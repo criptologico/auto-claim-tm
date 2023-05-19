@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.9
+// @version      3.0.10
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -16,14 +16,14 @@
 // @grant        window.onurlchange
 // @connect      criptologico.com
 
-// @updateURL   https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.js
-// @downloadURL https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.js
+// @updateURL   https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.user.js
+// @downloadURL https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.user.js
 
 // @note         IMPORTANT
 // @note         - To start the script you need to navigate to https://criptologico.com/tools/cc
 // @note         - Each schedule will open it's own tab to allow multiclaiming
 
-// @icon         https://www.google.com/s2/favicons?domain=stormgain.com
+// @icon         https://www.google.com/s2/favicons?domain=criptologico.com
 // @match        https://app.stormgain.com/crypto-miner/
 // @match        https://freecardano.com/*
 // @match        https://freebinancecoin.com/*
@@ -420,17 +420,6 @@
             helpers.triggerMouseEvent (elm, "mousedown");
             helpers.triggerMouseEvent (elm, "mouseup");
             helpers.triggerMouseEvent (elm, "click");
-        }
-    }
-
-    class SiteRequirements {
-        constructor(args) {
-            this.name = 'HCaptcha Solver';
-            this.suggested = 'https://...hekt';
-            this.description = 'This site requires an HCaptcha Solver for full automation. There are some free and paid solutions available';
-            this.alternatives = 'claimCaptcha, 2Captcha, nopecha, nocaptcha.ai';
-            this.isCovered = false; // true if the user has an hcaptcha solver
-
         }
     }
 
@@ -1244,22 +1233,33 @@
                 }
 
                 static crud(data) {
+                    let isInvalid = false;
                     try {
                         const orphanSites = [];
                         data.forEach(x => {
                             if (x.added) {
-                                Schedule.getAll().push(new Schedule({
-                                    uuid: x.uuid,
-                                    name: x.name,
-                                    order: x.order
-                                }));
+                                if (Schedule.getById(x.uuid)) {
+                                    isInvalid = true;
+                                } else {
+                                    let newSchedule = new Schedule({
+                                        uuid: x.uuid,
+                                        name: x.name,
+                                        order: x.order
+                                    })
+                                    Schedule.getAll().push(newSchedule);
+                                    newSchedule.start();
+                                }
                             } else if (x.removed) {
                                 let pos = Schedule.getAll().findIndex(s => s.uuid == x.originals.uuid);
                                 orphanSites.push(...Schedule.getAll()[pos].sites);
                                 Schedule.getAll().splice(pos, 1);
                             } else {
                                 let sch = Schedule.getAll().find(s => s.uuid == x.originals.uuid);
-                                sch.uuid = x.uuid;
+                                if (Schedule.getById(x.uuid) && (Schedule.getById(x.uuid) != sch)) {
+                                    isInvalid = true;
+                                } else {
+                                    sch.uuid = x.uuid;
+                                }
                                 sch.name = x.name;
                                 sch.order = x.order;
                             }
@@ -1277,6 +1277,9 @@
                         Schedule.saveAll();
                     } catch (err) {
                         console.error(err);
+                        return false;
+                    }
+                    if (isInvalid) {
                         return false;
                     }
                     return true;
@@ -2556,9 +2559,10 @@
                     } else if (actionElement.classList.contains('modal-save')) {
                         let data = uiRenderer.parseTable(modalSchedules.querySelector('table'));
                         let isValid = manager.Schedule.crud(data);
-                        if (isValid) {
-                            updateSchedulesToggler();
-                            manager.resyncAll({withUpdate: true});
+                        updateSchedulesToggler();
+                        manager.resyncAll({withUpdate: true});
+                        if (!isValid) {
+                            uiRenderer.toast('Some schedules might have errors/invalid colors', 'warning');
                         }
                     }
                 });
@@ -2646,6 +2650,7 @@
                 html += '        </button></div>';
                 html += '    </div>';
                 html += '    <div class="modal-body">';
+                html += '<div class="callout callout-warning m-0"><p class="text-justify">Each schedule opens sites in a new/different tab.<br>Colors must be unique.</p></div>';
                 html += '    <table class="table">';
                 html += '        <thead>';
                 html += '        <tr><th></th><th class="text-center" width="35%">Color</th><th class="text-center">Name</th><th></th></tr>';
@@ -4183,6 +4188,14 @@
                 let m = document.getElementById('main'); if (m) { m.style.display='block'; }
                 m = document.getElementById('block-adb-enabled'); if (m) { m.style.display='none'; }
                 m = document.getElementById('ielement'); if (m) { m.style.display='block'; }
+                setInterval(() => {
+                    let frames = [...document.querySelectorAll('iframe')];
+                    frames.forEach(x => {
+                        if (!x.src.includes('hcaptcha')) {
+                            x.remove()
+                        }
+                    });
+                }, 5000);
 
                 if (window.location.href.includes('/faucet')) {
                     setTimeout(runFaucet, helpers.randomMs(12000, 14000));
@@ -4490,1227 +4503,1219 @@
     }
 
     class UiBaseRenderer {
-        constructor(uiRenderer) { this.uiRenderer = uiRenderer; }
+    constructor(uiRenderer) { this.uiRenderer = uiRenderer; }
+}
+class UiSitesRenderer extends UiBaseRenderer {
+    appendEventListeners() {
+
+        document.querySelector('#modal-assign-schedule').addEventListener('click', this.onClickOnModalAssignSchedule.bind(this));
+        eventer.on('siteChangedSchedule', (e) => {
+            this.uiRenderer.toast(`Site moved to schedule ${e.scheduleId}`);
+            manager.resyncAll({withUpdate: true}); // should act based on data only
+        });
+
+        document.querySelector('#schedule-table-body').addEventListener('click', this.onClickOnSitesTableBody.bind(this));
+
+        document.querySelector('.action-edit-all-sites').addEventListener('click', this.onClickOnEditAllSites.bind(this));
+        document.querySelector('.action-edit-all-sites-cancel').addEventListener('click', this.onClickOnCancelEditAllSites.bind(this));
+        document.querySelector('.action-edit-all-sites-save').addEventListener('click', this.onClickOnSaveEditAllSites.bind(this));
+
+        document.querySelector('.action-add-external-site').addEventListener('click', this.onClickOnAddSiteButton.bind(this));
+        document.querySelector('#modal-add-site').addEventListener('click', this.onClickOnModalAddSite.bind(this));
+        eventer.on('siteAdded', (e) => {
+            this.uiRenderer.toast(`Site ${e.siteName} added`);
+            manager.resyncAll({withUpdate: true}); // should act based on data only
+        });
+        eventer.on('siteRemoved', (e) => {
+            this.uiRenderer.toast(`Site ${e.siteName} removed`);
+            manager.resyncAll({withUpdate: true}); // should act based on data only
+        });
     }
 
-    class UiSitesRenderer extends UiBaseRenderer {
-        appendEventListeners() {
+    _legacyAddBadges(stats) {
+        let consecutiveTimeout = stats.countTimeouts;
+        let otherErrors = stats.errors;
+        let html = ' ';
 
-            document.querySelector('#modal-assign-schedule').addEventListener('click', this.onClickOnModalAssignSchedule.bind(this));
-            eventer.on('siteChangedSchedule', (e) => {
-                this.uiRenderer.toast(`Site moved to schedule ${e.scheduleId}`);
-                manager.resyncAll({withUpdate: true}); // should act based on data only
-            });
-
-            document.querySelector('#schedule-table-body').addEventListener('click', this.onClickOnSitesTableBody.bind(this));
-
-            document.querySelector('.action-edit-all-sites').addEventListener('click', this.onClickOnEditAllSites.bind(this));
-            document.querySelector('.action-edit-all-sites-cancel').addEventListener('click', this.onClickOnCancelEditAllSites.bind(this));
-            document.querySelector('.action-edit-all-sites-save').addEventListener('click', this.onClickOnSaveEditAllSites.bind(this));
-
-            document.querySelector('.action-add-external-site').addEventListener('click', this.onClickOnAddSiteButton.bind(this));
-            document.querySelector('#modal-add-site').addEventListener('click', this.onClickOnModalAddSite.bind(this));
-            eventer.on('siteAdded', (e) => {
-                this.uiRenderer.toast(`Site ${e.siteName} added`);
-                manager.resyncAll({withUpdate: true}); // should act based on data only
-            });
-            eventer.on('siteRemoved', (e) => {
-                this.uiRenderer.toast(`Site ${e.siteName} removed`);
-                manager.resyncAll({withUpdate: true}); // should act based on data only
-            });
+        if (consecutiveTimeout) {
+            html += `<span class="badge badge-pill badge-warning" title="${consecutiveTimeout} consecutive timeouts">${consecutiveTimeout}</span>`;
         }
 
-        _legacyAddBadges(stats) {
-            let consecutiveTimeout = stats.countTimeouts;
-            let otherErrors = stats.errors;
-            let html = ' ';
+        if (otherErrors) {
+            html += `<span class="badge badge-pill badge-warning" title="${otherErrors.errorMessage}">${helpers.getEnumText(K.ErrorType, otherErrors.errorType)}</span>`;
+        }
+        return html;
+    }
 
-            if (consecutiveTimeout) {
-                html += `<span class="badge badge-pill badge-warning" title="${consecutiveTimeout} consecutive timeouts">${consecutiveTimeout}</span>`;
-            }
+    removeDeletedSitesRows(validSiteIds) {
+        let removableRows = [...document.querySelectorAll('#schedule-table-body tr')].filter(r => !validSiteIds.includes(r.dataset.id));
+        removableRows.forEach(r => {
+            r.remove();
+        });
+    }
 
-            if (otherErrors) {
-                html += `<span class="badge badge-pill badge-warning" title="${otherErrors.errorMessage}">${helpers.getEnumText(K.ErrorType, otherErrors.errorType)}</span>`;
-            }
-            return html;
+    renderSiteRow(site) {
+
+        let row = [...document.querySelectorAll('#schedule-table-body tr')]
+                    .filter(r => r.dataset.id == site.id);
+
+        if (row.length == 0) {
+            row = document.createElement('tr');
+            document.querySelector('#schedule-table-body').appendChild(row);
+            row.setAttribute('aria-expanded', false);
+            row.classList.add('align-middle');
+            row.dataset.id = site.id;
+            row.dataset.cmc = site.cmc;
+        } else {
+            row = row[0];
         }
 
-        removeDeletedSitesRows(validSiteIds) {
-            let removableRows = [...document.querySelectorAll('#schedule-table-body tr')].filter(r => !validSiteIds.includes(r.dataset.id));
-            removableRows.forEach(r => {
-                r.remove();
-            });
+        row.dataset.json = `${JSON.stringify(site)}`;
+        row.dataset.schedule = site.schedule;
+        row.dataset.nextRollTimestamp = site.nextRoll ? site.nextRoll.getTime() : 'null';
+        row.dataset.enabled = site.enabled ? '1' : '0';
+        if (site.balance) {
+            if (typeof site.balance == 'string') {
+                row.dataset.balance = site.balance.split(' ')[0];
+            } else {
+                row.dataset.balance = site.balance.toFixed(8);
+            }
+        } else {
+            row.dataset.balance = '';
         }
 
-        renderSiteRow(site) {
+        let tds = '';
 
-            let row = [...document.querySelectorAll('#schedule-table-body tr')]
-                        .filter(r => r.dataset.id == site.id);
+        tds += '<td class="align-middle edit-status d-none em-only"><label class="switch"><input type="checkbox" data-original="' + (site.enabled ? '1' : '0') + '" ' + (site.enabled ? 'checked' : ' ') + '><span class="slider round"></span></label></td>';
+        tds += '<td class="align-middle" title="' + helpers.getPrintableDateTime(site.nextRoll) + '"><span><i class="fas fa-square pr-1" style="color: #' + site.schedule + ';"></i></span>' + helpers.getTdPrintableTime(site.nextRoll) + '</td>';
+        if (site.isExternal && site.clId == -1) {
+            tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + site.url + '"><i class="fa fa-external-link-alt"></i></a></td>';
+        } else {
+            tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + (new URL(site.clId, 'https://criptologico.com/goto/')).href + '"><i class="fa fa-external-link-alt"></i></a></td>';
+        }
 
-            if (row.length == 0) {
-                row = document.createElement('tr');
-                document.querySelector('#schedule-table-body').appendChild(row);
-                row.setAttribute('aria-expanded', false);
-                row.classList.add('align-middle');
-                row.dataset.id = site.id;
-                row.dataset.cmc = site.cmc;
+        tds += '<td class="align-middle em-input text-left" data-field="displayName">';
+        if (site.cmc) {
+            tds +='<div class="input-group input-group-sm">';
+            tds += '<div class="input-group-prepend"><span class="input-group-text">';
+            if (site.cmc > 0) {
+                let cmcLower = helpers.getEnumText(K.CMC, site.cmc).toLowerCase();
+                tds += '<img loading="lazy" src="/static/c-icons/' + cmcLower + '.svg" height="20" alt="' + cmcLower + '">';
             } else {
-                row = row[0];
+                tds += '<i class="fa fa-question-circle"></i>';
             }
+            tds += '</span></div>';
+        }
+        tds += ' <span class="site-name-container px-1">' + site.name + '</span></div></td>';
 
-            row.dataset.json = `${JSON.stringify(site)}`;
-            row.dataset.schedule = site.schedule;
-            row.dataset.nextRollTimestamp = site.nextRoll ? site.nextRoll.getTime() : 'null';
-            row.dataset.enabled = site.enabled ? '1' : '0';
-            if (site.balance) {
-                if (typeof site.balance == 'string') {
-                    row.dataset.balance = site.balance.split(' ')[0];
-                } else {
-                    row.dataset.balance = site.balance.toFixed(8);
-                }
-            } else {
-                row.dataset.balance = '';
-            }
+        tds +='<td class="align-middle text-right">' + site.lastClaim.toFixed(Number.isInteger(site.lastClaim) ? 0 : 8) + '</td>';
+        tds +='<td class="align-middle text-right">' + site.aggregate.toFixed(Number.isInteger(site.aggregate) ? 0 : 8) + '</td>';
 
-            let tds = '';
+        tds += '<td class="align-middle text-right">' + (+row.dataset.balance > 100 ? (+row.dataset.balance).toFixed(2) : row.dataset.balance)  + '</td>';
+        tds +='<td class="align-middle text-right fiat-conversion em-hide"></td>';
+        tds +='<td class="align-middle">' + this._legacyAddBadges(site.stats) + '</td>';
+        tds +='<td class="align-middle justify-content-center em-hide">';
 
-            tds += '<td class="align-middle edit-status d-none em-only"><label class="switch"><input type="checkbox" data-original="' + (site.enabled ? '1' : '0') + '" ' + (site.enabled ? 'checked' : ' ') + '><span class="slider round"></span></label></td>';
-            tds += '<td class="align-middle" title="' + helpers.getPrintableDateTime(site.nextRoll) + '"><span><i class="fas fa-square pr-1" style="color: #' + site.schedule + ';"></i></span>' + helpers.getTdPrintableTime(site.nextRoll) + '</td>';
-            if (site.isExternal && site.clId == -1) {
-                tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + site.url + '"><i class="fa fa-external-link-alt"></i></a></td>';
-            } else {
-                tds += '<td class="align-middle text-left"><a class="" title="Visit site" target="_blank" rel="noreferrer" href="' + (new URL(site.clId, 'https://criptologico.com/goto/')).href + '"><i class="fa fa-external-link-alt"></i></a></td>';
-            }
-
-            tds += '<td class="align-middle em-input text-left" data-field="displayName">';
-            if (site.cmc) {
-                tds +='<div class="input-group input-group-sm">';
-                tds += '<div class="input-group-prepend"><span class="input-group-text">';
-                if (site.cmc > 0) {
-                    let cmcLower = helpers.getEnumText(K.CMC, site.cmc).toLowerCase();
-                    tds += '<img loading="lazy" src="/static/c-icons/' + cmcLower + '.svg" height="20" alt="' + cmcLower + '">';
-                } else {
-                    tds += '<i class="fa fa-question-circle"></i>';
-                }
-                tds += '</span></div>';
-            }
-            tds += ' <span class="site-name-container px-1">' + site.name + '</span></div></td>';
-
-            tds +='<td class="align-middle text-right">' + site.lastClaim.toFixed(Number.isInteger(site.lastClaim) ? 0 : 8) + '</td>';
-            tds +='<td class="align-middle text-right">' + site.aggregate.toFixed(Number.isInteger(site.aggregate) ? 0 : 8) + '</td>';
-
-            tds += '<td class="align-middle text-right">' + (+row.dataset.balance > 100 ? (+row.dataset.balance).toFixed(2) : row.dataset.balance)  + '</td>';
-            tds +='<td class="align-middle text-right fiat-conversion em-hide"></td>';
-            tds +='<td class="align-middle">' + this._legacyAddBadges(site.stats) + '</td>';
-            tds +='<td class="align-middle justify-content-center em-hide">';
-
-            tds += 
-            `<div class="btn-group btn-group-sm">
-                <button type="button" title="Run ASAP" class="btn btn-default action-run-asap">
-                    <i class="fa fa-bolt"></i>
+        tds += 
+        `<div class="btn-group btn-group-sm">
+            <button type="button" title="Run ASAP" class="btn btn-default action-run-asap">
+                <i class="fa fa-bolt"></i>
+            </button>
+            <button type="button" title="Schedule parameters..." 
+                class="btn btn-default action-edit-site ${Object.keys(site.params).some( k => k.endsWith('.override') && site.params[k] == true ) ? 'text-warning' : ''}">
+                <i class="fa fa-clock"></i>
+            </button>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-default dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-expanded="false">
                 </button>
-                <button type="button" title="Schedule parameters..." 
-                    class="btn btn-default action-edit-site ${Object.keys(site.params).some( k => k.endsWith('.override') && site.params[k] == true ) ? 'text-warning' : ''}">
-                    <i class="fa fa-clock"></i>
-                </button>
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-default dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-expanded="false">
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-right text-sm" style="">
-                        <!-- <a class="dropdown-item action-site-edit-parameters"><i class="fa fa-edit"></i> Site parameters...</a> -->
-                        <a class="dropdown-item action-site-assign-schedule"><i class="fa fa-exchange-alt"></i> Move to...</a>`;
-            if (site.isExternal) {
-                tds += `<a class="dropdown-item action-site-remove-external"><i class="fa fa-trash"></i> Remove site</a>`;
+                <div class="dropdown-menu dropdown-menu-right text-sm" style="">
+                    <!-- <a class="dropdown-item action-site-edit-parameters"><i class="fa fa-edit"></i> Site parameters...</a> -->
+                    <a class="dropdown-item action-site-assign-schedule"><i class="fa fa-exchange-alt"></i> Move to...</a>`;
+        if (site.isExternal) {
+            tds += `<a class="dropdown-item action-site-remove-external"><i class="fa fa-trash"></i> Remove site</a>`;
+        }
+        tds += `</div></div></div>`;
+
+        tds +='</td></tr>';
+
+        row.innerHTML = tds;
+    }
+
+    legacyRenderSiteData(site, config) {
+        document.querySelector('#faucet-name').innerHTML = site.name;
+        document.querySelector('#faucet-name').dataset.id = site.id;
+        let data = site.params || {};
+
+        for (const prop in config) {
+            let overrideElement = document.querySelector('[data-site-prop="' + prop + '.override"]');
+            if (overrideElement) {
+                overrideElement.dataset.original = (data[prop + '.override'] ? "1" : "0");
+                overrideElement.checked = data[prop + '.override'];
             }
-            tds += `</div></div></div>`;
 
-            tds +='</td></tr>';
-
-            row.innerHTML = tds;
+            let element = document.querySelector('[data-site-prop="' + prop + '"]');
+            if(element) {
+                if(element.type == 'select-one' || element.type == 'text' || element.type == 'password' || element.type == 'number' || element.type == 'time') {
+                    element.dataset.original = data[prop] ?? config[prop];
+                    element.value = data[prop] ?? config[prop];
+                } else if (element.type == 'checkbox') {
+                    element.dataset.original = ((data[prop] ?? config[prop]) ? "1" : "0");
+                    element.checked = data[prop] ?? config[prop];
+                }
+                element.disabled = true;
+            }
         }
 
-        legacyRenderSiteData(site, config) {
-            document.querySelector('#faucet-name').innerHTML = site.name;
-            document.querySelector('#faucet-name').dataset.id = site.id;
-            let data = site.params || {};
-
-            for (const prop in config) {
-                let overrideElement = document.querySelector('[data-site-prop="' + prop + '.override"]');
-                if (overrideElement) {
-                    overrideElement.dataset.original = (data[prop + '.override'] ? "1" : "0");
-                    overrideElement.checked = data[prop + '.override'];
-                }
-
-                let element = document.querySelector('[data-site-prop="' + prop + '"]');
-                if(element) {
-                    if(element.type == 'select-one' || element.type == 'text' || element.type == 'password' || element.type == 'number' || element.type == 'time') {
-                        element.dataset.original = data[prop] ?? config[prop];
-                        element.value = data[prop] ?? config[prop];
-                    } else if (element.type == 'checkbox') {
-                        element.dataset.original = ((data[prop] ?? config[prop]) ? "1" : "0");
-                        element.checked = data[prop] ?? config[prop];
-                    }
-                    element.disabled = true;
-                }
-            }
-
-            let elWorkInBackgroundOverride = document.querySelector('[data-site-prop="defaults.workInBackground.override"]');
-            let elWorkInBackground = document.querySelector('[data-site-prop="defaults.workInBackground"]');
-            elWorkInBackground.disabled = !elWorkInBackgroundOverride.checked;
-            elWorkInBackgroundOverride.onchange = function (e) {
-                document.querySelector('[data-site-prop="defaults.workInBackground"]').disabled = !e.target.checked;
-            }
-
-            let elTimeoutOverride = document.querySelector('[data-site-prop="defaults.timeout.override"]');
-            let elTimeout = document.querySelector('[data-site-prop="defaults.timeout"]');
-            elTimeout.disabled = !elTimeoutOverride.checked;
-            elTimeoutOverride.onchange = function (e) {
-                document.querySelector('[data-site-prop="defaults.timeout"]').disabled = !e.target.checked;
-            }
-
-            let elPostponeOverride = document.querySelector('[data-site-prop="defaults.postponeMinutes.override"]');
-            let elPostpone = document.querySelector('[data-site-prop="defaults.postponeMinutes"]');
-            let elPostponeMin = document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]');
-            let elPostponeMax = document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]');
-            elPostpone.disabled = !elPostponeOverride.checked;
-            elPostponeMin.disabled = !elPostponeOverride.checked || (elPostpone.value > "0");
-            elPostponeMax.disabled = !elPostponeOverride.checked || (elPostpone.value > "0");
-            elPostponeOverride.onchange = function (e) {
-                let mode = document.querySelector('[data-site-prop="defaults.postponeMinutes"]');
-                mode.disabled = !e.target.checked;
-                document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]').disabled = !e.target.checked || mode.value > 0;
-                document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').disabled = !e.target.checked || mode.value > 0;
-            }
-            elPostpone.onchange = function (e) {
-                document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]').disabled = e.target.value > 0;
-                document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').disabled = e.target.value > 0;
-                if (e.target.value > 0) {
-                    document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]').value = e.target.value;
-                    document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').value = e.target.value;
-                }
-            }
-
-            let elNextRunOverride = document.querySelector('[data-site-prop="defaults.nextRun.override"]');
-            let elNextRun = document.querySelector('[data-site-prop="defaults.nextRun"]');
-            let elNextRunMin = document.querySelector('[data-site-prop="defaults.nextRun.min"]');
-            let elNextRunMax = document.querySelector('[data-site-prop="defaults.nextRun.max"]');
-            let elNextRunUseCountdown = document.querySelector('[data-site-prop="defaults.nextRun.useCountdown"]');
-            elNextRun.disabled = !elNextRunOverride.checked;
-            elNextRunMin.disabled = !elNextRunOverride.checked || (elNextRun.value > "0");
-            elNextRunMax.disabled = !elNextRunOverride.checked || (elNextRun.value > "0");
-            elNextRunUseCountdown.disabled = !elNextRunOverride.checked;
-            elNextRunOverride.onchange = function (e) {
-                let mode = document.querySelector('[data-site-prop="defaults.nextRun"]');
-                mode.disabled = !e.target.checked;
-                document.querySelector('[data-site-prop="defaults.nextRun.min"]').disabled = !e.target.checked || mode.value > 0;
-                document.querySelector('[data-site-prop="defaults.nextRun.max"]').disabled = !e.target.checked || mode.value > 0;
-                document.querySelector('[data-site-prop="defaults.nextRun.useCountdown"]').disabled = !e.target.checked;
-            }
-            elNextRun.onchange = function (e) {
-                document.querySelector('[data-site-prop="defaults.nextRun.min"]').disabled = e.target.value > 0;
-                document.querySelector('[data-site-prop="defaults.nextRun.max"]').disabled = e.target.value > 0;
-                if (e.target.value > 0) {
-                    document.querySelector('[data-site-prop="defaults.nextRun.min"]').value = e.target.value;
-                    document.querySelector('[data-site-prop="defaults.nextRun.max"]').value = e.target.value;
-                }
-            }
-
-            let elSleepOverride = document.querySelector('[data-site-prop="defaults.sleepMode.override"]');
-            let elSleep = document.querySelector('[data-site-prop="defaults.sleepMode"]');
-            let elSleepMin = document.querySelector('[data-site-prop="defaults.sleepMode.min"]');
-            let elSleepMax = document.querySelector('[data-site-prop="defaults.sleepMode.max"]');
-            elSleep.disabled = !elSleepOverride.checked;
-            elSleepMin.disabled = !elSleepOverride.checked || !elSleep.checked;
-            elSleepMax.disabled = !elSleepOverride.checked || !elSleep.checked;
-            elSleepOverride.onchange = function (e) {
-                let mode = document.querySelector('[data-site-prop="defaults.sleepMode"]');
-                mode.disabled = !e.target.checked;
-                document.querySelector('[data-site-prop="defaults.sleepMode.min"]').disabled = !e.target.checked || !mode.checked;
-                document.querySelector('[data-site-prop="defaults.sleepMode.max"]').disabled = !e.target.checked || !mode.checked;
-            }
-            elSleep.onchange = function (e) {
-                document.querySelector('[data-site-prop="defaults.sleepMode.min"]').disabled = !e.target.checked;
-                document.querySelector('[data-site-prop="defaults.sleepMode.max"]').disabled = !e.target.checked;
-            }
-
-            return;
+        let elWorkInBackgroundOverride = document.querySelector('[data-site-prop="defaults.workInBackground.override"]');
+        let elWorkInBackground = document.querySelector('[data-site-prop="defaults.workInBackground"]');
+        elWorkInBackground.disabled = !elWorkInBackgroundOverride.checked;
+        elWorkInBackgroundOverride.onchange = function (e) {
+            document.querySelector('[data-site-prop="defaults.workInBackground"]').disabled = !e.target.checked;
         }
 
-        sortSitesTable() {
-            const tbody = document.querySelector('#schedule-table-body');
+        let elTimeoutOverride = document.querySelector('[data-site-prop="defaults.timeout.override"]');
+        let elTimeout = document.querySelector('[data-site-prop="defaults.timeout"]');
+        elTimeout.disabled = !elTimeoutOverride.checked;
+        elTimeoutOverride.onchange = function (e) {
+            document.querySelector('[data-site-prop="defaults.timeout"]').disabled = !e.target.checked;
+        }
 
-            let rows, switching, i, shouldSwitch;
-            switching = true;
-            while (switching) {
-                switching = false;
-                rows = tbody.rows;
+        let elPostponeOverride = document.querySelector('[data-site-prop="defaults.postponeMinutes.override"]');
+        let elPostpone = document.querySelector('[data-site-prop="defaults.postponeMinutes"]');
+        let elPostponeMin = document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]');
+        let elPostponeMax = document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]');
+        elPostpone.disabled = !elPostponeOverride.checked;
+        elPostponeMin.disabled = !elPostponeOverride.checked || (elPostpone.value > "0");
+        elPostponeMax.disabled = !elPostponeOverride.checked || (elPostpone.value > "0");
+        elPostponeOverride.onchange = function (e) {
+            let mode = document.querySelector('[data-site-prop="defaults.postponeMinutes"]');
+            mode.disabled = !e.target.checked;
+            document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]').disabled = !e.target.checked || mode.value > 0;
+            document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').disabled = !e.target.checked || mode.value > 0;
+        }
+        elPostpone.onchange = function (e) {
+            document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]').disabled = e.target.value > 0;
+            document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').disabled = e.target.value > 0;
+            if (e.target.value > 0) {
+                document.querySelector('[data-site-prop="defaults.postponeMinutes.min"]').value = e.target.value;
+                document.querySelector('[data-site-prop="defaults.postponeMinutes.max"]').value = e.target.value;
+            }
+        }
 
-                for (i = 0; i < (rows.length - 1); i++) {
-                    shouldSwitch = false;
+        let elNextRunOverride = document.querySelector('[data-site-prop="defaults.nextRun.override"]');
+        let elNextRun = document.querySelector('[data-site-prop="defaults.nextRun"]');
+        let elNextRunMin = document.querySelector('[data-site-prop="defaults.nextRun.min"]');
+        let elNextRunMax = document.querySelector('[data-site-prop="defaults.nextRun.max"]');
+        let elNextRunUseCountdown = document.querySelector('[data-site-prop="defaults.nextRun.useCountdown"]');
+        elNextRun.disabled = !elNextRunOverride.checked;
+        elNextRunMin.disabled = !elNextRunOverride.checked || (elNextRun.value > "0");
+        elNextRunMax.disabled = !elNextRunOverride.checked || (elNextRun.value > "0");
+        elNextRunUseCountdown.disabled = !elNextRunOverride.checked;
+        elNextRunOverride.onchange = function (e) {
+            let mode = document.querySelector('[data-site-prop="defaults.nextRun"]');
+            mode.disabled = !e.target.checked;
+            document.querySelector('[data-site-prop="defaults.nextRun.min"]').disabled = !e.target.checked || mode.value > 0;
+            document.querySelector('[data-site-prop="defaults.nextRun.max"]').disabled = !e.target.checked || mode.value > 0;
+            document.querySelector('[data-site-prop="defaults.nextRun.useCountdown"]').disabled = !e.target.checked;
+        }
+        elNextRun.onchange = function (e) {
+            document.querySelector('[data-site-prop="defaults.nextRun.min"]').disabled = e.target.value > 0;
+            document.querySelector('[data-site-prop="defaults.nextRun.max"]').disabled = e.target.value > 0;
+            if (e.target.value > 0) {
+                document.querySelector('[data-site-prop="defaults.nextRun.min"]').value = e.target.value;
+                document.querySelector('[data-site-prop="defaults.nextRun.max"]').value = e.target.value;
+            }
+        }
 
-                    let aNextRoll, bNextRoll, aHasLoginError, bHasLoginError, aName, bName;
-                    aNextRoll = rows[i].dataset.nextRollTimestamp;
-                    bNextRoll = rows[i + 1].dataset.nextRollTimestamp;
-                    if (aNextRoll == 'null' && bNextRoll == 'null') {
-                        aName = rows[i].querySelector('.site-name-container').innerText;
-                        bName = rows[i + 1].querySelector('.site-name-container').innerText;
-                        if (aName.toLowerCase() > bName.toLowerCase()) {
-                            shouldSwitch = true;
-                            break;
-                        }
-                    } else if (aNextRoll == 'null' || (aNextRoll > bNextRoll)) {
+        let elSleepOverride = document.querySelector('[data-site-prop="defaults.sleepMode.override"]');
+        let elSleep = document.querySelector('[data-site-prop="defaults.sleepMode"]');
+        let elSleepMin = document.querySelector('[data-site-prop="defaults.sleepMode.min"]');
+        let elSleepMax = document.querySelector('[data-site-prop="defaults.sleepMode.max"]');
+        elSleep.disabled = !elSleepOverride.checked;
+        elSleepMin.disabled = !elSleepOverride.checked || !elSleep.checked;
+        elSleepMax.disabled = !elSleepOverride.checked || !elSleep.checked;
+        elSleepOverride.onchange = function (e) {
+            let mode = document.querySelector('[data-site-prop="defaults.sleepMode"]');
+            mode.disabled = !e.target.checked;
+            document.querySelector('[data-site-prop="defaults.sleepMode.min"]').disabled = !e.target.checked || !mode.checked;
+            document.querySelector('[data-site-prop="defaults.sleepMode.max"]').disabled = !e.target.checked || !mode.checked;
+        }
+        elSleep.onchange = function (e) {
+            document.querySelector('[data-site-prop="defaults.sleepMode.min"]').disabled = !e.target.checked;
+            document.querySelector('[data-site-prop="defaults.sleepMode.max"]').disabled = !e.target.checked;
+        }
+
+        return;
+    }
+
+    sortSitesTable() {
+        const tbody = document.querySelector('#schedule-table-body');
+
+        let rows, switching, i, shouldSwitch;
+        switching = true;
+        while (switching) {
+            switching = false;
+            rows = tbody.rows;
+
+            for (i = 0; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+
+                let aNextRoll, bNextRoll, aHasLoginError, bHasLoginError, aName, bName;
+                aNextRoll = rows[i].dataset.nextRollTimestamp;
+                bNextRoll = rows[i + 1].dataset.nextRollTimestamp;
+                if (aNextRoll == 'null' && bNextRoll == 'null') {
+                    aName = rows[i].querySelector('.site-name-container').innerText;
+                    bName = rows[i + 1].querySelector('.site-name-container').innerText;
+                    if (aName.toLowerCase() > bName.toLowerCase()) {
                         shouldSwitch = true;
                         break;
                     }
-                }
-                if (shouldSwitch) {
-                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                    switching = true;
-                }
-            }
-        }
-
-        onClickOnSitesTableBody(e) {
-            let actionElement = e.target;
-            if (actionElement.tagName === 'I') {
-                actionElement = actionElement.parentElement;
-            }
-            const row = actionElement.closest('tr');
-            if (actionElement.classList.contains('action-edit-site')) {
-                e.stopPropagation();
-                this.uiRenderer.openModal('modal-site', row.dataset.id);
-            } else if (actionElement.classList.contains('action-run-asap')) {
-                e.stopPropagation();
-                manager.Site.setAsRunAsap(row.dataset.id);
-            } else if (actionElement.classList.contains('action-site-assign-schedule')) {
-                this.uiRenderer.openModal('modal-assign-schedule', { site_id: row.dataset.id, schedule_id: row.dataset.schedule });
-            } else if (actionElement.classList.contains('action-site-edit-parameters')) {
-                this.uiRenderer.openModal('modal-site-parameters', { site_id: row.dataset.id });
-            } else if (actionElement.classList.contains('action-site-remove-external')) {
-                manager.Site.remove(row.dataset.id);
-                console.info('TODO: remove site and all the related configuration', row.dataset.id);
-            }
-        }
-
-        onClickOnModalAssignSchedule(e) {
-            const modalAssignScheduleToSite = document.querySelector('#modal-assign-schedule');
-            let actionElement = e.target.tagName === 'I' ? e.target.parentElement : e.target;
-            if (actionElement.classList.contains('modal-save')) {
-                let data = this.uiRenderer.parseContainer(modalAssignScheduleToSite.querySelector('.form-container'));
-                if (data.original_schedule_id == data.schedule) {
-                } else {
-                    manager.Site.getById(data.site_id).changeSchedule(data.schedule);
+                } else if (aNextRoll == 'null' || (aNextRoll > bNextRoll)) {
+                    shouldSwitch = true;
+                    break;
                 }
             }
-        }
-
-        onClickOnModalAddSite(e) {
-            const modal = document.querySelector('#modal-add-site');
-            let actionElement = e.target.tagName === 'I' ? e.target.parentElement : e.target;
-            if (actionElement.classList.contains('modal-save')) {
-                let formData = this.uiRenderer.parseContainer(modal.querySelector('.form-container'));
-                let data = {};
-                data.name = formData.site_name;
-                data.url = new URL(formData.site_url);
-                data.schedule = formData.schedule;
-                data.clId = -1;
-                data.id = 'ext_rnd_id_' + helpers.randomString(8);
-                data.type = K.WebType.UNDEFINED;
-                data.cmc = -1;
-                data.rf = '';
-                data.isExternal = true;
-
-                console.warn('Savable new site');
-                manager.Site.add(data);
-                return;
-                if (data.original_schedule_id == data.schedule) {
-                } else {
-                    manager.Site.getById(data.site_id).changeSchedule(data.schedule);
-                }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
             }
-        }
-
-        onClickOnEditAllSites(e) {
-            document.querySelectorAll("#schedule-table-body td.em-input .site-name-container").forEach(function (x) {
-                let val = x.innerHTML;
-                x.innerHTML = "<input type=\'text\' class=\'form-control form-control-sm\' data-original=\'" + val.trim() + "\' value=\'" + val.trim() + "\' />";
-            });
-            document.querySelectorAll("#schedule-table-body td.edit-status").forEach(function (x) {
-                x.classList.remove("d-none");
-            });
-            document.querySelectorAll(".em-only").forEach(x => x.classList.remove("d-none"));
-            document.querySelectorAll(".em-hide").forEach(x => x.classList.add("d-none"));
-        }
-
-        onClickOnCancelEditAllSites(e) {
-            document.querySelectorAll("#schedule-table-body td.em-input .site-name-container input").forEach(function(x) {
-                x.parentNode.innerHTML = x.dataset.original;
-            });
-            document.querySelectorAll(".em-only").forEach(x => x.classList.add("d-none"));
-            document.querySelectorAll(".em-hide").forEach(x => x.classList.remove("d-none"));
-        }
-
-        onClickOnSaveEditAllSites(e) {
-            let updateObject;
-            var updateData = document.getElementById("update-data");
-            if (updateData.innerHTML != "") {
-                updateObject = JSON.parse(updateData.innerHTML);
-            } else {
-                updateObject = {
-                    runAsap: { ids: [], changed: false }, 
-                    editSingle: { changed: false, items: [] }, 
-                    wallet: { changed: false, items: [] }, 
-                    config: { changed: false, items: [] }, 
-                    site: { changed: false, list: [] }
-                };
-            }
-
-            document.querySelectorAll("#schedule-table-body tr").forEach(function (row) {
-                let textInputCell = row.querySelector(".em-input .site-name-container");
-                let textInput = textInputCell.querySelector("input");
-                let activeSwitch = row.querySelector("td.edit-status input");
-                let single = { id: row.dataset.id, displayName: textInput.dataset.original, enabled: activeSwitch.dataset.original };
-                textInputCell.innerHTML = textInput.value;
-                if(textInput.dataset.original != textInput.value) {
-                    single.displayName = textInput.value;
-                }
-                if(activeSwitch.dataset.original != Boolean(activeSwitch.checked)) {
-                    single.enabled = Boolean(activeSwitch.checked);
-                }
-                if(textInput.dataset.original != textInput.value || activeSwitch.dataset.original != Boolean(activeSwitch.checked)) {
-                    updateObject.editSingle.items.push(single);
-                    updateObject.editSingle.changed = true;
-                }
-            });
-            if(updateObject.editSingle.changed) {
-                document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
-                this.uiRenderer.toast("Data will be updated as soon as possible");
-            }
-
-            document.querySelectorAll(".em-only").forEach(x => x.classList.add("d-none"));
-            document.querySelectorAll(".em-hide").forEach(x => x.classList.remove("d-none"));
-        }
-
-        onClickOnAddSiteButton(e) {
-            e.stopPropagation();
-            this.uiRenderer.openModal('modal-add-site');
-        }
-
-        renderAddExternalSite() {
-            const modalAssignSchedule = document.getElementById('modal-add-site');
-            let selectElm = modalAssignSchedule.querySelector('select');
-            let options = [];
-            let firstSchedule = '';
-            manager.Schedule.getAllForCrud().forEach(sch => {
-                if (firstSchedule == '') {
-                    firstSchedule = sch.uuid;
-                }
-                options.push(`<option value="${sch.uuid}"><i class="fas fa-square" style="color: #${sch.uuid}"></i>${sch.name}</option>`)
-            });
-            selectElm.innerHTML = options.join('');
-            selectElm.value = firstSchedule;
-            return;
-        }
-
-        renderAssignScheduleToSite(values) {
-            const modalAssignSchedule = document.getElementById('modal-assign-schedule');
-            modalAssignSchedule.querySelector('input[name="site_id"]').value = values.site_id;
-            modalAssignSchedule.querySelector('input[name="original_schedule_id"]').value = values.schedule_id;
-            let selectElm = modalAssignSchedule.querySelector('select');
-            let options = [];
-            manager.Schedule.getAllForCrud().forEach(sch => {
-                options.push(`<option value="${sch.uuid}"><i class="fas fa-square" style="color: #${sch.uuid}"></i>${sch.name}</option>`)
-            });
-            selectElm.innerHTML = options.join('');
-            selectElm.value = values.schedule_id || "";
-            return;
         }
     }
 
-    class UiPromosRenderer extends UiBaseRenderer {
-        appendEventListeners() {
-            document.querySelector('#promo-button').addEventListener('click', this.onClickSavePromoCode.bind(this));
-            document.querySelector('#button-try-get-codes').addEventListener('click', this.onClickTryGetCodes.bind(this));
-            document.querySelector('#promo-table-body').addEventListener('click', this.onClickOnPromoTableBody.bind(this));
+    onClickOnSitesTableBody(e) {
+        let actionElement = e.target;
+        if (actionElement.tagName === 'I') {
+            actionElement = actionElement.parentElement;
+        }
+        const row = actionElement.closest('tr');
+        if (actionElement.classList.contains('action-edit-site')) {
+            e.stopPropagation();
+            this.uiRenderer.openModal('modal-site', row.dataset.id);
+        } else if (actionElement.classList.contains('action-run-asap')) {
+            e.stopPropagation();
+            manager.Site.setAsRunAsap(row.dataset.id);
+        } else if (actionElement.classList.contains('action-site-assign-schedule')) {
+            this.uiRenderer.openModal('modal-assign-schedule', { site_id: row.dataset.id, schedule_id: row.dataset.schedule });
+        } else if (actionElement.classList.contains('action-site-edit-parameters')) {
+            this.uiRenderer.openModal('modal-site-parameters', { site_id: row.dataset.id });
+        } else if (actionElement.classList.contains('action-site-remove-external')) {
+            manager.Site.remove(row.dataset.id);
+            console.info('TODO: remove site and all the related configuration', row.dataset.id);
+        }
+    }
+
+    onClickOnModalAssignSchedule(e) {
+        const modalAssignScheduleToSite = document.querySelector('#modal-assign-schedule');
+        let actionElement = e.target.tagName === 'I' ? e.target.parentElement : e.target;
+        if (actionElement.classList.contains('modal-save')) {
+            let data = this.uiRenderer.parseContainer(modalAssignScheduleToSite.querySelector('.form-container'));
+            if (data.original_schedule_id == data.schedule) {
+            } else {
+                manager.Site.getById(data.site_id).changeSchedule(data.schedule);
+            }
+        }
+    }
+
+    onClickOnModalAddSite(e) {
+        const modal = document.querySelector('#modal-add-site');
+        let actionElement = e.target.tagName === 'I' ? e.target.parentElement : e.target;
+        if (actionElement.classList.contains('modal-save')) {
+            let formData = this.uiRenderer.parseContainer(modal.querySelector('.form-container'));
+            let data = {};
+            data.name = formData.site_name;
+            data.url = new URL(formData.site_url);
+            data.schedule = formData.schedule;
+            data.clId = -1;
+            data.id = 'ext_rnd_id_' + helpers.randomString(8);
+            data.type = K.WebType.UNDEFINED;
+            data.cmc = -1;
+            data.rf = '';
+            data.isExternal = true;
+
+            console.warn('Savable new site');
+            manager.Site.add(data);
+            return;
+            if (data.original_schedule_id == data.schedule) {
+            } else {
+                manager.Site.getById(data.site_id).changeSchedule(data.schedule);
+            }
+        }
+    }
+
+    onClickOnEditAllSites(e) {
+        document.querySelectorAll("#schedule-table-body td.em-input .site-name-container").forEach(function (x) {
+            let val = x.innerHTML;
+            x.innerHTML = "<input type=\'text\' class=\'form-control form-control-sm\' data-original=\'" + val.trim() + "\' value=\'" + val.trim() + "\' />";
+        });
+        document.querySelectorAll("#schedule-table-body td.edit-status").forEach(function (x) {
+            x.classList.remove("d-none");
+        });
+        document.querySelectorAll(".em-only").forEach(x => x.classList.remove("d-none"));
+        document.querySelectorAll(".em-hide").forEach(x => x.classList.add("d-none"));
+    }
+
+    onClickOnCancelEditAllSites(e) {
+        document.querySelectorAll("#schedule-table-body td.em-input .site-name-container input").forEach(function(x) {
+            x.parentNode.innerHTML = x.dataset.original;
+        });
+        document.querySelectorAll(".em-only").forEach(x => x.classList.add("d-none"));
+        document.querySelectorAll(".em-hide").forEach(x => x.classList.remove("d-none"));
+    }
+
+    onClickOnSaveEditAllSites(e) {
+        let updateObject;
+        var updateData = document.getElementById("update-data");
+        if (updateData.innerHTML != "") {
+            updateObject = JSON.parse(updateData.innerHTML);
+        } else {
+            updateObject = {
+                runAsap: { ids: [], changed: false }, 
+                editSingle: { changed: false, items: [] }, 
+                wallet: { changed: false, items: [] }, 
+                config: { changed: false, items: [] }, 
+                site: { changed: false, list: [] }
+            };
         }
 
-        onClickSavePromoCode(e) {
-            var promoText = document.getElementById("promo-text-input");
-            var promoCode = document.getElementById("promo-code-new");
-            var promoDaily = document.getElementById("promo-daily");
-            var promoObject = { action: "ADD", code: promoText.value.trim(), repeatDaily: promoDaily.checked };
-            promoCode.innerHTML =JSON.stringify(promoObject);
-            this.uiRenderer.toast("Adding promo code: " + promoObject.code + "...");
-            promoText.value = '';
+        document.querySelectorAll("#schedule-table-body tr").forEach(function (row) {
+            let textInputCell = row.querySelector(".em-input .site-name-container");
+            let textInput = textInputCell.querySelector("input");
+            let activeSwitch = row.querySelector("td.edit-status input");
+            let single = { id: row.dataset.id, displayName: textInput.dataset.original, enabled: activeSwitch.dataset.original };
+            textInputCell.innerHTML = textInput.value;
+            if(textInput.dataset.original != textInput.value) {
+                single.displayName = textInput.value;
+            }
+            if(activeSwitch.dataset.original != Boolean(activeSwitch.checked)) {
+                single.enabled = Boolean(activeSwitch.checked);
+            }
+            if(textInput.dataset.original != textInput.value || activeSwitch.dataset.original != Boolean(activeSwitch.checked)) {
+                updateObject.editSingle.items.push(single);
+                updateObject.editSingle.changed = true;
+            }
+        });
+        if(updateObject.editSingle.changed) {
+            document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
+            this.uiRenderer.toast("Data will be updated as soon as possible");
         }
 
-        onClickTryGetCodes(e) {
-            var promoCode = document.getElementById("promo-code-new");
-            var promoObject = { action: "TRYGETCODES" };
-            promoCode.innerHTML =JSON.stringify(promoObject);
-            this.uiRenderer.toast("Fetching codes...");
-        }
+        document.querySelectorAll(".em-only").forEach(x => x.classList.add("d-none"));
+        document.querySelectorAll(".em-hide").forEach(x => x.classList.remove("d-none"));
+    }
 
-        _legacyRemoveUsedDailyCodes(codes) {
-            if(codes && codes.length) {
-                codes.forEach(code => {
-                    if(!code.repeatDaily) {
-                        let counter = 0;
-                        for(let i = 0; i < code.statusPerFaucet.length; i++) {
-                            if(code.statusPerFaucet[i].execTimeStamp) {
-                                counter++;
-                            }
-                        }
-                        if(counter == code.statusPerFaucet.length) {
-                            setTimeout(() => removePromoCode(code.id, code.code), 20000);
+    onClickOnAddSiteButton(e) {
+        e.stopPropagation();
+        this.uiRenderer.openModal('modal-add-site');
+    }
+
+    renderAddExternalSite() {
+        const modalAssignSchedule = document.getElementById('modal-add-site');
+        let selectElm = modalAssignSchedule.querySelector('select');
+        let options = [];
+        let firstSchedule = '';
+        manager.Schedule.getAllForCrud().forEach(sch => {
+            if (firstSchedule == '') {
+                firstSchedule = sch.uuid;
+            }
+            options.push(`<option value="${sch.uuid}"><i class="fas fa-square" style="color: #${sch.uuid}"></i>${sch.name}</option>`)
+        });
+        selectElm.innerHTML = options.join('');
+        selectElm.value = firstSchedule;
+        return;
+    }
+
+    renderAssignScheduleToSite(values) {
+        const modalAssignSchedule = document.getElementById('modal-assign-schedule');
+        modalAssignSchedule.querySelector('input[name="site_id"]').value = values.site_id;
+        modalAssignSchedule.querySelector('input[name="original_schedule_id"]').value = values.schedule_id;
+        let selectElm = modalAssignSchedule.querySelector('select');
+        let options = [];
+        manager.Schedule.getAllForCrud().forEach(sch => {
+            options.push(`<option value="${sch.uuid}"><i class="fas fa-square" style="color: #${sch.uuid}"></i>${sch.name}</option>`)
+        });
+        selectElm.innerHTML = options.join('');
+        selectElm.value = values.schedule_id || "";
+        return;
+    }
+}
+class UiPromosRenderer extends UiBaseRenderer {
+    appendEventListeners() {
+        document.querySelector('#promo-button').addEventListener('click', this.onClickSavePromoCode.bind(this));
+        document.querySelector('#button-try-get-codes').addEventListener('click', this.onClickTryGetCodes.bind(this));
+        document.querySelector('#promo-table-body').addEventListener('click', this.onClickOnPromoTableBody.bind(this));
+    }
+
+    onClickSavePromoCode(e) {
+        var promoText = document.getElementById("promo-text-input");
+        var promoCode = document.getElementById("promo-code-new");
+        var promoDaily = document.getElementById("promo-daily");
+        var promoObject = { action: "ADD", code: promoText.value.trim(), repeatDaily: promoDaily.checked };
+        promoCode.innerHTML =JSON.stringify(promoObject);
+        this.uiRenderer.toast("Adding promo code: " + promoObject.code + "...");
+        promoText.value = '';
+    }
+
+    onClickTryGetCodes(e) {
+        var promoCode = document.getElementById("promo-code-new");
+        var promoObject = { action: "TRYGETCODES" };
+        promoCode.innerHTML =JSON.stringify(promoObject);
+        this.uiRenderer.toast("Fetching codes...");
+    }
+
+    _legacyRemoveUsedDailyCodes(codes) {
+        if(codes && codes.length) {
+            codes.forEach(code => {
+                if(!code.repeatDaily) {
+                    let counter = 0;
+                    for(let i = 0; i < code.statusPerFaucet.length; i++) {
+                        if(code.statusPerFaucet[i].execTimeStamp) {
+                            counter++;
                         }
                     }
-                });
-            }
-        }
-
-        legacyRenderPromotionTable(codes) {
-            let tableBody = '';
-            this._legacyRemoveUsedDailyCodes(codes);
-
-            for(let c=0; c < codes.length; c++) {
-                let data = codes[c];
-                tableBody += '<tr data-promotion-code="' + data.code + '" data-promotion-id="' + data.id + '">';
-                tableBody += '<td class="align-middle text-left ' + (data.repeatDaily ? 'text-warning' : '') + '">';
-                tableBody += `<a class="action-remove-promo-code" data-toggle="tooltip" data-placement="left" title="Remove" onclick=""><i class="fa fa-times-circle"></i></a>`;
-                tableBody += '<span  title="' + (data.repeatDaily ? 'Reusable Code' : 'One-time-only Code') + '">' + data.code + '</span></td>';
-                tableBody +='<td class="align-middle" title="' + (data.repeatDaily ? 'Reusable Code' : 'One-time-only Code') + '">' + helpers.getPrintableDateTime(data.added) + '</td>';
-
-                for(let i=0, all = data.statusPerFaucet.length; i < all; i++) {
-                    tableBody +='<td class="align-middle" title="Runned @' + helpers.getPrintableDateTime(data.statusPerFaucet[i].execTimeStamp) + '">' + helpers.getEmojiForPromoStatus(data.statusPerFaucet[i].status ?? 0) + '</td>';
-                }
-                tableBody +='</tr>';
-            }
-
-            document.getElementById('promo-table-body').innerHTML = tableBody;
-        }
-
-        onClickOnPromoTableBody(e) {
-            let actionElement = e.target;
-            if (actionElement.tagName === 'I') {
-                actionElement = actionElement.parentElement;
-            }
-            const row = actionElement.closest('tr');
-            if (actionElement.classList.contains('action-remove-promo-code')) {
-                e.stopPropagation();
-                var promoCode = document.getElementById("promo-code-new");
-                var promoObject = { action: "REMOVE", id: row.dataset.promotionId, code: row.dataset.promotionCode };
-                promoCode.innerHTML =JSON.stringify(promoObject);
-            }
-        }
-    }
-
-    class UiConfigRenderer extends UiBaseRenderer {
-        legacyRenderConfigData(data) {
-            for (const prop in data) {
-                let element = document.querySelector('[data-prop="' + prop + '"]');
-                if(element) {
-                    if(element.type == 'select-one' || element.type == 'text' || element.type == 'password' || element.type == 'number' || element.type == 'time') {
-                        element.dataset.original = data[prop];
-                        element.value = data[prop];
-                    } else if (element.type == 'checkbox') {
-                        element.dataset.original = (data[prop] ? "1" : "0");
-                        element.checked = data[prop];
+                    if(counter == code.statusPerFaucet.length) {
+                        setTimeout(() => removePromoCode(code.id, code.code), 20000);
                     }
                 }
-            }
-
-            let elCfTryGetCodes = document.querySelector('[data-prop="cf.tryGetCodes"]')
-            let elCredentialsAutologin = document.querySelector('[data-prop="cf.autologin"]');
-            let elCredentialsMode = document.querySelector('[data-prop="cf.credentials.mode"]');
-            let elCredentialsEmail = document.querySelector('[data-prop="cf.credentials.email"]');
-            let elCredentialsPassword = document.querySelector('[data-prop="cf.credentials.password"]');
-            let elDevlogEnabled = document.querySelector('[data-prop="devlog.enabled"]');
-            let elDevlogMaxLines = document.querySelector('[data-prop="devlog.maxLines"]');
-            let elFpigCredentialsMode = document.querySelector('[data-prop="fpb.credentials.mode"]');
-            let elFpigCredentialsUsername = document.querySelector('[data-prop="fpb.credentials.username"]');
-            let elFpigCredentialsPassword = document.querySelector('[data-prop="fpb.credentials.password"]');
-            let elFBchCredentialsMode = document.querySelector('[data-prop="fbch.credentials.mode"]');
-            let elFBchCredentialsUsername = document.querySelector('[data-prop="fbch.credentials.username"]');
-            let elFBchCredentialsPassword = document.querySelector('[data-prop="fbch.credentials.password"]');
-            let elSHostCredentialsMode = document.querySelector('[data-prop="shost.credentials.mode"]');
-            let elSHostCredentialsUsername = document.querySelector('[data-prop="shost.credentials.username"]');
-            let elSHostCredentialsPassword = document.querySelector('[data-prop="shost.credentials.password"]');
-            let elJtfeyCredentialsMode = document.querySelector('[data-prop="jtfey.credentials.mode"]');
-            let elJtfeyCredentialsUsername = document.querySelector('[data-prop="jtfey.credentials.username"]');
-            let elJtfeyCredentialsPassword = document.querySelector('[data-prop="jtfey.credentials.password"]');
-            let elYCoinCredentialsMode = document.querySelector('[data-prop="ycoin.credentials.mode"]');
-            let elYCoinCredentialsUsername = document.querySelector('[data-prop="ycoin.credentials.username"]');
-            let elYCoinCredentialsPassword = document.querySelector('[data-prop="ycoin.credentials.password"]');
-            let elBscadsCredentialsMode = document.querySelector('[data-prop="bscads.credentials.mode"]');
-            let elBscadsCredentialsUsername = document.querySelector('[data-prop="bscads.credentials.username"]');
-            let elBscadsCredentialsPassword = document.querySelector('[data-prop="bscads.credentials.password"]');
-
-            let elPostpone = document.querySelector('[data-prop="defaults.postponeMinutes"]');
-            let elPostponeMin = document.querySelector('[data-prop="defaults.postponeMinutes.min"]');
-            let elPostponeMax = document.querySelector('[data-prop="defaults.postponeMinutes.max"]');
-            elPostponeMin.disabled = (elPostpone.value > "0");
-            elPostponeMax.disabled = (elPostpone.value > "0");
-            if (elPostponeMin.disabled && elPostponeMax.disabled) {
-                elPostponeMin.value = elPostpone.value;
-                elPostponeMax.value = elPostpone.value;
-            }
-            elPostpone.onchange = function (e) {
-                document.querySelector('[data-prop="defaults.postponeMinutes.min"]').disabled = e.target.value > 0;
-                document.querySelector('[data-prop="defaults.postponeMinutes.max"]').disabled = e.target.value > 0;
-                if (e.target.value > 0) {
-                    document.querySelector('[data-prop="defaults.postponeMinutes.min"]').value = e.target.value;
-                    document.querySelector('[data-prop="defaults.postponeMinutes.max"]').value = e.target.value;
-                }
-            }
-
-            let elNextRun = document.querySelector('[data-prop="defaults.nextRun"]');
-            let elNextRunMin = document.querySelector('[data-prop="defaults.nextRun.min"]');
-            let elNextRunMax = document.querySelector('[data-prop="defaults.nextRun.max"]');
-            let elNextRunUseCountdown = document.querySelector('[data-prop="defaults.nextRun.useCountdown"]');
-            elNextRunMin.disabled = (elNextRun.value > "0");
-            elNextRunMax.disabled = (elNextRun.value > "0");
-            if (elNextRunMin.disabled && elNextRunMax.disabled) {
-                elNextRunMin.value = elNextRun.value;
-                elNextRunMax.value = elNextRun.value;
-            }
-            elNextRun.onchange = function (e) {
-                document.querySelector('[data-prop="defaults.nextRun.min"]').disabled = e.target.value > 0;
-                document.querySelector('[data-prop="defaults.nextRun.max"]').disabled = e.target.value > 0;
-                if (e.target.value > 0) {
-                    document.querySelector('[data-prop="defaults.nextRun.min"]').value = e.target.value;
-                    document.querySelector('[data-prop="defaults.nextRun.max"]').value = e.target.value;
-                }
-            }
-
-            let elSleepMode = document.querySelector('[data-prop="defaults.sleepMode"]');
-            let elSleepModeMin = document.querySelector('[data-prop="defaults.sleepMode.min"]');
-            let elSleepModeMax = document.querySelector('[data-prop="defaults.sleepMode.max"]');
-            elSleepModeMin.disabled = !elSleepMode.checked;
-            elSleepModeMax.disabled = !elSleepMode.checked;
-            elSleepMode.onchange = function (e) {
-                document.querySelector('[data-prop="defaults.sleepMode.min"]').disabled = !e.target.checked;
-                document.querySelector('[data-prop="defaults.sleepMode.max"]').disabled = !e.target.checked;
-            }
-
-            elCredentialsMode.disabled = !elCredentialsAutologin.checked;
-
-            elCredentialsEmail.disabled = ( (!elCredentialsAutologin.checked || elCredentialsMode.value == "2") ? true : false);
-            elCredentialsPassword.disabled = ( (!elCredentialsAutologin.checked || elCredentialsMode.value == "2") ? true : false);
-
-            elCredentialsAutologin.onchange = function (e) {
-                document.querySelector('[data-prop="cf.credentials.mode"]').disabled = !e.target.checked;
-                if (elCredentialsMode.value == "2") {
-                    document.querySelector('[data-prop="cf.credentials.email"]').disabled = true;
-                    document.querySelector('[data-prop="cf.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="cf.credentials.email"]').disabled = false;
-                    document.querySelector('[data-prop="cf.credentials.password"]').disabled = false;
-                }
-            }
-
-            elCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="cf.credentials.email"]').disabled = true;
-                    document.querySelector('[data-prop="cf.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="cf.credentials.email"]').disabled = false;
-                    document.querySelector('[data-prop="cf.credentials.password"]').disabled = false;
-                }
-            }
-
-            elFpigCredentialsUsername.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
-            elFpigCredentialsPassword.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
-            elFpigCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="fpb.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="fpb.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="fpb.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="fpb.credentials.password"]').disabled = false;
-                }
-            }
-
-            elSHostCredentialsUsername.disabled = ( (elSHostCredentialsMode.value == "2") ? true : false);
-            elSHostCredentialsPassword.disabled = ( (elSHostCredentialsMode.value == "2") ? true : false);
-            elSHostCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="shost.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="shost.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="shost.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="shost.credentials.password"]').disabled = false;
-                }
-            }
-
-            elYCoinCredentialsUsername.disabled = ( (elYCoinCredentialsMode.value == "2") ? true : false);
-            elYCoinCredentialsPassword.disabled = ( (elYCoinCredentialsMode.value == "2") ? true : false);
-            elYCoinCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="ycoin.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="ycoin.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="ycoin.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="ycoin.credentials.password"]').disabled = false;
-                }
-            }
-
-            elFBchCredentialsUsername.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
-            elFBchCredentialsPassword.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
-            elFBchCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="fbch.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="fbch.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="fbch.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="fbch.credentials.password"]').disabled = false;
-                }
-            }
-
-            elJtfeyCredentialsUsername.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
-            elJtfeyCredentialsPassword.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
-            elJtfeyCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="jtfey.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="jtfey.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="jtfey.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="jtfey.credentials.password"]').disabled = false;
-                }
-            }
-
-            elBscadsCredentialsUsername.disabled = ( (elBscadsCredentialsMode.value == "2") ? true : false);
-            elBscadsCredentialsPassword.disabled = ( (elBscadsCredentialsMode.value == "2") ? true : false);
-            elBscadsCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="bscads.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="bsdads.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="bscads.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="bscads.credentials.password"]').disabled = false;
-                }
-            }
-
-            elDevlogMaxLines.disabled = !elDevlogEnabled.checked;
-            elDevlogEnabled.onchange = function (e) {
-                document.querySelector('[data-prop="devlog.maxLines"]').disabled = !e.target.checked;
-            }
-        }
-    }
-
-    class UiWalletRenderer extends UiBaseRenderer {
-        legacyRenderWalletTable(data) {
-            let tableBody = '';
-
-            for(let i=0, all = data.length; i < all; i++) {
-                tableBody += '<tr class="align-middle" data-id="'+ data[i].id + '">';
-                tableBody += '<td class="align-middle">' + data[i].name + '</td>';
-                tableBody += '<td class="align-middle em-input"><input type="text" class="w-100" onfocus="this.select();" data-field="address" data-original="' + data[i].address + '" value="' + data[i].address + '"></td>';
-                tableBody += '</tr>';
-            }
-
-            document.getElementById('wallet-table-body').innerHTML = tableBody;
-        }
-    }
-
-    class UiSchedulesRenderer extends UiBaseRenderer {
-        appendEventListeners() {
-            document.querySelector('#schedules-toggler').addEventListener('change', this.onScheduleToggled.bind(this));
-        }
-
-        onScheduleToggled(e) {
-            e.stopPropagation();
-            let actionElement = e.target.tagName !== 'LABEL' ? e.target.closest('label') : e.target;
-            let otherActiveLabels = [...actionElement.parentElement.querySelectorAll('label.active')].filter(l => l.dataset.schedule != actionElement.dataset.schedule);
-            if (otherActiveLabels.length > 0) {
-                otherActiveLabels.forEach(l => l.classList.remove('active'));
-            }
-            this.toggleSchedule(actionElement.dataset.schedule);
-        }
-
-        toggleSchedule(uuid) {
-
-            if (uuid) {
-                this.selectedSchedule = uuid;
-            } else {
-                if (!this.selectedSchedule) {
-                    this.selectedSchedule = 'all';
-                }
-            }
-
-            [...document.querySelectorAll('#schedule-table-body tr')].forEach((row) => {
-                if (this.selectedSchedule == 'all') {
-                    row.classList.remove('d-none');
-                } else if (row.getAttribute('data-schedule') == this.selectedSchedule) {
-                    row.classList.remove('d-none');
-                } else {
-                    row.classList.add('d-none');
-                }
             });
+        }
+    }
 
+    legacyRenderPromotionTable(codes) {
+        let tableBody = '';
+        this._legacyRemoveUsedDailyCodes(codes);
+
+        for(let c=0; c < codes.length; c++) {
+            let data = codes[c];
+            tableBody += '<tr data-promotion-code="' + data.code + '" data-promotion-id="' + data.id + '">';
+            tableBody += '<td class="align-middle text-left ' + (data.repeatDaily ? 'text-warning' : '') + '">';
+            tableBody += `<a class="action-remove-promo-code" data-toggle="tooltip" data-placement="left" title="Remove" onclick=""><i class="fa fa-times-circle"></i></a>`;
+            tableBody += '<span  title="' + (data.repeatDaily ? 'Reusable Code' : 'One-time-only Code') + '">' + data.code + '</span></td>';
+            tableBody +='<td class="align-middle" title="' + (data.repeatDaily ? 'Reusable Code' : 'One-time-only Code') + '">' + helpers.getPrintableDateTime(data.added) + '</td>';
+
+            for(let i=0, all = data.statusPerFaucet.length; i < all; i++) {
+                tableBody +='<td class="align-middle" title="Runned @' + helpers.getPrintableDateTime(data.statusPerFaucet[i].execTimeStamp) + '">' + helpers.getEmojiForPromoStatus(data.statusPerFaucet[i].status ?? 0) + '</td>';
+            }
+            tableBody +='</tr>';
+        }
+
+        document.getElementById('promo-table-body').innerHTML = tableBody;
+    }
+
+    onClickOnPromoTableBody(e) {
+        let actionElement = e.target;
+        if (actionElement.tagName === 'I') {
+            actionElement = actionElement.parentElement;
+        }
+        const row = actionElement.closest('tr');
+        if (actionElement.classList.contains('action-remove-promo-code')) {
+            e.stopPropagation();
+            var promoCode = document.getElementById("promo-code-new");
+            var promoObject = { action: "REMOVE", id: row.dataset.promotionId, code: row.dataset.promotionCode };
+            promoCode.innerHTML =JSON.stringify(promoObject);
+        }
+    }
+}
+class UiConfigRenderer extends UiBaseRenderer {
+    legacyRenderConfigData(data) {
+        for (const prop in data) {
+            let element = document.querySelector('[data-prop="' + prop + '"]');
+            if(element) {
+                if(element.type == 'select-one' || element.type == 'text' || element.type == 'password' || element.type == 'number' || element.type == 'time') {
+                    element.dataset.original = data[prop];
+                    element.value = data[prop];
+                } else if (element.type == 'checkbox') {
+                    element.dataset.original = (data[prop] ? "1" : "0");
+                    element.checked = data[prop];
+                }
+            }
+        }
+
+        let elCfTryGetCodes = document.querySelector('[data-prop="cf.tryGetCodes"]')
+        let elCredentialsAutologin = document.querySelector('[data-prop="cf.autologin"]');
+        let elCredentialsMode = document.querySelector('[data-prop="cf.credentials.mode"]');
+        let elCredentialsEmail = document.querySelector('[data-prop="cf.credentials.email"]');
+        let elCredentialsPassword = document.querySelector('[data-prop="cf.credentials.password"]');
+        let elDevlogEnabled = document.querySelector('[data-prop="devlog.enabled"]');
+        let elDevlogMaxLines = document.querySelector('[data-prop="devlog.maxLines"]');
+        let elFpigCredentialsMode = document.querySelector('[data-prop="fpb.credentials.mode"]');
+        let elFpigCredentialsUsername = document.querySelector('[data-prop="fpb.credentials.username"]');
+        let elFpigCredentialsPassword = document.querySelector('[data-prop="fpb.credentials.password"]');
+        let elFBchCredentialsMode = document.querySelector('[data-prop="fbch.credentials.mode"]');
+        let elFBchCredentialsUsername = document.querySelector('[data-prop="fbch.credentials.username"]');
+        let elFBchCredentialsPassword = document.querySelector('[data-prop="fbch.credentials.password"]');
+        let elSHostCredentialsMode = document.querySelector('[data-prop="shost.credentials.mode"]');
+        let elSHostCredentialsUsername = document.querySelector('[data-prop="shost.credentials.username"]');
+        let elSHostCredentialsPassword = document.querySelector('[data-prop="shost.credentials.password"]');
+        let elJtfeyCredentialsMode = document.querySelector('[data-prop="jtfey.credentials.mode"]');
+        let elJtfeyCredentialsUsername = document.querySelector('[data-prop="jtfey.credentials.username"]');
+        let elJtfeyCredentialsPassword = document.querySelector('[data-prop="jtfey.credentials.password"]');
+        let elYCoinCredentialsMode = document.querySelector('[data-prop="ycoin.credentials.mode"]');
+        let elYCoinCredentialsUsername = document.querySelector('[data-prop="ycoin.credentials.username"]');
+        let elYCoinCredentialsPassword = document.querySelector('[data-prop="ycoin.credentials.password"]');
+        let elBscadsCredentialsMode = document.querySelector('[data-prop="bscads.credentials.mode"]');
+        let elBscadsCredentialsUsername = document.querySelector('[data-prop="bscads.credentials.username"]');
+        let elBscadsCredentialsPassword = document.querySelector('[data-prop="bscads.credentials.password"]');
+
+        let elPostpone = document.querySelector('[data-prop="defaults.postponeMinutes"]');
+        let elPostponeMin = document.querySelector('[data-prop="defaults.postponeMinutes.min"]');
+        let elPostponeMax = document.querySelector('[data-prop="defaults.postponeMinutes.max"]');
+        elPostponeMin.disabled = (elPostpone.value > "0");
+        elPostponeMax.disabled = (elPostpone.value > "0");
+        if (elPostponeMin.disabled && elPostponeMax.disabled) {
+            elPostponeMin.value = elPostpone.value;
+            elPostponeMax.value = elPostpone.value;
+        }
+        elPostpone.onchange = function (e) {
+            document.querySelector('[data-prop="defaults.postponeMinutes.min"]').disabled = e.target.value > 0;
+            document.querySelector('[data-prop="defaults.postponeMinutes.max"]').disabled = e.target.value > 0;
+            if (e.target.value > 0) {
+                document.querySelector('[data-prop="defaults.postponeMinutes.min"]').value = e.target.value;
+                document.querySelector('[data-prop="defaults.postponeMinutes.max"]').value = e.target.value;
+            }
+        }
+
+        let elNextRun = document.querySelector('[data-prop="defaults.nextRun"]');
+        let elNextRunMin = document.querySelector('[data-prop="defaults.nextRun.min"]');
+        let elNextRunMax = document.querySelector('[data-prop="defaults.nextRun.max"]');
+        let elNextRunUseCountdown = document.querySelector('[data-prop="defaults.nextRun.useCountdown"]');
+        elNextRunMin.disabled = (elNextRun.value > "0");
+        elNextRunMax.disabled = (elNextRun.value > "0");
+        if (elNextRunMin.disabled && elNextRunMax.disabled) {
+            elNextRunMin.value = elNextRun.value;
+            elNextRunMax.value = elNextRun.value;
+        }
+        elNextRun.onchange = function (e) {
+            document.querySelector('[data-prop="defaults.nextRun.min"]').disabled = e.target.value > 0;
+            document.querySelector('[data-prop="defaults.nextRun.max"]').disabled = e.target.value > 0;
+            if (e.target.value > 0) {
+                document.querySelector('[data-prop="defaults.nextRun.min"]').value = e.target.value;
+                document.querySelector('[data-prop="defaults.nextRun.max"]').value = e.target.value;
+            }
+        }
+
+        let elSleepMode = document.querySelector('[data-prop="defaults.sleepMode"]');
+        let elSleepModeMin = document.querySelector('[data-prop="defaults.sleepMode.min"]');
+        let elSleepModeMax = document.querySelector('[data-prop="defaults.sleepMode.max"]');
+        elSleepModeMin.disabled = !elSleepMode.checked;
+        elSleepModeMax.disabled = !elSleepMode.checked;
+        elSleepMode.onchange = function (e) {
+            document.querySelector('[data-prop="defaults.sleepMode.min"]').disabled = !e.target.checked;
+            document.querySelector('[data-prop="defaults.sleepMode.max"]').disabled = !e.target.checked;
+        }
+
+        elCredentialsMode.disabled = !elCredentialsAutologin.checked;
+
+        elCredentialsEmail.disabled = ( (!elCredentialsAutologin.checked || elCredentialsMode.value == "2") ? true : false);
+        elCredentialsPassword.disabled = ( (!elCredentialsAutologin.checked || elCredentialsMode.value == "2") ? true : false);
+
+        elCredentialsAutologin.onchange = function (e) {
+            document.querySelector('[data-prop="cf.credentials.mode"]').disabled = !e.target.checked;
+            if (elCredentialsMode.value == "2") {
+                document.querySelector('[data-prop="cf.credentials.email"]').disabled = true;
+                document.querySelector('[data-prop="cf.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="cf.credentials.email"]').disabled = false;
+                document.querySelector('[data-prop="cf.credentials.password"]').disabled = false;
+            }
+        }
+
+        elCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="cf.credentials.email"]').disabled = true;
+                document.querySelector('[data-prop="cf.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="cf.credentials.email"]').disabled = false;
+                document.querySelector('[data-prop="cf.credentials.password"]').disabled = false;
+            }
+        }
+
+        elFpigCredentialsUsername.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
+        elFpigCredentialsPassword.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
+        elFpigCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="fpb.credentials.username"]').disabled = true;
+                document.querySelector('[data-prop="fpb.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="fpb.credentials.username"]').disabled = false;
+                document.querySelector('[data-prop="fpb.credentials.password"]').disabled = false;
+            }
+        }
+
+        elSHostCredentialsUsername.disabled = ( (elSHostCredentialsMode.value == "2") ? true : false);
+        elSHostCredentialsPassword.disabled = ( (elSHostCredentialsMode.value == "2") ? true : false);
+        elSHostCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="shost.credentials.username"]').disabled = true;
+                document.querySelector('[data-prop="shost.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="shost.credentials.username"]').disabled = false;
+                document.querySelector('[data-prop="shost.credentials.password"]').disabled = false;
+            }
+        }
+
+        elYCoinCredentialsUsername.disabled = ( (elYCoinCredentialsMode.value == "2") ? true : false);
+        elYCoinCredentialsPassword.disabled = ( (elYCoinCredentialsMode.value == "2") ? true : false);
+        elYCoinCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="ycoin.credentials.username"]').disabled = true;
+                document.querySelector('[data-prop="ycoin.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="ycoin.credentials.username"]').disabled = false;
+                document.querySelector('[data-prop="ycoin.credentials.password"]').disabled = false;
+            }
+        }
+
+        elFBchCredentialsUsername.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
+        elFBchCredentialsPassword.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
+        elFBchCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="fbch.credentials.username"]').disabled = true;
+                document.querySelector('[data-prop="fbch.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="fbch.credentials.username"]').disabled = false;
+                document.querySelector('[data-prop="fbch.credentials.password"]').disabled = false;
+            }
+        }
+
+        elJtfeyCredentialsUsername.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
+        elJtfeyCredentialsPassword.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
+        elJtfeyCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="jtfey.credentials.username"]').disabled = true;
+                document.querySelector('[data-prop="jtfey.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="jtfey.credentials.username"]').disabled = false;
+                document.querySelector('[data-prop="jtfey.credentials.password"]').disabled = false;
+            }
+        }
+
+        elBscadsCredentialsUsername.disabled = ( (elBscadsCredentialsMode.value == "2") ? true : false);
+        elBscadsCredentialsPassword.disabled = ( (elBscadsCredentialsMode.value == "2") ? true : false);
+        elBscadsCredentialsMode.onchange = function (e) {
+            if (e.target.value == "2") {
+                document.querySelector('[data-prop="bscads.credentials.username"]').disabled = true;
+                document.querySelector('[data-prop="bsdads.credentials.password"]').disabled = true;
+            } else {
+                document.querySelector('[data-prop="bscads.credentials.username"]').disabled = false;
+                document.querySelector('[data-prop="bscads.credentials.password"]').disabled = false;
+            }
+        }
+
+        elDevlogMaxLines.disabled = !elDevlogEnabled.checked;
+        elDevlogEnabled.onchange = function (e) {
+            document.querySelector('[data-prop="devlog.maxLines"]').disabled = !e.target.checked;
+        }
+    }
+}
+class UiWalletRenderer extends UiBaseRenderer {
+    legacyRenderWalletTable(data) {
+        let tableBody = '';
+
+        for(let i=0, all = data.length; i < all; i++) {
+            tableBody += '<tr class="align-middle" data-id="'+ data[i].id + '">';
+            tableBody += '<td class="align-middle">' + data[i].name + '</td>';
+            tableBody += '<td class="align-middle em-input"><input type="text" class="w-100" onfocus="this.select();" data-field="address" data-original="' + data[i].address + '" value="' + data[i].address + '"></td>';
+            tableBody += '</tr>';
+        }
+
+        document.getElementById('wallet-table-body').innerHTML = tableBody;
+    }
+}
+class UiSchedulesRenderer extends UiBaseRenderer {
+    appendEventListeners() {
+        document.querySelector('#schedules-toggler').addEventListener('change', this.onScheduleToggled.bind(this));
+    }
+
+    onScheduleToggled(e) {
+        e.stopPropagation();
+        let actionElement = e.target.tagName !== 'LABEL' ? e.target.closest('label') : e.target;
+        let otherActiveLabels = [...actionElement.parentElement.querySelectorAll('label.active')].filter(l => l.dataset.schedule != actionElement.dataset.schedule);
+        if (otherActiveLabels.length > 0) {
+            otherActiveLabels.forEach(l => l.classList.remove('active'));
+        }
+        this.toggleSchedule(actionElement.dataset.schedule);
+    }
+
+    toggleSchedule(uuid) {
+
+        if (uuid) {
+            this.selectedSchedule = uuid;
+        } else {
+            if (!this.selectedSchedule) {
+                this.selectedSchedule = 'all';
+            }
+        }
+
+        [...document.querySelectorAll('#schedule-table-body tr')].forEach((row) => {
             if (this.selectedSchedule == 'all') {
-                [...document.querySelectorAll('#console-log tr')].forEach(x => {
-                    x.classList.remove('d-none');
-                })
+                row.classList.remove('d-none');
+            } else if (row.getAttribute('data-schedule') == this.selectedSchedule) {
+                row.classList.remove('d-none');
             } else {
-                [...document.querySelectorAll('#console-log tr')].forEach(x => {
-                    if (x.getAttribute('data-schedule') == 'false' || x.getAttribute('data-schedule') == this.selectedSchedule) {
-                        x.classList.remove('d-none');
-                    } else {
-                        x.classList.add('d-none');
-                    }
-                })
+                row.classList.add('d-none');
             }
-        };
+        });
 
-        renderTBody() {
-            let rows = [];
-            manager.Schedule.getAllForCrud().forEach(sch => {
-                rows.push(this.renderRow(sch));
-            });
-            return rows.join('');
+        if (this.selectedSchedule == 'all') {
+            [...document.querySelectorAll('#console-log tr')].forEach(x => {
+                x.classList.remove('d-none');
+            })
+        } else {
+            [...document.querySelectorAll('#console-log tr')].forEach(x => {
+                if (x.getAttribute('data-schedule') == 'false' || x.getAttribute('data-schedule') == this.selectedSchedule) {
+                    x.classList.remove('d-none');
+                } else {
+                    x.classList.add('d-none');
+                }
+            })
         }
+    };
 
-        renderRow(sch) {
-            let row = 
-            `<tr data-uuid="${sch.uuid}" 
-                    data-order="${sch.order}" 
-                    data-added="${sch.added ? 'true' : 'false'}" 
-                    data-removed="false" 
-                    data-updated="false" 
-                    data-originals='${!sch.added ? JSON.stringify(sch) : ""}'>
-                <td class="row-handle"><i class="fas fa-grip-vertical"></i></td>
-                <td><div class="input-group input-group-sm color-picker colorpicker-element" style="max-width: 125px;">
-                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-square" style="color: #${sch.uuid}"></i></span></div>
-                    <input type="text" name="uuid" class="form-control" data-original-title="" value="${sch.uuid}">
-                </div></td>
-                <td><input type="text" name="name" class="form-control form-control-sm" value="${sch.name}"></td>
-                <td>
-                    <button type="button" title="Remove" class="btn btn-default btn-sm action-schedule-remove"><i class="fa fa-trash"></i></button>
-                </td>
-            </tr>`;
-            return row;
+    renderTBody() {
+        let rows = [];
+        manager.Schedule.getAllForCrud().forEach(sch => {
+            rows.push(this.renderRow(sch));
+        });
+        return rows.join('');
+    }
+
+    renderRow(sch) {
+        let row = 
+        `<tr data-uuid="${sch.uuid}" 
+                data-order="${sch.order}" 
+                data-added="${sch.added ? 'true' : 'false'}" 
+                data-removed="false" 
+                data-updated="false" 
+                data-originals='${!sch.added ? JSON.stringify(sch) : ""}'>
+            <td class="row-handle"><i class="fas fa-grip-vertical"></i></td>
+            <td><div class="input-group input-group-sm color-picker colorpicker-element" style="max-width: 125px;">
+                <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-square" style="color: #${sch.uuid}"></i></span></div>
+                <input type="text" name="uuid" class="form-control" data-original-title="" value="${sch.uuid}">
+            </div></td>
+            <td><input type="text" name="name" class="form-control form-control-sm" value="${sch.name}"></td>
+            <td>
+                <button type="button" title="Remove" class="btn btn-default btn-sm action-schedule-remove"><i class="fa fa-trash"></i></button>
+            </td>
+        </tr>`;
+        return row;
+    }
+}
+class UiSiteParameterRenderer extends UiBaseRenderer {
+    static handlers = new Map();
+
+    static registerHandler(name, handler) {
+        UiSiteParameterRenderer.handlers.set(name, handler);
+    }
+
+    static getHandler(name) {
+        const handlerClass = UiSiteParameterRenderer.handlers.get(name);
+        return handlerClass || false;
+    }
+
+    appendEventListeners() {
+        document.querySelector('#modal-site-parameters').addEventListener('click', this.onClickOnModalSiteParameter.bind(this));
+    }
+
+    onClickOnModalSiteParameter(e) {
+        const modal = document.querySelector('#modal-site-parameters');
+        let actionElement = e.target.tagName === 'I' ? e.target.parentElement : e.target;
+        if (actionElement.classList.contains('modal-save')) {
+            e.preventDefault();
+            let form = modal.querySelector('.form-container form');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            let data = this.uiRenderer.parseContainer(form);
+            $(modal).modal('hide');
         }
     }
 
-    class UiSiteParameterRenderer extends UiBaseRenderer {
-        static handlers = new Map();
+    renderFields(values) {
+        let fieldsHtml = '';
+        values.forEach( field => {
+            field.text = field.text || field.name.charAt(0).toUpperCase() + field.name.slice(1).toLowerCase().replaceAll('_', ' ');
 
-        static registerHandler(name, handler) {
-            UiSiteParameterRenderer.handlers.set(name, handler);
-        }
-
-        static getHandler(name) {
-            const handlerClass = UiSiteParameterRenderer.handlers.get(name);
-            return handlerClass || false;
-        }
-
-        appendEventListeners() {
-            document.querySelector('#modal-site-parameters').addEventListener('click', this.onClickOnModalSiteParameter.bind(this));
-        }
-
-        onClickOnModalSiteParameter(e) {
-            const modal = document.querySelector('#modal-site-parameters');
-            let actionElement = e.target.tagName === 'I' ? e.target.parentElement : e.target;
-            if (actionElement.classList.contains('modal-save')) {
-                e.preventDefault();
-                let form = modal.querySelector('.form-container form');
-                if (!form.checkValidity()) {
-                    form.reportValidity();
-                    return;
-                }
-                let data = this.uiRenderer.parseContainer(form);
-                $(modal).modal('hide');
+            switch (field.type) {
+                case 'credentials_or_autofilled': // TODO: will need to condition username/email/password!
+                    break;
+                case 'email':
+                    fieldsHtml += uiRenderer.addInputEmailHtml(field);
+                    break;
+                case 'password':
+                    fieldsHtml += uiRenderer.addInputPasswordHtml(field);
+                    break;
+                case 'checkbox':
+                    field.value = (field.value === true || field.value === 'true' || field.value === 1 || field.value === "1") ? true : false;
+                    fieldsHtml += uiRenderer.addSliderHtml(field);
+                    break;
+                case 'numberInput':
+                    fieldsHtml += uiRenderer.addInputNumberHtml(field);
+                    break;
+                case 'textInput':
+                case 'username':
+                    field.required = 'true';
+                default:
+                    fieldsHtml += uiRenderer.addInputTextHtml(field);
+                    break;
             }
-        }
+        });
+        const modalSiteParameters = document.getElementById('modal-site-parameters');
+        modalSiteParameters.querySelector('.form-container form').innerHTML = fieldsHtml;
+    }
 
-        renderFields(values) {
-            let fieldsHtml = '';
-            values.forEach( field => {
-                field.text = field.text || field.name.charAt(0).toUpperCase() + field.name.slice(1).toLowerCase().replaceAll('_', ' ');
+    renderEditSiteParameters(args) { // { site_id: 'x' }
+        const site = manager.Site.getById(args.site_id);
 
-                switch (field.type) {
-                    case 'credentials_or_autofilled': // TODO: will need to condition username/email/password!
-                        break;
-                    case 'email':
-                        fieldsHtml += uiRenderer.addInputEmailHtml(field);
-                        break;
-                    case 'password':
-                        fieldsHtml += uiRenderer.addInputPasswordHtml(field);
-                        break;
-                    case 'checkbox':
-                        field.value = (field.value === true || field.value === 'true' || field.value === 1 || field.value === "1") ? true : false;
-                        fieldsHtml += uiRenderer.addSliderHtml(field);
-                        break;
-                    case 'numberInput':
-                        fieldsHtml += uiRenderer.addInputNumberHtml(field);
-                        break;
-                    case 'textInput':
-                    case 'username':
-                        field.required = 'true';
-                    default:
-                        fieldsHtml += uiRenderer.addInputTextHtml(field);
-                        break;
-                }
-            });
-            const modalSiteParameters = document.getElementById('modal-site-parameters');
-            modalSiteParameters.querySelector('.form-container form').innerHTML = fieldsHtml;
-        }
+        const siteParameters = site.getSiteParameters(); // async? for external site parameters that need to be loaded from other stg...
 
-        renderEditSiteParameters(args) { // { site_id: 'x' }
-            const site = manager.Site.getById(args.site_id);
-
-            const siteParameters = site.getSiteParameters(); // async? for external site parameters that need to be loaded from other stg...
-
-            if (!siteParameters) {
-                console.warn(`Site ${site.id} ${site.name} does not require parameters setup.`);
-                return;
-            }
-
-            if (!siteParameters.handler) {
-                console.warn(`Handler name is missing`);
-                return;
-            }
-
-            const handlerClass = UiSiteParameterRenderer.getHandler(siteParameters.handler);
-            if (!handlerClass) {
-                console.warn(`Invalid handler class name: ${siteParameters.handler}`);
-                return;
-            }
-
-            const handler = new handlerClass(siteParameters.values);
-            handler.preRender();
-
-            let fields = [
-                { name: 'AUTO_UPDATE_PROMO_CODES', type: 'checkbox', value: 'false' },
-                { name: 'MAX_ROLLS_PER_VISIT', type: 'numberInput', value: 1, min: 0 },
-                { name: 'AUTO_LOGIN', type: 'checkbox', value: 'true' },
-                { name: 'EMAIL', type: 'email', value: '' },
-                { name: 'PASSWORD', type: 'password', value: '' }
-            ];
-
-            fields.forEach( (f, idx) => {
-                if (f.order == null || f.order == undefined) {
-                    f.order = idx;
-                }
-            });
-
-            let values = persistence.load(`site_parameters_${args.site_id}`, true) || [];
-            for(const field of fields) {
-                let vIdx = values.findIndex(v => v.name == field.name);
-                if (vIdx > -1) {
-                    field.value = values[vIdx].value;
-                }
-            }
-            values = fields;
-
-            this.renderFields(values);
-
-            handler.postRender();
+        if (!siteParameters) {
+            console.warn(`Site ${site.id} ${site.name} does not require parameters setup.`);
             return;
         }
 
+        if (!siteParameters.handler) {
+            console.warn(`Handler name is missing`);
+            return;
+        }
+
+        const handlerClass = UiSiteParameterRenderer.getHandler(siteParameters.handler);
+        if (!handlerClass) {
+            console.warn(`Invalid handler class name: ${siteParameters.handler}`);
+            return;
+        }
+
+        const handler = new handlerClass(siteParameters.values);
+        handler.preRender();
+
+        let fields = [
+            { name: 'AUTO_UPDATE_PROMO_CODES', type: 'checkbox', value: 'false' },
+            { name: 'MAX_ROLLS_PER_VISIT', type: 'numberInput', value: 1, min: 0 },
+            { name: 'AUTO_LOGIN', type: 'checkbox', value: 'true' },
+            { name: 'EMAIL', type: 'email', value: '' },
+            { name: 'PASSWORD', type: 'password', value: '' }
+        ];
+
+        fields.forEach( (f, idx) => {
+            if (f.order == null || f.order == undefined) {
+                f.order = idx;
+            }
+        });
+
+        let values = persistence.load(`site_parameters_${args.site_id}`, true) || [];
+        for(const field of fields) {
+            let vIdx = values.findIndex(v => v.name == field.name);
+            if (vIdx > -1) {
+                field.value = values[vIdx].value;
+            }
+        }
+        values = fields;
+
+        this.renderFields(values);
+
+        handler.postRender();
+        return;
     }
 
-    class UiCfSiteParametersHandler extends UiSiteParameterRenderer {
-        constructor(values) {
-            this.values = {
-                rollsPerVisit: 1,
-                tryGetCodes: true,
-                autologin: false,
-                credentialsMode: '2',
-                email: null,
-                password: null,
-            }
-            Object.assign(this.values, values);
+}
+class UiCfSiteParametersHandler extends UiSiteParameterRenderer {
+    constructor(values) {
+        this.values = {
+            rollsPerVisit: 1,
+            tryGetCodes: true,
+            autologin: false,
+            credentialsMode: '2',
+            email: null,
+            password: null,
         }
-
-        render() {
-            fieldValues = this.values;
-            let disableModeSelect = (fieldValues['autologin'].value !== true);
-            let disableEmailAndPassword = (fieldValues['autologin'].value !== true || fieldValues['credentialsMode'].value == '2');
-            let html = '';
-            html += '         <div class="card m-1 collapsed-card"><div class="card-header">CryptosFaucets<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-            html += '           <div class="card-body px-4" style="display: none;">';
-            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
-            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.rollOnce" ><span class="slider round"></span></label> Roll once per round </div>';
-            html += `          <div><label class="switch"><input type="checkbox" data-prop="cf.autologin"><span class="slider round"></span></label> Autologin when necessary</div>`;
-            html += `           <select class="form-control" data-prop="cf.credentials.mode" ${disableModeSelect ? 'disabled' : ''}>`;
-            html += '            <option value="1">Use Email and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-            html += '           </select>';
-            html += '           <label class="control-label">E-Mail</label>';
-            html += `           <input maxlength="200" type="text" data-prop="cf.credentials.email" required="required" ${disableEmailAndPassword ? 'disabled=' : ''} class="form-control" placeholder="Email address..."/>`;
-            html += '           <label class="control-label">Password</label>';
-            html += `           <input maxlength="200" type="password" data-prop="cf.credentials.password" required="required" ${disableEmailAndPassword ? 'disabled=' : ''} class="form-control" placeholder="Password..."/>`;
-            html += '           <label class="control-label">Hours to wait If IP is banned:</label>';
-            html += '           <select class="form-control" data-prop="cf.sleepHoursIfIpBan">';
-            html += '            <option value="0">Disabled</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="24">24</option><option value="26">26</option>';
-            html += '           </select>';
-            html += '       </div></div>';
-        }
-
-        preRender() {
-
-        }
-
-        postRender() {
-            let elCredentialsAutologin = document.querySelector('[name="autologin"]');
-            let elCredentialsMode = document.querySelector('[name="credentialsMode"]');
-
-            elCredentialsAutologin.addEventListener('change', function (e) {
-                let form = e.target.closest('form');
-                form.querySelector('[name="credentialsMode"]').disabled = !e.target.checked;
-                form.querySelector('[name="email"]').disabled = !e.target.checked;
-                form.querySelector('[name="password"]').disabled = !e.target.checked;
-            });
-
-            elCredentialsMode.addEventListener('change', function (e) {
-                let form = e.target.closest('form');
-                form.querySelector('[name="email"]').disabled = (e.target.value == '2');
-                form.querySelector('[name="password"]').disabled = (e.target.value == '2');
-            });
-        }
+        Object.assign(this.values, values);
     }
 
-    class UiRenderer {
-        constructor () {
-            this.sites = new UiSitesRenderer(this);
-            this.siteParameters = new UiSiteParameterRenderer(this);
-            this.promos = new UiPromosRenderer(this);
-            this.config = new UiConfigRenderer(this);
-            this.wallet = new UiWalletRenderer(this);
-            this.schedules = new UiSchedulesRenderer(this);
-            this.selectedSchedule = null;
-        }
-
-        initialize() {
-            this.appendCSS();
-        }
-
-        toast(msg) {
-            toastr["info"](msg);
-        }
-
-        openModal(id, values = null) {
-            const dlg = document.querySelector('#modal-dlg');
-            dlg.querySelectorAll(".modal-content").forEach(x => x.classList.add('d-none'));
-            switch (id) {
-                case 'modal-ereport':
-                case 'modal-config':
-                case 'modal-site':
-                    document.getElementById("target-spinner").innerHTML = JSON.stringify({id: id, siteId: values});
-                    document.getElementById("modal-spinner").classList.remove("d-none");
-                    dlg.querySelector('div').classList.add('modal-lg');
-                    break;
-                case 'modal-add-site':
-                    this.sites.renderAddExternalSite();
-                    document.getElementById(id).classList.remove("d-none");
-                    dlg.querySelector('div').classList.remove('modal-lg');
-                    break;
-                case 'modal-slAlert':
-                    shortlinkAlert.load(id);
-                    dlg.querySelector('div').classList.add('modal-lg');
-                    break;
-                case 'modal-schedules':
-                    document.getElementById(id).querySelector('table tbody').innerHTML = this.schedules.renderTBody();
-                    this.appendColorPickers('.color-picker');
-                    dlg.querySelector('div').classList.remove('modal-lg');
-                    document.getElementById(id).classList.remove("d-none");
-                    break;
-                case 'modal-assign-schedule':
-                    this.sites.renderAssignScheduleToSite(values);
-                    document.getElementById(id).classList.remove("d-none");
-                    dlg.querySelector('div').classList.remove('modal-lg');
-                    break;
-                case 'modal-site-parameters':
-                    this.siteParameters.renderEditSiteParameters(values);
-                    document.getElementById(id).classList.remove("d-none");
-                    dlg.querySelector('div').classList.remove('modal-lg');
-                    break;
-                default:
-                    dlg.querySelector('div').classList.add('modal-lg');
-                    document.getElementById(id).classList.remove("d-none");
-                    break;
-            }
-
-            $(dlg).modal('show');
-        }
-
-        appendEventListeners() {
-            for (const renderer in this) {
-                if (this[renderer] && typeof this[renderer].appendEventListeners === 'function') {
-                    this[renderer].appendEventListeners();
-                }
-            }
-            $('[data-toggle="tooltip"]').tooltip({
-                trigger: 'hover'
-            });
-        }
-
-        appendCSS() {
-            let css = document.createElement('style');
-            css.innerHTML = `
-                td.em-input {
-                    padding-top: 0;
-                    padding-bottom: 0;
-                }
-                pre {
-                    height: 145px;
-                    width:100%;
-                    white-space: pre-wrap;
-                    padding-left: 1em;
-                }
-                pre span {
-                    display: block;
-                }
-                .row-schedule-handle {
-
-                }
-                .grabbable:not(.d-none):not(.in-use) {
-                    cursor: move;
-                    cursor: grab;
-                    cursor: -moz-grab;
-                    cursor: -webkit-grab;
-                }
-
-                .grabbable:not(.d-none):not(.in-use):active {
-                    cursor: grabbing;
-                    cursor: -moz-grabbing;
-                    cursor: -webkit-grabbing;
-                }
-
-                .row-handle {
-                    cursor: grab;
-                }
-
-                .dropdown-item {
-                    cursor: pointer;
-                }
-
-                #schedule-table th,td {
-                    vertical-align: middle;
-                    padding-top: .25rem!important;
-                    padding-bottom: .25rem!important;
-                }
-
-                #schedule-table-body td.em-input input[readonly] {
-                    background-color:transparent;
-                    border: 0;
-                    font-size: 1em;
-                }
-
-                td[data-field="displayName"] .input-group-prepend .input-group-text {
-                    background-color: transparent;
-                    border-color: transparent;
-                    font-size: 1em;
-                }
-
-                .custom-switch input,label {
-                    cursor: pointer;
-                }
-                `;
-            document.head.appendChild(css);
-        }
-
-        addLegacySliderHtml(propName, propValue, text) {
-            return `<label class="switch"><input type="checkbox" ${propName}="${propValue}" data-original="1"><span class="slider round"></span></label> ${text}`;
-        }
-
-        addSliderHtml(field) {
-            const rndStr = helpers.randomString(8);
-            return `<div class="form-group"><div class="custom-control custom-switch custom-switch-off-danger custom-switch-on-success">
-                    <input type="checkbox" class="custom-control-input" name="${field.name}" id="${rndStr}" ${field.value ? 'checked' : ''}>
-                    <label class="custom-control-label" for="${rndStr}">${field.text}</label>
-                    </div></div>`;
-        }
-
-        addInputEmailHtml(field) {
-            const rndStr = helpers.randomString(8);
-            const pattern = "[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,3}$";
-            return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
-            <div class="col-sm-8">
-            <input type="email" class="form-control" required id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" pattern="${pattern}" value="${field.value || ''}">
-            </div></div>`;
-
-        }
-
-        addInputPasswordHtml(field) {
-            const rndStr = helpers.randomString(8);
-            return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
-            <div class="col-sm-8">
-            <input type="password" min="${field.min !== undefined ? field.min : ''}" min="${field.max !== undefined ? field.max : ''}" class="form-control" required id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" value="${field.value || ''}">
-            </div></div>`;
-        }
-
-        addInputTextHtml(field) {
-            const rndStr = helpers.randomString(8);
-            return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
-            <div class="col-sm-8">
-            <input type="text" class="form-control" required="${field.required || 'false'}" id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" value="${field.value || ''}">
-            </div></div>`;
-        }
-
-        addInputNumberHtml(field) {
-            const rndStr = helpers.randomString(8);
-            return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
-            <div class="col-sm-8">
-            <input type="number" step="${field.step || 1}" class="form-control" required id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" value="${field.value || ''}">
-            </div></div>`;
-        }
-
-        parseContainer(container) {
-            let obj = {};
-            Object.assign(obj, container.dataset);
-            let inputs = container.querySelectorAll('input, select');
-            inputs.forEach(function (input) {
-                if (input.type == 'checkbox') {
-                    obj[input.name] = input.checked ? 'true' : 'false';
-                } else if (input.type == 'number') {
-                    obj[input.name] = +input.value;
-                } else {
-                    obj[input.name] = input.value;
-                }
-            });
-
-            for (const p in obj) { // type converter. TODO: add int, float, etc.
-                if (obj[p] === 'true') { obj[p] = true }
-                if (obj[p] === 'false') { obj[p] = false }
-
-                if (p == 'uuid') {
-                    obj[p] = obj[p].toLowerCase().replace('#', '');
-                }
-                if (p == 'originals') {
-                    try {
-                        obj[p] = JSON.parse(obj[p]);
-                    } catch (err) { delete obj[p]; }
-                }
-            }
-            return obj;
-        }
-
-        parseTable(table) {
-            let rows = table.querySelectorAll('tbody tr');
-            let data = [];
-            rows.forEach( (r, idx) => {
-                let obj = this.parseContainer(r);
-                obj.order = '' + idx; // fix order
-                if (!(obj.added && obj.removed)) { // skip if it was just added and removed
-                    data.push(obj);
-                }
-            });
-
-            return data;
-        }
-
-        appendColorPickers(selector) {
-            $(selector).each(function () {
-                $(this).colorpicker();
-                $(this).on('colorpickerChange', function(event) {
-                    $(event.target.querySelector('.fa-square')).css('color', event.color.toString());
-                });
-            });
-        }
+    render() {
+        fieldValues = this.values;
+        let disableModeSelect = (fieldValues['autologin'].value !== true);
+        let disableEmailAndPassword = (fieldValues['autologin'].value !== true || fieldValues['credentialsMode'].value == '2');
+        let html = '';
+        html += '         <div class="card m-1 collapsed-card"><div class="card-header">CryptosFaucets<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
+        html += '           <div class="card-body px-4" style="display: none;">';
+        html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
+        html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.rollOnce" ><span class="slider round"></span></label> Roll once per round </div>';
+        html += `          <div><label class="switch"><input type="checkbox" data-prop="cf.autologin"><span class="slider round"></span></label> Autologin when necessary</div>`;
+        html += `           <select class="form-control" data-prop="cf.credentials.mode" ${disableModeSelect ? 'disabled' : ''}>`;
+        html += '            <option value="1">Use Email and Password</option><option value="2">Filled by 3rd party software/extension</option>';
+        html += '           </select>';
+        html += '           <label class="control-label">E-Mail</label>';
+        html += `           <input maxlength="200" type="text" data-prop="cf.credentials.email" required="required" ${disableEmailAndPassword ? 'disabled=' : ''} class="form-control" placeholder="Email address..."/>`;
+        html += '           <label class="control-label">Password</label>';
+        html += `           <input maxlength="200" type="password" data-prop="cf.credentials.password" required="required" ${disableEmailAndPassword ? 'disabled=' : ''} class="form-control" placeholder="Password..."/>`;
+        html += '           <label class="control-label">Hours to wait If IP is banned:</label>';
+        html += '           <select class="form-control" data-prop="cf.sleepHoursIfIpBan">';
+        html += '            <option value="0">Disabled</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="24">24</option><option value="26">26</option>';
+        html += '           </select>';
+        html += '       </div></div>';
     }
+
+    preRender() {
+
+    }
+
+    postRender() {
+        let elCredentialsAutologin = document.querySelector('[name="autologin"]');
+        let elCredentialsMode = document.querySelector('[name="credentialsMode"]');
+
+        elCredentialsAutologin.addEventListener('change', function (e) {
+            let form = e.target.closest('form');
+            form.querySelector('[name="credentialsMode"]').disabled = !e.target.checked;
+            form.querySelector('[name="email"]').disabled = !e.target.checked;
+            form.querySelector('[name="password"]').disabled = !e.target.checked;
+        });
+
+        elCredentialsMode.addEventListener('change', function (e) {
+            let form = e.target.closest('form');
+            form.querySelector('[name="email"]').disabled = (e.target.value == '2');
+            form.querySelector('[name="password"]').disabled = (e.target.value == '2');
+        });
+    }
+}
+class UiRenderer {
+    constructor () {
+        this.sites = new UiSitesRenderer(this);
+        this.siteParameters = new UiSiteParameterRenderer(this);
+        this.promos = new UiPromosRenderer(this);
+        this.config = new UiConfigRenderer(this);
+        this.wallet = new UiWalletRenderer(this);
+        this.schedules = new UiSchedulesRenderer(this);
+        this.selectedSchedule = null;
+    }
+
+    initialize() {
+        this.appendCSS();
+    }
+
+    toast(msg, msgType = "info") {
+        toastr[msgType](msg);
+    }
+
+    openModal(id, values = null) {
+        const dlg = document.querySelector('#modal-dlg');
+        dlg.querySelectorAll(".modal-content").forEach(x => x.classList.add('d-none'));
+        switch (id) {
+            case 'modal-ereport':
+            case 'modal-config':
+            case 'modal-site':
+                document.getElementById("target-spinner").innerHTML = JSON.stringify({id: id, siteId: values});
+                document.getElementById("modal-spinner").classList.remove("d-none");
+                dlg.querySelector('div').classList.add('modal-lg');
+                break;
+            case 'modal-add-site':
+                this.sites.renderAddExternalSite();
+                document.getElementById(id).classList.remove("d-none");
+                dlg.querySelector('div').classList.remove('modal-lg');
+                break;
+            case 'modal-slAlert':
+                shortlinkAlert.load(id);
+                dlg.querySelector('div').classList.add('modal-lg');
+                break;
+            case 'modal-schedules':
+                document.getElementById(id).querySelector('table tbody').innerHTML = this.schedules.renderTBody();
+                this.appendColorPickers('.color-picker');
+                dlg.querySelector('div').classList.remove('modal-lg');
+                document.getElementById(id).classList.remove("d-none");
+                break;
+            case 'modal-assign-schedule':
+                this.sites.renderAssignScheduleToSite(values);
+                document.getElementById(id).classList.remove("d-none");
+                dlg.querySelector('div').classList.remove('modal-lg');
+                break;
+            case 'modal-site-parameters':
+                this.siteParameters.renderEditSiteParameters(values);
+                document.getElementById(id).classList.remove("d-none");
+                dlg.querySelector('div').classList.remove('modal-lg');
+                break;
+            default:
+                dlg.querySelector('div').classList.add('modal-lg');
+                document.getElementById(id).classList.remove("d-none");
+                break;
+        }
+
+        $(dlg).modal('show');
+    }
+
+    appendEventListeners() {
+        for (const renderer in this) {
+            if (this[renderer] && typeof this[renderer].appendEventListeners === 'function') {
+                this[renderer].appendEventListeners();
+            }
+        }
+        $('[data-toggle="tooltip"]').tooltip({
+            trigger: 'hover'
+        });
+    }
+
+    appendCSS() {
+        let css = document.createElement('style');
+        css.innerHTML = `
+            td.em-input {
+                padding-top: 0;
+                padding-bottom: 0;
+            }
+            pre {
+                height: 145px;
+                width:100%;
+                white-space: pre-wrap;
+                padding-left: 1em;
+            }
+            pre span {
+                display: block;
+            }
+            .row-schedule-handle {
+
+            }
+            .grabbable:not(.d-none):not(.in-use) {
+                cursor: move;
+                cursor: grab;
+                cursor: -moz-grab;
+                cursor: -webkit-grab;
+            }
+
+            .grabbable:not(.d-none):not(.in-use):active {
+                cursor: grabbing;
+                cursor: -moz-grabbing;
+                cursor: -webkit-grabbing;
+            }
+
+            .row-handle {
+                cursor: grab;
+            }
+
+            .dropdown-item {
+                cursor: pointer;
+            }
+
+            #schedule-table th,td {
+                vertical-align: middle;
+                padding-top: .25rem!important;
+                padding-bottom: .25rem!important;
+            }
+
+            #schedule-table-body td.em-input input[readonly] {
+                background-color:transparent;
+                border: 0;
+                font-size: 1em;
+            }
+
+            td[data-field="displayName"] .input-group-prepend .input-group-text {
+                background-color: transparent;
+                border-color: transparent;
+                font-size: 1em;
+            }
+
+            .custom-switch input,label {
+                cursor: pointer;
+            }
+            `;
+        document.head.appendChild(css);
+    }
+
+    addLegacySliderHtml(propName, propValue, text) {
+        return `<label class="switch"><input type="checkbox" ${propName}="${propValue}" data-original="1"><span class="slider round"></span></label> ${text}`;
+    }
+
+    addSliderHtml(field) {
+        const rndStr = helpers.randomString(8);
+        return `<div class="form-group"><div class="custom-control custom-switch custom-switch-off-danger custom-switch-on-success">
+                <input type="checkbox" class="custom-control-input" name="${field.name}" id="${rndStr}" ${field.value ? 'checked' : ''}>
+                <label class="custom-control-label" for="${rndStr}">${field.text}</label>
+                </div></div>`;
+    }
+
+    addInputEmailHtml(field) {
+        const rndStr = helpers.randomString(8);
+        const pattern = "[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,3}$";
+        return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
+        <div class="col-sm-8">
+        <input type="email" class="form-control" required id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" pattern="${pattern}" value="${field.value || ''}">
+        </div></div>`;
+
+    }
+
+    addInputPasswordHtml(field) {
+        const rndStr = helpers.randomString(8);
+        return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
+        <div class="col-sm-8">
+        <input type="password" min="${field.min !== undefined ? field.min : ''}" min="${field.max !== undefined ? field.max : ''}" class="form-control" required id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" value="${field.value || ''}">
+        </div></div>`;
+    }
+
+    addInputTextHtml(field) {
+        const rndStr = helpers.randomString(8);
+        return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
+        <div class="col-sm-8">
+        <input type="text" class="form-control" required="${field.required || 'false'}" id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" value="${field.value || ''}">
+        </div></div>`;
+    }
+
+    addInputNumberHtml(field) {
+        const rndStr = helpers.randomString(8);
+        return `<div class="form-group row"><label for="${rndStr}" class="col-sm-4 col-form-label">${field.text}</label>
+        <div class="col-sm-8">
+        <input type="number" step="${field.step || 1}" class="form-control" required id="${rndStr}" placeholder="${field.placeholder || ' '}" name="${field.name}" value="${field.value || ''}">
+        </div></div>`;
+    }
+
+    parseContainer(container) {
+        let obj = {};
+        Object.assign(obj, container.dataset);
+        let inputs = container.querySelectorAll('input, select');
+        inputs.forEach(function (input) {
+            if (input.type == 'checkbox') {
+                obj[input.name] = input.checked ? 'true' : 'false';
+            } else if (input.type == 'number') {
+                obj[input.name] = +input.value;
+            } else {
+                obj[input.name] = input.value;
+            }
+        });
+
+        for (const p in obj) { // type converter. TODO: add int, float, etc.
+            if (obj[p] === 'true') { obj[p] = true }
+            if (obj[p] === 'false') { obj[p] = false }
+
+            if (p == 'uuid') {
+                obj[p] = obj[p].toLowerCase().replace('#', '');
+            }
+            if (p == 'originals') {
+                try {
+                    obj[p] = JSON.parse(obj[p]);
+                } catch (err) { delete obj[p]; }
+            }
+        }
+        return obj;
+    }
+
+    parseTable(table) {
+        let rows = table.querySelectorAll('tbody tr');
+        let data = [];
+        rows.forEach( (r, idx) => {
+            let obj = this.parseContainer(r);
+            obj.order = '' + idx; // fix order
+            if (!(obj.added && obj.removed)) { // skip if it was just added and removed
+                data.push(obj);
+            }
+        });
+
+        return data;
+    }
+
+    appendColorPickers(selector) {
+        $(selector).each(function () {
+            $(this).colorpicker();
+            $(this).on('colorpickerChange', function(event) {
+                $(event.target.querySelector('.fa-square')).css('color', event.color.toString());
+            });
+        });
+    }
+}
 
     class EventEmitter {
         constructor() {
@@ -5826,2313 +5831,2341 @@
 
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms || 3000));
 
-    class Parsers {
-        static innerText(elm) { // '0.12341234' => '0.12341234'
-            try {
-                return elm.innerText;
-            } catch (err) { }
-        }
-        static trimNaNs(elm) { // 'You won 0.12341234 TRX' => '0.12341234'
-            try {
-                return elm.innerText.replace(/[^\d.-]/g, '');
-            } catch (err) { }
-        }
-        static splitAndIdxTrimNaNs(elm, options) { // '17.96 Coins (17.50 + 0.46)' => 17.96
-            try {
-                return elm.innerText.split(options.splitter)[options.idx].replace(/[^\d.-]/g, '');
-            } catch (err) { }
-        }
-        static innerTextIntToFloat(elm) { // 'You won 1234 satoshis' => 0.00001234
-            try {
-                let sats = elm.innerText.replace(/\D/g, '');
-                return sats / 100000000;
-            } catch (err) { }
-        }
-        static innerTextJoinedToInt(elm) { // '7|2|9|6' => 7296
-            try {
-                return parseInt([... elm].map( x => x.innerText).join(''));
-            } catch (err) { }
-        }
-        static stormGainCountdown(elm) { // '3:01:01' => 120000
-            try {
-                let timeLeft = elm.innerText.split(':');
-                if (timeLeft[0] == 'Synchronizing') {
-                }
-
-                if(timeLeft.length === 3) {
-                    return parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
-                }
-            } catch (err) {
-                return null;
-            }
-        }
-        static kingBizCountdown(elm) { // '4|2' => 42
-            try {
-                let itms = elm.querySelectorAll('.flip-clock-active .up');
-                if (itms.length > 1 && itms[0].isVisible() && itms[1].isVisible()) {
-                    return parseInt([itms[0].innerText, itms[1].innerText].join(''));
-                }
-            } catch (err) {
-                return null;
-            }
-        }
-        static freeGrcCountdown(elm) { // 'Wait for 53:31 before next roll' => 53
-            try {
-                let val = elm.innerText.split(':')[0];
-                val = val.replace(/[^\d.-]/g, '');
-                return parseInt(val);
-            } catch (err) {
-                return null;
-            }
-        }
-        static bestChangeCountdown(elm) { // '00:58:35' => 58
-            try {
-                if (elm.value) {
-                    let timeLeft = elm.value.split(':');
-                    if (timeLeft.length > 1) {
-                        return parseInt(timeLeft[1]);
-                    }
-                }
-            } catch (err) {
-                return null;
-            }
-        }
-        static freeEthereumIoClaimed(elm) { // 'You won 0.12341234 TRX and rolled number 7623' => 0.12341234
-            try {
-                let line = elm.innerHTML;
-                let idx = line.search(/0\./);
-                return parseFloat(line.slice(idx, idx + 10));
-            } catch (err) { }
-        }
-        static bfBoxClaimed(elm) {
-            try {
-                let currency = elm.querySelector('.free-box__withdraw-currency').innerText;
-                let val = elm.querySelector('.free-box__need-sum').innerText.replace(/ /g,'').split('/')[1];
-
-                if (currency == 'Satoshi') {
-                    val = val/100000000;
-                }
-                return val;
-            } catch (err) {
-                return null;
-            }
-        }
-        static g8ClaimsLeft(elm) {
-            try {
-                if (elm.innerText.includes('\nYou have ')) { // 'Claim 183848 satoshi (0.00012 USD) every 20 Seconds\nYou have 70 claims left today.'
-                    let val = elm.innerText.split('\nYou have ')[1].split(' ')[0];
-                    return val;
-                } else {
-                    return null;
-                }
-            } catch (err) {
-                return null;
-            }
-        }
-        static cbgClaimed(elm) {
-            try {
-                if (elm.innerText.includes('was sent to')) { //?? was sent to you on...
-                    let val = elm.innerText.trim().split(' ')[0];
-                    if (elm.innerText.includes('oshi') || elm.innerText.includes('gwei')) {
-                        val = val/100000000;
-                    }
-                    return val;
-                } else {
-                    return null;
-                }
-            } catch (err) {
-                return null;
-            }
-        }
-        static dutchysClaimed(elm) { // 'You Won :101  DUTCHY + 20 XP' => 101
-            try {
-                let splitted = elm.innerText.split('DUTCHY');
-                return splitted[0].replace(/[^\d.-]/g, '');
-            } catch (err) { shared.devlog(`@Parsers.dutchysClaimed, with element [${elm}] Error: ${err}`); }
-        }
-        static dutchysClaimedToFloat(elm) { // 'You Won :22437 ADA + 100 XP' => 0.00022437
-            try {
-                let sats = elm.innerText.split('+');
-                sats = sats[0].replace(/\D/g, '');
-                return sats / 100000000;
-            } catch (err) { shared.devlog(`@Parsers.dutchysClaimedToFloat, with element [${elm}] Error: ${err}`); }
-        }
-        static splitAndIdxToInt(elm, options) { // '26 Minutes 23' w/spliiter='Minutes' => 26
-            try {
-                return parseInt(elm.innerText.split(options.splitter)[options.idx].trim());
-            } catch (err) { shared.devlog(`Error @Parsers.splitAndIdxToInt: ${err}`); }
-        }
-        static fromTextTimer(elm) { // '0 hours 11 minutes 1 seconds' => 12 minutes
-            try {
-                let hours, minutes;
-                hours = +elm.innerText.split(' hours')[0].trim();
-                minutes = +elm.innerText.split('hours ')[1].split('minutes')[0].trim();
-                return hours * 60 + minutes + 1;
-            } catch (err) { shared.devlog(`Error @Parsers.splitAndIdxToInt: ${err}`); }
-        }
-    }
-
     class CrawlerWidget {
-        constructor(params) {
-            if (!params || !params.selector) {
-                throw new Error('CrawlerWidget requires a selector parameter');
-            }
-            this.context = this.context || document;
-            Object.assign(this, params);
+    constructor(params) {
+        if (!params || !params.selector) {
+            throw new Error('CrawlerWidget requires a selector parameter');
         }
-
-        get isUserFriendly() {
-            this.element = this.context.isUserFriendly(this.selector);
-            return this.element;
-        }
+        this.context = this.context || document;
+        Object.assign(this, params);
     }
 
-    class ReadableWidget extends CrawlerWidget {
-        constructor(params) {
-            if (params && !params.parser) {
-                params.parser = Parsers.innerText; //default parser
-            }
-            super(params);
-        }
+    get isUserFriendly() {
+        this.element = this.context.isUserFriendly(this.selector);
+        return this.element;
+    }
+}
 
-        get value() {
-            if (this.isUserFriendly) {
-                return this.parser(this.element, this.options);
-            } else {
-                return '';
-            }
+class ReadableWidget extends CrawlerWidget {
+    constructor(params) {
+        if (params && !params.parser) {
+            params.parser = Parsers.innerText; //default parser
         }
+        super(params);
     }
 
-    class TextboxWidget extends CrawlerWidget {
-        get value() {
-            if (!this.isUserFriendly) {
-                return '';
-            }
-            return this.element.value;
-        }
-
-        set value(newValue) {
-            if (!this.isUserFriendly) {
-                return '';
-            }
-            this.element.value = newValue;
+    get value() {
+        if (this.isUserFriendly) {
+            return this.parser(this.element, this.options);
+        } else {
             return '';
         }
     }
+}
 
-    class ButtonWidget extends CrawlerWidget {
+class TextboxWidget extends CrawlerWidget {
+    get value() {
+        if (!this.isUserFriendly) {
+            return '';
+        }
+        return this.element.value;
+    }
 
-        click() {
-            if (this.isUserFriendly) {
-                this.element.click();
-                return Promise.resolve(true);
+    set value(newValue) {
+        if (!this.isUserFriendly) {
+            return '';
+        }
+        this.element.value = newValue;
+        return '';
+    }
+}
+
+class ButtonWidget extends CrawlerWidget {
+
+    click() {
+        if (this.isUserFriendly) {
+            this.element.click();
+            return Promise.resolve(true);
+        } else {
+        }
+    }
+}
+
+class SubmitWidget extends CrawlerWidget {
+    click() {
+        if (this.isUserFriendly) {
+            let frm = this.element;
+            while(frm.nodeName != 'FORM' && frm.nodeName != null) {
+                frm = frm.parentElement;
+            }
+            if (frm.nodeName == 'FORM') {
+                frm.submit();
             } else {
+                return;
             }
+            return Promise.resolve(true);
+        } else {
         }
     }
+}
 
-    class SubmitWidget extends CrawlerWidget {
-        click() {
-            if (this.isUserFriendly) {
-                let frm = this.element;
-                while(frm.nodeName != 'FORM' && frm.nodeName != null) {
-                    frm = frm.parentElement;
-                }
-                if (frm.nodeName == 'FORM') {
-                    frm.submit();
-                } else {
-                    return;
-                }
-                return Promise.resolve(true);
-            } else {
-            }
+class CountdownWidget extends CrawlerWidget {
+    constructor(params) {
+        if (params && !params.parser) {
+            params.parser = Parsers.innerText; //default parser
         }
+        super(params);
     }
 
-    class CountdownWidget extends CrawlerWidget {
-        constructor(params) {
-            if (params && !params.parser) {
-                params.parser = Parsers.innerText; //default parser
-            }
-            super(params);
-        }
-
-        get timeLeft() {
-            if (this.isUserFriendly) {
-                return this.parser(this.element, this.options);
-            } else {
-                throw new Error(`CountdownWidget (selector: '${this.selector}') cannot be read`);
-            }
+    get timeLeft() {
+        if (this.isUserFriendly) {
+            return this.parser(this.element, this.options);
+        } else {
+            throw new Error(`CountdownWidget (selector: '${this.selector}') cannot be read`);
         }
     }
+}
 
-    class CaptchaWidget extends CrawlerWidget {
-        constructor(params) {
-            super(params);
-        }
-
-        solve() { return true; }
-
-        async isSolved() { return false; }
+class Parsers {
+    static innerText(elm) { // '0.12341234' => '0.12341234'
+        try {
+            return elm.innerText;
+        } catch (err) { }
     }
-
-    class HCaptchaWidget extends CaptchaWidget {
-        constructor(params) {
-            let defaultParams = {
-                selector: '.h-captcha > iframe',
-                waitMs: [1000, 5000],
-                timeoutMs: 4 * 60 * 1000
-            };
-            for (let p in params) {
-                defaultParams[p] = params[p];
-            }
-            super(defaultParams);
-        }
-
-        async isSolved() {
-            return wait().then( () => {
-                if (this.isUserFriendly && this.element.hasAttribute('data-hcaptcha-response') && this.element.getAttribute('data-hcaptcha-response').length > 0) {
-                    return Promise.resolve(true);
-                }
-                return this.isSolved();
-            });
-        }
+    static trimNaNs(elm) { // 'You won 0.12341234 TRX' => '0.12341234'
+        try {
+            return elm.innerText.replace(/[^\d.-]/g, '');
+        } catch (err) { }
     }
-
-    class ImageProcessor {
-        constructor(img) {
-            this._img = img;
-        }
-
-        isImageComplete() {
-            return this._img && this._img.complete;
-        }
-
-        createDrawer(width, height) {
-            let canvas = document.createElement('canvas');
-            canvas.setAttribute('width', width);
-            canvas.setAttribute('height', height);
-            let ctx = canvas.getContext('2d');
-            return {
-                canvas: canvas,
-                ctx: ctx
-            };
-        }
-
-        getDrawer() {
-            return this._drawer;
-        }
-
-        toCanvas() {
-            this._drawer = this.createDrawer(this._img.width, this._img.height);
-            this._drawer.ctx.drawImage(this._img, 0, 0);
-        }
-
-        foreach(filter) {
-            let imgData = this._drawer.ctx.getImageData(0, 0, this._drawer.canvas.width, this._drawer.canvas.height);
-            for (var x = 0; x < imgData.width; x++) {
-                for (var y = 0; y < imgData.height; y++) {
-                    var i = x * 4 + y * 4 * imgData.width;
-                    var pixel = { r: imgData.data[i + 0], g: imgData.data[i + 1], b: imgData.data[i + 2] };
-
-                    pixel = filter(pixel);
-
-                    imgData.data[i + 0] = pixel.r;
-                    imgData.data[i + 1] = pixel.g;
-                    imgData.data[i + 2] = pixel.b;
-                    imgData.data[i + 3] = 255;
-                }
-            }
-            this._drawer.ctx.putImageData(imgData, 0, 0);
-        }
-
-        binarize (threshold) {
-            var image = this._drawer.canvas.getContext('2d').getImageData(0, 0, this._drawer.canvas.width, this._drawer.canvas.height);
-            for (var x = 0; x < image.width; x++) {
-                for (var y = 0; y < image.height; y++) {
-                    var i = x * 4 + y * 4 * image.width;
-                    var brightness = 0.34 * image.data[i] + 0.5 * image.data[i + 1] + 0.16 * image.data[i + 2];
-                    image.data[i] = brightness >= threshold ? 255 : 0;
-                    image.data[i + 1] = brightness >= threshold ? 255 : 0;
-                    image.data[i + 2] = brightness >= threshold ? 255 : 0;
-                    image.data[i + 3] = 255;
-                }
-            }
-            this._drawer.canvas.getContext('2d').putImageData(image, 0, 0);
-        }
-
-        invert(filter) {
-            this.foreach(function (p) {
-                p.r = 255 - p.r;
-                p.g = 255 - p.g;
-                p.b = 255 - p.b;
-                return p;
-            });
-        }
-
-        imgDataToBool(imgData) {
-            let character = [];
-            const data = imgData.data;
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                let val = data[i] + data[i+1] + data[i+2];
-                character.push(val == 0 ? true : false);
-            }
-            return character;
-        }
+    static splitAndIdxTrimNaNs(elm, options) { // '17.96 Coins (17.50 + 0.46)' => 17.96
+        try {
+            return elm.innerText.split(options.splitter)[options.idx].replace(/[^\d.-]/g, '');
+        } catch (err) { }
     }
-
-    class BKCaptchaWidget extends CaptchaWidget {
-        constructor() {
-            let defaultParams = {
-                selector: 'img[src="antibot.php"]',
-                waitMs: [1000, 5000],
-                timeoutMs: 4 * 60 * 1000
-            };
-            super(defaultParams);
-            this._imgProcessor;
-            this._characters = [];
-        }
-
-        charList() {
-            return [{"answer":"g","width":8,"height":9,"bools":[false,true,true,true,true,true,false,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
-                    {"answer":"5","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"W","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"O","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"N","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,true,false,false,false,true,true,true,true,true,true,false,false,true,true,true,true,true,true,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,true,true,true,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"T","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
-                    {"answer":"q","width":8,"height":9,"bools":[false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true]},
-                    {"answer":"l","width":4,"height":10,"bools":[true,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,true,true,true,true]},
-                    {"answer":"B","width":8,"height":10,"bools":[true,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,true,false,false]},
-                    {"answer":"3","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false]},
-                    {"answer":"s","width":8,"height":7,"bools":[false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
-                    {"answer":"p","width":8,"height":9,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
-                    {"answer":"L","width":7,"height":10,"bools":[true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
-                    {"answer":"Z","width":7,"height":10,"bools":[false,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
-                    {"answer":"F","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
-                    {"answer":"p","width":8,"height":9,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
-                    {"answer":"T","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
-                    {"answer":"8","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"P","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
-                    {"answer":"J","width":6,"height":10,"bools":[false,false,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,true,false,false,false,true,true,true,true,false,true,true,false,false,true,true,true,false,false]},
-                    {"answer":"y","width":8,"height":9,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,true,false,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
-                    {"answer":"r","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"R","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,false,true,true,true,true,true,false,false,false,true,true,false,false,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"M","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"d","width":8,"height":10,"bools":[false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true]},
-                    {"answer":"E","width":7,"height":10,"bools":[true,true,true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
-                    {"answer":"7","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
-                    {"answer":"Z","width":7,"height":10,"bools":[true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
-                    {"answer":"l","width":4,"height":10,"bools":[true,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,true,true,true,true]},
-                    {"answer":"K","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,false,false,true,true,false,false,true,true,false,true,true,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true]},
-                    {"answer":"6","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,false,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"H","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"5","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"Y","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
-                    {"answer":"d","width":8,"height":10,"bools":[false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true]},
-                    {"answer":"p","width":8,"height":9,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
-                    {"answer":"z","width":6,"height":7,"bools":[true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,true,true,false,false,false,true,true,false,false,false,true,true,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true]},
-                    {"answer":"n","width":8,"height":7,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"a","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,true,false,true,true,true,true,false,true,true]},
-                    {"answer":"8","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"t","width":8,"height":9,"bools":[false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false]},
-                    {"answer":"q","width":8,"height":9,"bools":[false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true]},
-                    {"answer":"a","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,true,false,true,true,true,true,false,true,true]},
-                    {"answer":"Z","width":7,"height":10,"bools":[true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,true,true]},
-                    {"answer":"1","width":6,"height":10,"bools":[false,false,true,true,false,false,false,true,true,true,false,false,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,true,true,true,true,true,true]},
-                    {"answer":"m","width":8,"height":7,"bools":[true,false,true,true,false,true,true,false,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true]},
-                    {"answer":"l","width":4,"height":10,"bools":[true,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,true,true,true,true]},
-                    {"answer":"q","width":8,"height":9,"bools":[false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true]},
-                    {"answer":"C","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"a","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,true,false,true,true,true,true,false,true,true]},
-                    {"answer":"2","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true,true]},
-                    {"answer":"h","width":8,"height":10,"bools":[true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"F","width":7,"height":10,"bools":[true,true,true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false]},
-                    {"answer":"c","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"P","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,false,false,false,false,false,false,false]},
-                    {"answer":"r","width":8,"height":7,"bools":[true,true,false,true,true,true,false,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false]},
-                    {"answer":"Y","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
-                    {"answer":"S","width":8,"height":10,"bools":[false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
-                    {"answer":"u","width":8,"height":7,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true]},
-                    {"answer":"M","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"S","width":8,"height":10,"bools":[false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
-                    {"answer":"g","width":8,"height":9,"bools":[false,true,true,true,true,true,false,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
-                    {"answer":"U","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"k","width":7,"height":10,"bools":[true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,true,true,false,true,true,false,true,true,false,false,true,true,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,false,false,true,true,false,false,true,true,false,true,true,false,false,false,true,true]},
-                    {"answer":"4","width":8,"height":10,"bools":[false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,false,false,true,true,false,false,true,true,false,true,true,false,false,false,true,true,false,true,true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false]},
-                    {"answer":"A","width":8,"height":10,"bools":[false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"b","width":8,"height":10,"bools":[true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false]},
-                    {"answer":"I","width":6,"height":10,"bools":[true,true,true,true,true,true,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,true,true,true,true,true,true]},
-                    {"answer":"o","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
-                    {"answer":"i","width":6,"height":10,"bools":[false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,true,true,true,true,true,true]},
-                    {"answer":"C","width":8,"height":10,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"e","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"w","width":8,"height":7,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,true,true,true,true,true,true,false,true,true,false,false,true,true,false]},
-                    {"answer":"f","width":8,"height":10,"bools":[false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false]},
-                    {"answer":"j","width":7,"height":12,"bools":[false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,false]},
-                    {"answer":"F","width":6,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false]},
-                    {"answer":"x","width":8,"height":7,"bools":[true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true]},
-                    {"answer":"e","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"G","width":8,"height":10,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"0","width":8,"height":10,"bools":[false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false]},
-                    {"answer":"0","width":8,"height":10,"bools":[false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false]},
-                    {"answer":"D","width":8,"height":10,"bools":[true,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,true,false,false]},
-                    {"answer":"e","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,false,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
-                    {"answer":"X","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
-                    {"answer":"Q","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,true,true,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,true]}];
-        }
-
-        async isReady() {
-            return wait().then( () => {
-                let img = document.querySelector(this.selector);
-                if(img && img.complete) {
-                    this._imgProcessor = new ImageProcessor(img);
-                    return Promise.resolve(true);
-                }
-                return this.isReady();
-            });
-        }
-
-        async isSolved() {
-            return this.isReady()
-                .then( () => this.solve())
-                .then( (solution) => {
-                document.querySelector('input[name="kodecaptcha"]').value = solution;
-                return Promise.resolve(true);
-            })
-                .catch(err => {
-                return Promise.reject(`Error ${err}`);
-            });
-        }
-
-        preProcessImage() {
-            this._imgProcessor.toCanvas();
-            this._imgProcessor.binarize(200);
-            this._imgProcessor.invert();
-        }
-
-        cropCharacter(startFrom = 0) {
-            let imgData = this._imgProcessor.getDrawer().ctx.getImageData(startFrom, 0, this._imgProcessor.getDrawer().canvas.width - startFrom, this._imgProcessor.getDrawer().canvas.height);
-            let newBounds = { left: null, right:null, top: null, bottom: null };
-            let readingCharacter = false;
-            let endOfCharacter = null;
-
-            for (var x = 0; x < imgData.width; x++) {
-                if (endOfCharacter) {
-                    newBounds.right = endOfCharacter;
-                    break;
-                }
-
-                let isColumnEmpty = true;
-                for (var y = 0; y < imgData.height; y++) {
-                    var i = x * 4 + y * 4 * imgData.width;
-                    var pixel = { r: imgData.data[i + 0], g: imgData.data[i + 1], b: imgData.data[i + 2] };
-
-                    if (pixel.r + pixel.g + pixel.b == 0) {
-                        if (newBounds.left == null || newBounds.left > x) {
-                            newBounds.left = x;
-                        }
-                        if (newBounds.right == null || newBounds.right < x) {
-                            newBounds.right = x;
-                        }
-
-                        if (newBounds.top == null || newBounds.top > y) {
-                            newBounds.top = y;
-                        }
-
-                        if (newBounds.bottom == null || newBounds.bottom < y) {
-                            newBounds.bottom = y;
-                        }
-                        readingCharacter = true;
-                        isColumnEmpty = false;
-                    }
-                }
-
-                if (isColumnEmpty && readingCharacter) {
-                    endOfCharacter = x - 1;
-                    break;
-                }
-            }
-
-            return {
-                x: startFrom + newBounds.left,
-                y: newBounds.top,
-                width: newBounds.right - newBounds.left + 1,
-                height: newBounds.bottom - newBounds.top + 1,
-                nextBegins: startFrom + newBounds.right + 1
-            };
-        }
-
-        splitInCharacters() {
-            let chars = [];
-            let i =0;
-            do {
-                chars.push(this.cropCharacter( i== 0 ? 0 : chars[i-1].nextBegins ) );
-                let copy = document.createElement('canvas').getContext('2d');
-                copy.canvas.width = chars[i].width;
-                copy.canvas.height = chars[i].height;
-
-                let trimmedData = this._imgProcessor.getDrawer().ctx.getImageData(chars[i].x, chars[i].y, chars[i].width, chars[i].height);
-                copy.putImageData(trimmedData, 0, 0);
-
-                chars[i].bools = this._imgProcessor.imgDataToBool(trimmedData);
-                chars[i].dataUrl = copy.canvas.toDataURL("image/png");
-
-                i++;
-            } while(i < 5);
-
-            this._characters = chars;
-        }
-
-        guess(charElm) {
-            let bestGuess = {
-                answer: '',
-                blacksMatched: 0,
-                blacksMissed: 0,
-                percentageBlacks: 0,
-                exactMatch: false
-            };
-
-            let totalPixels = charElm.width * charElm.height;
-            let totalBlacks = charElm.bools.filter(x => x === true).length;
-            this.charList().filter(x => x.answer != '').forEach( function (elm) {
-                if (bestGuess.exactMatch) {
-                    return;
-                }
-                if (charElm.width == elm.width && charElm.height == elm.height) {
-                    if (charElm.bools.join(',') == elm.bools.join(',')) {
-                        bestGuess = {
-                            answer: elm.answer,
-                            percentageBlacks: 100,
-                            exactMatch: true
-                        };
-                        return;
-                    }
-
-                    let blacksMatched = 0;
-                    let blacksMissed = 0;
-                    let percentageBlacks = 0;
-                    for (let p = 0; p < totalPixels; p++) {
-                        if (charElm.bools[p] === true || elm.bools[p] === true) {
-                            if (elm.bools[p] == charElm.bools[p]) {
-                                blacksMatched++;
-                            } else {
-                                blacksMissed++;
-                            }
-                        }
-                    }
-
-                    if (blacksMatched != 0 || blacksMissed != 0) {
-                        percentageBlacks = blacksMatched/(blacksMatched + blacksMissed);
-                    }
-
-                    if (percentageBlacks > bestGuess.percentageBlacks) {
-                        bestGuess = {
-                            answer: elm.answer,
-                            blacksMatched: blacksMatched,
-                            blacksMissed: blacksMissed,
-                            percentageBlacks: percentageBlacks
-                        };
-                    }
-                }
-            });
-            return bestGuess;
-        }
-
-        async solve() {
-            let solution = '';
-            if(this._imgProcessor.isImageComplete()) {
-                this.preProcessImage();
-                this.splitInCharacters();
-
-                this._characters.forEach( ch => {
-                    let bestGuess = this.guess(ch);
-                    solution += bestGuess.answer;
-                });
-            }
-            return Promise.resolve(solution);
-        }
+    static innerTextIntToFloat(elm) { // 'You won 1234 satoshis' => 0.00001234
+        try {
+            let sats = elm.innerText.replace(/\D/g, '');
+            return sats / 100000000;
+        } catch (err) { }
     }
-
-    class NoCaptchaWidget extends CaptchaWidget {
-        constructor(params) {
-            let defaultParams = {
-                selector: 'svg.feather-check-circle',
-                waitMs: 10000
-            };
-            for (let p in params) {
-                defaultParams[p] = params[p];
-            }
-            super(defaultParams);
-        }
-
-        async isSolved() {
-            return wait().then( () => {
-                if (this.isUserFriendly) {
-                    return Promise.resolve(true);
-                }
-                return this.isSolved();
-            });
-        }
+    static innerTextJoinedToInt(elm) { // '7|2|9|6' => 7296
+        try {
+            return parseInt([... elm].map( x => x.innerText).join(''));
+        } catch (err) { }
     }
-
-    class CBL01CaptchaWidget extends CaptchaWidget {
-        constructor(params) {
-            let defaultParams = {
-                selector: '',
-                waitMs: 2000
-            };
-            for (let p in params) {
-                defaultParams[p] = params[p];
-            }
-            super(defaultParams);
-        }
-
-        async isReady() {
-            return wait(1).then( () => {
-                if(this.isUserFriendly) {
-                    return Promise.resolve(true);
-                }
-                return wait().then( () => { this.isReady(); });
-            });
-        }
-
-        async solve() {
-            let answer = document.getElementById('captchainput').value;
-            if (answer != '') {
-                if (answer.startsWith('JJJ')) {
-                    answer = answer.slice(3);
-                    document.getElementById('captchainput').value = answer;
-                }
-
-                if (answer.length != 6) {
-                    document.getElementById('captchainput').value ='';
-                    window.location.reload();
-                    return wait(10000).then( () => { this.solve(); });
-                } else {
-                    return wait().then( () => { return true; } );
-                }
-            } else {
-                return wait().then( () => { this.solve(); });
-            }
-        }
-
-        async isSolved() {
-            return this.isReady()
-                .then( () => this.solve())
-                .then( (solution) => {
-                return Promise.resolve(true);
-            })
-                .catch(err => { shared.devlog(err); })
-        }
-    }
-
-    class D1CaptchaWidget extends CaptchaWidget {
-        constructor() {
-            let defaultParams = {
-                selector: '#submit_captcha span',
-                waitMs: [1000, 5000],
-                timeoutMs: 4 * 60 * 1000
-            };
-            super(defaultParams);
-            this.selectors = {
-                submitButton: '#submit',
-                answerSpan: '#submit_captcha span'
-            }
-            this._elements = {
-                submitButton: new ButtonWidget({selector: '#submit'}),
-                answerSpan: new ReadableWidget({selector: '#submit_captcha span'})
-            };
-        }
-
-        async isReady() {
-            return wait().then( () => {
-                if(this._elements.submitButton.isUserFriendly) {
-                    return Promise.resolve(true);
-                }
-                return this.isReady();
-            });
-        }
-
-        async solve() {
-            if (this._elements.answerSpan.isUserFriendly) {
-                let answer = this._elements.answerSpan.value;
-                answer = answer ? answer.trim() : answer;
-                let input = document.querySelector(`input[value="${answer}"`);
-                if (input) {
-                    helpers.alternativeClick(input.parentElement.querySelector('i'));
-                    return wait().then( () => { return true; } );
-                } else {
-                    return Promise.reject(`@D1Captcha input NOT FOUND for answer: ${answer}`);
-                }
-            } else {
-                return Promise.reject('Answer span not found!!!');
-            }
-        }
-
-        async isSolved() {
-            return this.isReady()
-                .then( () => this.solve())
-                .then( (solution) => {
-                return Promise.resolve(true);
-            })
-                .catch(err => { shared.devlog(err); })
-        }
-    }
-
-    class Faucet {
-        constructor(elements, actions = {}) {
-            this._url = window.location.href;
-            this._timeout = new Timeout(this.maxSeconds);
-            this._elements = elements;
-            this._actions = {
-                preRun: false,
-                preRoll: false,
-                altValidation: false,
-                readClaimed: true,
-                readBalance: true,
-                readTimeLeft: true,
-                readRolledNumber: false,
-                isMultiClaim: false,
-                checkIfOutOfFunds: false,
-                preSaveResult: false
-            }
-            this._actions = { ...this._actions, ...actions };
-            this._params = shared.getCurrent().params || {};
-            this._result = this._actions.isMultiClaim ? (shared.getProp('tempResults') || {}) : (shared.getResult() || {});
-        }
-
-        checkCloudflareError() {
-        }
-
-        useUrlListener() {
-            if (window.onurlchange === null) {
-                window.addEventListener('urlchange', (data) => {
-                    if (this._url != window.location.href) {
-                        this._url = window.location.href;
-                        this.resetRun();
-                    }
-                });
-            }
-        }
-
-        resetRun() {
-            wait().then( () => { this.init(); });
-        }
-
-        init() {
-            throw new Error('Init not implemented!');
-        }
-
-        login() {
-            throw new Error('Login not implemented!'); //return NEED_TO_LOGIN
-        }
-
-        async run(action = false) {
-            if (this._actions.checkIfOutOfFunds) {
-                this.checkIfOutOfFunds();
+    static stormGainCountdown(elm) { // '3:01:01' => 120000
+        try {
+            let timeLeft = elm.innerText.split(':');
+            if (timeLeft[0] == 'Synchronizing') {
             }
 
-            if (this._actions.preRun) {
-                await wait().then( () => { this.preRun() } );;
+            if(timeLeft.length === 3) {
+                return parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
             }
-
-            if (!action) {
-                this.detectAction().then( (resolve) => {
-                    this.perform(resolve.action);
-                });
-            } else {
-                this.perform(action);
-            }
-        }
-
-        perform(action) {
-            switch(action) {
-                case 'doRoll':
-                    if(this._actions.preRoll) {
-                        this.preRoll();
-                    }
-                    this._elements.captcha.isSolved().then(() => { this.clickRoll() });
-                    break;
-                case 'needToWait':
-                    this.updateResult();
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        async detectAction() {
-            return wait().then( () => {
-                if ( this.isCountdownVisible() ) {
-                    return Promise.resolve({action: 'needToWait'});
-                } else if ( this.isRollButtonVisible() ) {
-                    return Promise.resolve({action: 'doRoll'});
-                } else {
-                    return this.detectAction();
-                }
-            });
-        }
-
-        preRoll() {
-            throw new Error('PreRoll not implemented!');
-        }
-
-        preRun() {
-            throw new Error('PreRun not implemented!');
-        }
-
-        altValidation() {
-            throw new Error('AltValidation not implemented!');
-        }
-
-        isCountdownVisible() {
-            return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly;
-        }
-
-        isRollButtonVisible() {
-            return this._elements.rollButton && this._elements.rollButton.isUserFriendly;
-        }
-
-        clickRoll() {
-            try {
-                this._elements.rollButton.click();
-                this.validateRun();
-            } catch (err) {
-                shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
-            }
-        }
-
-        failureValidation() {
-            throw new Error('FailureValidation not implemented!');
-        }
-
-        async validateRun() {
-            return wait(this._actions.useFailureValidation ? 6000 : null).then( () => {
-                if (this._actions.useFailureValidation) {
-                    if (this.failureValidation()) {
-                        return;
-                    }
-                }
-                if (this._elements.success.isUserFriendly) {
-                    return this.updateResult();
-                } else if(this._actions.altValidation) {
-                    if(this.altValidation()) {
-                        return this.updateResult();
-                    }
-                }
-                return wait(2000).then( () => { this.validateRun() });
-            });
-        }
-
-        async updateResult() {
-            if(this._actions.readClaimed) {
-                this._result.claimed = this.readClaimed();
-            }
-            if(this._actions.readBalance) {
-                this._result.balance = this.readBalance();
-            }
-            if(this._actions.readTimeLeft) {
-                this._result.nextRoll = this.readNextRoll();
-            }
-            if(this._actions.readRolledNumber) {
-                this._result.rolledNumber = this.readRolledNumber();
-            }
-            if (this._actions.isMultiClaim) {
-                shared.setProp('tempResults', this._result);
-                return this._actions.postRun ? this.postRun() : true;
-            }
-            if (this._actions.preSaveResult) {
-                this.preSaveResult();
-            }
-            if (this._actions.updateWithoutClosing) {
-                shared.updateWithoutClosing(this._result);
-                return this._actions.postRun ? this.postRun() : true;
-            } else {
-                shared.closeWindow(this._result);
-            }
-        }
-
-        readNextRoll() {
-            try {
-                if (this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly) {
-                    return helpers.addMinutes(this._elements.countdownMinutes.timeLeft);
-                }
-            } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
+        } catch (err) {
             return null;
         }
-
-        readRolledNumber() {
-            let rolled = 0;
-            try {
-                if(this._elements.rolledNumber.isUserFriendly) {
-                    rolled = this._elements.rolledNumber.value;
-                }
-            } catch (err) { shared.devlog(`@readRolledNumber: ${err}`); }
-            return rolled;
+    }
+    static kingBizCountdown(elm) { // '4|2' => 42
+        try {
+            let itms = elm.querySelectorAll('.flip-clock-active .up');
+            if (itms.length > 1 && itms[0].isVisible() && itms[1].isVisible()) {
+                return parseInt([itms[0].innerText, itms[1].innerText].join(''));
+            }
+        } catch (err) {
+            return null;
         }
-
-        readBalance() {
-            let balance = 0;
-            try {
-                if(this._elements.balance.isUserFriendly) {
-                    balance = this._elements.balance.value;
-                }
-            } catch (err) { shared.devlog(`@readBalance: ${err}`); }
-            return balance;
+    }
+    static freeGrcCountdown(elm) { // 'Wait for 53:31 before next roll' => 53
+        try {
+            let val = elm.innerText.split(':')[0];
+            val = val.replace(/[^\d.-]/g, '');
+            return parseInt(val);
+        } catch (err) {
+            return null;
         }
+    }
+    static bestChangeCountdown(elm) { // '00:58:35' => 58
+        try {
+            if (elm.value) {
+                let timeLeft = elm.value.split(':');
+                if (timeLeft.length > 1) {
+                    return parseInt(timeLeft[1]);
+                }
+            }
+        } catch (err) {
+            return null;
+        }
+    }
+    static freeEthereumIoClaimed(elm) { // 'You won 0.12341234 TRX and rolled number 7623' => 0.12341234
+        try {
+            let line = elm.innerHTML;
+            let idx = line.search(/0\./);
+            return parseFloat(line.slice(idx, idx + 10));
+        } catch (err) { }
+    }
+    static bfBoxClaimed(elm) {
+        try {
+            let currency = elm.querySelector('.free-box__withdraw-currency').innerText;
+            let val = elm.querySelector('.free-box__need-sum').innerText.replace(/ /g,'').split('/')[1];
 
-        readClaimed() { //TODO: review if previous claimed should be received as arg
-            let claimed = this._result.claimed ?? 0;
-            if (this._actions.isMultiClaim) {
-                this._oldClaimed = claimed;
+            if (currency == 'Satoshi') {
+                val = val/100000000;
+            }
+            return val;
+        } catch (err) {
+            return null;
+        }
+    }
+    static g8ClaimsLeft(elm) {
+        try {
+            if (elm.innerText.includes('\nYou have ')) { // 'Claim 183848 satoshi (0.00012 USD) every 20 Seconds\nYou have 70 claims left today.'
+                let val = elm.innerText.split('\nYou have ')[1].split(' ')[0];
+                return val;
             } else {
+                return null;
+            }
+        } catch (err) {
+            return null;
+        }
+    }
+    static cbgClaimed(elm) {
+        try {
+            if (elm.innerText.includes('was sent to')) { //?? was sent to you on...
+                let val = elm.innerText.trim().split(' ')[0];
+                if (elm.innerText.includes('oshi') || elm.innerText.includes('gwei')) {
+                    val = val/100000000;
+                }
+                return val;
+            } else {
+                return null;
+            }
+        } catch (err) {
+            return null;
+        }
+    }
+    static dutchysClaimed(elm) { // 'You Won :101  DUTCHY + 20 XP' => 101
+        try {
+            let splitted = elm.innerText.split('DUTCHY');
+            return splitted[0].replace(/[^\d.-]/g, '');
+        } catch (err) { shared.devlog(`@Parsers.dutchysClaimed, with element [${elm}] Error: ${err}`); }
+    }
+    static dutchysClaimedToFloat(elm) { // 'You Won :22437 ADA + 100 XP' => 0.00022437
+        try {
+            let sats = elm.innerText.split('+');
+            sats = sats[0].replace(/\D/g, '');
+            return sats / 100000000;
+        } catch (err) { shared.devlog(`@Parsers.dutchysClaimedToFloat, with element [${elm}] Error: ${err}`); }
+    }
+    static splitAndIdxToInt(elm, options) { // '26 Minutes 23' w/spliiter='Minutes' => 26
+        try {
+            return parseInt(elm.innerText.split(options.splitter)[options.idx].trim());
+        } catch (err) { shared.devlog(`Error @Parsers.splitAndIdxToInt: ${err}`); }
+    }
+    static fromTextTimer(elm) { // '0 hours 11 minutes 1 seconds' => 12 minutes
+        try {
+            let hours, minutes;
+            hours = +elm.innerText.split(' hours')[0].trim();
+            minutes = +elm.innerText.split('hours ')[1].split('minutes')[0].trim();
+            return hours * 60 + minutes + 1;
+        } catch (err) { shared.devlog(`Error @Parsers.splitAndIdxToInt: ${err}`); }
+    }
+}
+class ImageProcessor {
+    constructor(img) {
+        this._img = img;
+    }
+
+    isImageComplete() {
+        return this._img && this._img.complete;
+    }
+
+    createDrawer(width, height) {
+        let canvas = document.createElement('canvas');
+        canvas.setAttribute('width', width);
+        canvas.setAttribute('height', height);
+        let ctx = canvas.getContext('2d');
+        return {
+            canvas: canvas,
+            ctx: ctx
+        };
+    }
+
+    getDrawer() {
+        return this._drawer;
+    }
+
+    toCanvas() {
+        this._drawer = this.createDrawer(this._img.width, this._img.height);
+        this._drawer.ctx.drawImage(this._img, 0, 0);
+    }
+
+    foreach(filter) {
+        let imgData = this._drawer.ctx.getImageData(0, 0, this._drawer.canvas.width, this._drawer.canvas.height);
+        for (var x = 0; x < imgData.width; x++) {
+            for (var y = 0; y < imgData.height; y++) {
+                var i = x * 4 + y * 4 * imgData.width;
+                var pixel = { r: imgData.data[i + 0], g: imgData.data[i + 1], b: imgData.data[i + 2] };
+
+                pixel = filter(pixel);
+
+                imgData.data[i + 0] = pixel.r;
+                imgData.data[i + 1] = pixel.g;
+                imgData.data[i + 2] = pixel.b;
+                imgData.data[i + 3] = 255;
+            }
+        }
+        this._drawer.ctx.putImageData(imgData, 0, 0);
+    }
+
+    binarize (threshold) {
+        var image = this._drawer.canvas.getContext('2d').getImageData(0, 0, this._drawer.canvas.width, this._drawer.canvas.height);
+        for (var x = 0; x < image.width; x++) {
+            for (var y = 0; y < image.height; y++) {
+                var i = x * 4 + y * 4 * image.width;
+                var brightness = 0.34 * image.data[i] + 0.5 * image.data[i + 1] + 0.16 * image.data[i + 2];
+                image.data[i] = brightness >= threshold ? 255 : 0;
+                image.data[i + 1] = brightness >= threshold ? 255 : 0;
+                image.data[i + 2] = brightness >= threshold ? 255 : 0;
+                image.data[i + 3] = 255;
+            }
+        }
+        this._drawer.canvas.getContext('2d').putImageData(image, 0, 0);
+    }
+
+    invert(filter) {
+        this.foreach(function (p) {
+            p.r = 255 - p.r;
+            p.g = 255 - p.g;
+            p.b = 255 - p.b;
+            return p;
+        });
+    }
+
+    imgDataToBool(imgData) {
+        let character = [];
+        const data = imgData.data;
+        for (let i = 0; i < imgData.data.length; i += 4) {
+            let val = data[i] + data[i+1] + data[i+2];
+            character.push(val == 0 ? true : false);
+        }
+        return character;
+    }
+}
+
+class CaptchaWidget extends CrawlerWidget {
+    constructor(params) {
+        super(params);
+    }
+
+    solve() { return true; }
+
+    async isSolved() { return false; }
+}
+
+class RecaptchaWidget extends CaptchaWidget {
+    constructor(params) {
+        this.context = this.context || document;
+        let defaultParams = {
+            waitMs: [1000, 5000],
+            timeoutMs: 4 * 60 * 1000
+        };
+        for (let p in params) {
+            defaultParams[p] = params[p];
+        }
+        Object.assign(this, defaultParams);
+    }
+
+    get isUserFriendly() {
+        this.element = grecaptcha;
+        return this.element;
+    }
+
+    async isSolved() {
+        return wait().then( () => {
+            if (this.isUserFriendly && this.element.hasOwnProperty('getResponse') && (typeof(this.element.getResponse) == 'function')
+                && this.element.getResponse().length > 0) {
+                return Promise.resolve(true);
+            }
+            return this.isSolved();
+        });
+    }
+}
+
+class HCaptchaWidget extends CaptchaWidget {
+    constructor(params) {
+        let defaultParams = {
+            selector: '.h-captcha > iframe',
+            waitMs: [1000, 5000],
+            timeoutMs: 4 * 60 * 1000
+        };
+        for (let p in params) {
+            defaultParams[p] = params[p];
+        }
+        super(defaultParams);
+    }
+
+    async isSolved() {
+        return wait().then( () => {
+            if (this.isUserFriendly && this.element.hasAttribute('data-hcaptcha-response') && this.element.getAttribute('data-hcaptcha-response').length > 0) {
+                return Promise.resolve(true);
+            }
+            return this.isSolved();
+        });
+    }
+}
+
+class BKCaptchaWidget extends CaptchaWidget {
+    constructor() {
+        let defaultParams = {
+            selector: 'img[src="antibot.php"]',
+            waitMs: [1000, 5000],
+            timeoutMs: 4 * 60 * 1000
+        };
+        super(defaultParams);
+        this._imgProcessor;
+        this._characters = [];
+    }
+
+    charList() {
+        return [{"answer":"g","width":8,"height":9,"bools":[false,true,true,true,true,true,false,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
+                {"answer":"5","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"W","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"O","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"N","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,true,false,false,false,true,true,true,true,true,true,false,false,true,true,true,true,true,true,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,true,true,true,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"T","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
+                {"answer":"q","width":8,"height":9,"bools":[false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true]},
+                {"answer":"l","width":4,"height":10,"bools":[true,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,true,true,true,true]},
+                {"answer":"B","width":8,"height":10,"bools":[true,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,true,false,false]},
+                {"answer":"3","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false]},
+                {"answer":"s","width":8,"height":7,"bools":[false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
+                {"answer":"p","width":8,"height":9,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
+                {"answer":"L","width":7,"height":10,"bools":[true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
+                {"answer":"Z","width":7,"height":10,"bools":[false,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
+                {"answer":"F","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
+                {"answer":"p","width":8,"height":9,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
+                {"answer":"T","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
+                {"answer":"8","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"P","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
+                {"answer":"J","width":6,"height":10,"bools":[false,false,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,true,false,false,false,true,true,true,true,false,true,true,false,false,true,true,true,false,false]},
+                {"answer":"y","width":8,"height":9,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,true,false,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
+                {"answer":"r","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"R","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,false,true,true,true,true,true,false,false,false,true,true,false,false,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"M","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"d","width":8,"height":10,"bools":[false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true]},
+                {"answer":"E","width":7,"height":10,"bools":[true,true,true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
+                {"answer":"7","width":8,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
+                {"answer":"Z","width":7,"height":10,"bools":[true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true]},
+                {"answer":"l","width":4,"height":10,"bools":[true,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,true,true,true,true]},
+                {"answer":"K","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,false,false,true,true,false,false,true,true,false,true,true,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true]},
+                {"answer":"6","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,false,false,false,false,true,true,true,true,false,false]},
+                {"answer":"H","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"5","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"Y","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
+                {"answer":"d","width":8,"height":10,"bools":[false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true]},
+                {"answer":"p","width":8,"height":9,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false]},
+                {"answer":"z","width":6,"height":7,"bools":[true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,true,true,false,false,false,true,true,false,false,false,true,true,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true]},
+                {"answer":"n","width":8,"height":7,"bools":[true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"a","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,true,false,true,true,true,true,false,true,true]},
+                {"answer":"8","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"t","width":8,"height":9,"bools":[false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false]},
+                {"answer":"q","width":8,"height":9,"bools":[false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true]},
+                {"answer":"a","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,true,false,true,true,true,true,false,true,true]},
+                {"answer":"Z","width":7,"height":10,"bools":[true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,true,true]},
+                {"answer":"1","width":6,"height":10,"bools":[false,false,true,true,false,false,false,true,true,true,false,false,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,true,true,true,true,true,true]},
+                {"answer":"m","width":8,"height":7,"bools":[true,false,true,true,false,true,true,false,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true]},
+                {"answer":"l","width":4,"height":10,"bools":[true,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,true,true,true,true]},
+                {"answer":"q","width":8,"height":9,"bools":[false,false,true,true,true,false,true,true,false,true,true,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true]},
+                {"answer":"C","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"a","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,true,false,true,true,true,true,false,true,true]},
+                {"answer":"2","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,true,true]},
+                {"answer":"h","width":8,"height":10,"bools":[true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"F","width":7,"height":10,"bools":[true,true,true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false]},
+                {"answer":"c","width":8,"height":7,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"P","width":8,"height":10,"bools":[true,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,false,false,false,false,false,false,false]},
+                {"answer":"r","width":8,"height":7,"bools":[true,true,false,true,true,true,false,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false]},
+                {"answer":"Y","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false]},
+                {"answer":"S","width":8,"height":10,"bools":[false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
+                {"answer":"u","width":8,"height":7,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,true,false,false,true,true,true,false,true,true]},
+                {"answer":"M","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"S","width":8,"height":10,"bools":[false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
+                {"answer":"g","width":8,"height":9,"bools":[false,true,true,true,true,true,false,true,true,true,false,false,false,true,true,true,true,true,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false,false,true,true,false,false,false,false,false,false,false,true,true,true,true,true,true,false,true,true,false,false,false,false,true,true,false,true,true,true,true,true,true,false]},
+                {"answer":"U","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,false,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"k","width":7,"height":10,"bools":[true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,true,true,false,true,true,false,true,true,false,false,true,true,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,false,false,true,true,false,false,true,true,false,true,true,false,false,false,true,true]},
+                {"answer":"4","width":8,"height":10,"bools":[false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,false,false,true,true,false,false,true,true,false,true,true,false,false,false,true,true,false,true,true,true,true,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false]},
+                {"answer":"A","width":8,"height":10,"bools":[false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"b","width":8,"height":10,"bools":[true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,true,true,true,false,false,true,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,true,true,false,true,true,false,true,true,true,false,false]},
+                {"answer":"I","width":6,"height":10,"bools":[true,true,true,true,true,true,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,true,true,true,true,true,true]},
+                {"answer":"o","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false]},
+                {"answer":"i","width":6,"height":10,"bools":[false,false,true,true,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,true,true,true,true,true,true]},
+                {"answer":"C","width":8,"height":10,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"e","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"w","width":8,"height":7,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,false,true,true,false,true,true,true,true,true,true,true,true,true,true,false,true,true,false,false,true,true,false]},
+                {"answer":"f","width":8,"height":10,"bools":[false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false]},
+                {"answer":"j","width":7,"height":12,"bools":[false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,false,false,false,false,false,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,false]},
+                {"answer":"F","width":6,"height":10,"bools":[true,true,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false,true,true,false,false,false,false]},
+                {"answer":"x","width":8,"height":7,"bools":[true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true]},
+                {"answer":"e","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"G","width":8,"height":10,"bools":[false,false,true,true,true,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"0","width":8,"height":10,"bools":[false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false]},
+                {"answer":"0","width":8,"height":10,"bools":[false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false]},
+                {"answer":"D","width":8,"height":10,"bools":[true,true,true,true,true,true,false,false,true,true,false,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,true,true,false,true,true,true,true,true,true,false,false]},
+                {"answer":"e","width":8,"height":7,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,false,true,false,false,false,false,false,false,false,true,true,false,false,false,true,true,false,false,true,true,true,true,true,false]},
+                {"answer":"X","width":8,"height":10,"bools":[true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,false,false,false,false,false,true,true,false,false,false,false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true]},
+                {"answer":"Q","width":8,"height":10,"bools":[false,false,true,true,true,true,false,false,false,true,true,false,false,true,true,false,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,false,false,false,true,true,true,true,false,true,true,false,true,true,true,true,false,false,true,true,true,true,false,true,true,false,false,true,true,false,false,false,true,true,true,true,false,true]}];
+    }
+
+    async isReady() {
+        return wait().then( () => {
+            let img = document.querySelector(this.selector);
+            if(img && img.complete) {
+                this._imgProcessor = new ImageProcessor(img);
+                return Promise.resolve(true);
+            }
+            return this.isReady();
+        });
+    }
+
+    async isSolved() {
+        return this.isReady()
+            .then( () => this.solve())
+            .then( (solution) => {
+            document.querySelector('input[name="kodecaptcha"]').value = solution;
+            return Promise.resolve(true);
+        })
+            .catch(err => {
+            return Promise.reject(`Error ${err}`);
+        });
+    }
+
+    preProcessImage() {
+        this._imgProcessor.toCanvas();
+        this._imgProcessor.binarize(200);
+        this._imgProcessor.invert();
+    }
+
+    cropCharacter(startFrom = 0) {
+        let imgData = this._imgProcessor.getDrawer().ctx.getImageData(startFrom, 0, this._imgProcessor.getDrawer().canvas.width - startFrom, this._imgProcessor.getDrawer().canvas.height);
+        let newBounds = { left: null, right:null, top: null, bottom: null };
+        let readingCharacter = false;
+        let endOfCharacter = null;
+
+        for (var x = 0; x < imgData.width; x++) {
+            if (endOfCharacter) {
+                newBounds.right = endOfCharacter;
+                break;
             }
 
-            try {
-                if(this._elements.claimed.isUserFriendly) {
-                    claimed = +claimed + +this._elements.claimed.value;
-                } else {
+            let isColumnEmpty = true;
+            for (var y = 0; y < imgData.height; y++) {
+                var i = x * 4 + y * 4 * imgData.width;
+                var pixel = { r: imgData.data[i + 0], g: imgData.data[i + 1], b: imgData.data[i + 2] };
+
+                if (pixel.r + pixel.g + pixel.b == 0) {
+                    if (newBounds.left == null || newBounds.left > x) {
+                        newBounds.left = x;
+                    }
+                    if (newBounds.right == null || newBounds.right < x) {
+                        newBounds.right = x;
+                    }
+
+                    if (newBounds.top == null || newBounds.top > y) {
+                        newBounds.top = y;
+                    }
+
+                    if (newBounds.bottom == null || newBounds.bottom < y) {
+                        newBounds.bottom = y;
+                    }
+                    readingCharacter = true;
+                    isColumnEmpty = false;
                 }
-            } catch (err) { shared.devlog(`@readClaimed: ${err}`); }
-            return claimed;
+            }
+
+            if (isColumnEmpty && readingCharacter) {
+                endOfCharacter = x - 1;
+                break;
+            }
         }
 
-        checkIfOutOfFunds() {
-            let divAlerts = [...document.querySelectorAll(this._elements.outOfFundsDivSelector)];
-            divAlerts.forEach( function (d) {
-                if (d.innerText.toLowerCase().includes('not have sufficient funds')) {
-                    shared.closeWithError(K.ErrorType.FAUCET_EMPTY, d.innerText);
+        return {
+            x: startFrom + newBounds.left,
+            y: newBounds.top,
+            width: newBounds.right - newBounds.left + 1,
+            height: newBounds.bottom - newBounds.top + 1,
+            nextBegins: startFrom + newBounds.right + 1
+        };
+    }
+
+    splitInCharacters() {
+        let chars = [];
+        let i =0;
+        do {
+            chars.push(this.cropCharacter( i== 0 ? 0 : chars[i-1].nextBegins ) );
+            let copy = document.createElement('canvas').getContext('2d');
+            copy.canvas.width = chars[i].width;
+            copy.canvas.height = chars[i].height;
+
+            let trimmedData = this._imgProcessor.getDrawer().ctx.getImageData(chars[i].x, chars[i].y, chars[i].width, chars[i].height);
+            copy.putImageData(trimmedData, 0, 0);
+
+            chars[i].bools = this._imgProcessor.imgDataToBool(trimmedData);
+            chars[i].dataUrl = copy.canvas.toDataURL("image/png");
+
+            i++;
+        } while(i < 5);
+
+        this._characters = chars;
+    }
+
+    guess(charElm) {
+        let bestGuess = {
+            answer: '',
+            blacksMatched: 0,
+            blacksMissed: 0,
+            percentageBlacks: 0,
+            exactMatch: false
+        };
+
+        let totalPixels = charElm.width * charElm.height;
+        let totalBlacks = charElm.bools.filter(x => x === true).length;
+        this.charList().filter(x => x.answer != '').forEach( function (elm) {
+            if (bestGuess.exactMatch) {
+                return;
+            }
+            if (charElm.width == elm.width && charElm.height == elm.height) {
+                if (charElm.bools.join(',') == elm.bools.join(',')) {
+                    bestGuess = {
+                        answer: elm.answer,
+                        percentageBlacks: 100,
+                        exactMatch: true
+                    };
                     return;
+                }
+
+                let blacksMatched = 0;
+                let blacksMissed = 0;
+                let percentageBlacks = 0;
+                for (let p = 0; p < totalPixels; p++) {
+                    if (charElm.bools[p] === true || elm.bools[p] === true) {
+                        if (elm.bools[p] == charElm.bools[p]) {
+                            blacksMatched++;
+                        } else {
+                            blacksMissed++;
+                        }
+                    }
+                }
+
+                if (blacksMatched != 0 || blacksMissed != 0) {
+                    percentageBlacks = blacksMatched/(blacksMatched + blacksMissed);
+                }
+
+                if (percentageBlacks > bestGuess.percentageBlacks) {
+                    bestGuess = {
+                        answer: elm.answer,
+                        blacksMatched: blacksMatched,
+                        blacksMissed: blacksMissed,
+                        percentageBlacks: percentageBlacks
+                    };
+                }
+            }
+        });
+        return bestGuess;
+    }
+
+    async solve() {
+        let solution = '';
+        if(this._imgProcessor.isImageComplete()) {
+            this.preProcessImage();
+            this.splitInCharacters();
+
+            this._characters.forEach( ch => {
+                let bestGuess = this.guess(ch);
+                solution += bestGuess.answer;
+            });
+        }
+        return Promise.resolve(solution);
+    }
+}
+
+class NoCaptchaWidget extends CaptchaWidget {
+    constructor(params) {
+        let defaultParams = {
+            selector: 'svg.feather-check-circle',
+            waitMs: 10000
+        };
+        for (let p in params) {
+            defaultParams[p] = params[p];
+        }
+        super(defaultParams);
+    }
+
+    async isSolved() {
+        return wait().then( () => {
+            if (this.isUserFriendly) {
+                return Promise.resolve(true);
+            }
+            return this.isSolved();
+        });
+    }
+}
+
+class CBL01CaptchaWidget extends CaptchaWidget {
+    constructor(params) {
+        let defaultParams = {
+            selector: '',
+            waitMs: 2000
+        };
+        for (let p in params) {
+            defaultParams[p] = params[p];
+        }
+        super(defaultParams);
+    }
+
+    async isReady() {
+        return wait(1).then( () => {
+            if(this.isUserFriendly) {
+                return Promise.resolve(true);
+            }
+            return wait().then( () => { this.isReady(); });
+        });
+    }
+
+    async solve() {
+        let answer = document.getElementById('captchainput').value;
+        if (answer != '') {
+            if (answer.startsWith('JJJ')) {
+                answer = answer.slice(3);
+                document.getElementById('captchainput').value = answer;
+            }
+
+            if (answer.length != 6) {
+                document.getElementById('captchainput').value ='';
+                window.location.reload();
+                return wait(10000).then( () => { this.solve(); });
+            } else {
+                return wait().then( () => { return true; } );
+            }
+        } else {
+            return wait().then( () => { this.solve(); });
+        }
+    }
+
+    async isSolved() {
+        return this.isReady()
+            .then( () => this.solve())
+            .then( (solution) => {
+            return Promise.resolve(true);
+        })
+            .catch(err => { shared.devlog(err); })
+    }
+}
+
+class D1CaptchaWidget extends CaptchaWidget {
+    constructor() {
+        let defaultParams = {
+            selector: '#submit_captcha span',
+            waitMs: [1000, 5000],
+            timeoutMs: 4 * 60 * 1000
+        };
+        super(defaultParams);
+        this.selectors = {
+            submitButton: '#submit',
+            answerSpan: '#submit_captcha span'
+        }
+        this._elements = {
+            submitButton: new ButtonWidget({selector: '#submit'}),
+            answerSpan: new ReadableWidget({selector: '#submit_captcha span'})
+        };
+    }
+
+    async isReady() {
+        return wait().then( () => {
+            if(this._elements.submitButton.isUserFriendly) {
+                return Promise.resolve(true);
+            }
+            return this.isReady();
+        });
+    }
+
+    async solve() {
+        if (this._elements.answerSpan.isUserFriendly) {
+            let answer = this._elements.answerSpan.value;
+            answer = answer ? answer.trim() : answer;
+            let input = document.querySelector(`input[value="${answer}"`);
+            if (input) {
+                helpers.alternativeClick(input.parentElement.querySelector('i'));
+                return wait().then( () => { return true; } );
+            } else {
+                return Promise.reject(`@D1Captcha input NOT FOUND for answer: ${answer}`);
+            }
+        } else {
+            return Promise.reject('Answer span not found!!!');
+        }
+    }
+
+    async isSolved() {
+        return this.isReady()
+            .then( () => this.solve())
+            .then( (solution) => {
+            return Promise.resolve(true);
+        })
+            .catch(err => { shared.devlog(err); })
+    }
+}
+
+class Faucet {
+    constructor(elements, actions = {}) {
+        this._url = window.location.href;
+        this._timeout = new Timeout(this.maxSeconds);
+        this._elements = elements;
+        this._actions = {
+            preRun: false,
+            preRoll: false,
+            altValidation: false,
+            readClaimed: true,
+            readBalance: true,
+            readTimeLeft: true,
+            readRolledNumber: false,
+            isMultiClaim: false,
+            checkIfOutOfFunds: false,
+            preSaveResult: false
+        }
+        this._actions = { ...this._actions, ...actions };
+        this._params = shared.getCurrent().params || {};
+        this._result = this._actions.isMultiClaim ? (shared.getProp('tempResults') || {}) : (shared.getResult() || {});
+    }
+
+    checkCloudflareError() {
+    }
+
+    useUrlListener() {
+        if (window.onurlchange === null) {
+            window.addEventListener('urlchange', (data) => {
+                if (this._url != window.location.href) {
+                    this._url = window.location.href;
+                    this.resetRun();
                 }
             });
         }
     }
 
-    class BFRoll extends Faucet {
-        constructor(coinPrefix, trySpin = false) {
-            let elements = {
-                preRunButton: new ButtonWidget({selector: '.free-box.free-box__' + coinPrefix + ' button'}), //'#' + coinPrefix + '_free_box_withdraw_page'}),
-                captcha: new NoCaptchaWidget({ selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth' }),
-                rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth'}),
-                success: new ReadableWidget({selector: '.modal:not(.free-box-withdraw,fury-wheel-modal), .vue-notification-template.my-notify.success'}),
-                claimed: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix, parser: Parsers.bfBoxClaimed}),
-                progressBar: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix + ' .free-box__progress-bar progress'}),
-            };
+    resetRun() {
+        wait().then( () => { this.init(); });
+    }
 
-            let actions = {
-                preRun: true,
-                readClaimed: true,
-                readBalance: false,
-                readRolledNumber: false
-            };
-            super(elements, actions);
-            this.coinPrefix = coinPrefix;
-            this.trySpin = trySpin;
+    init() {
+        throw new Error('Init not implemented!');
+    }
+
+    login() {
+        throw new Error('Login not implemented!'); //return NEED_TO_LOGIN
+    }
+
+    async run(action = false) {
+        if (this._actions.checkIfOutOfFunds) {
+            this.checkIfOutOfFunds();
         }
 
-        init() {
-            if (this._url.includes('https://betfury.io/boxes/all')) {
-                this.run();
-                return;
+        if (this._actions.preRun) {
+            await wait().then( () => { this.preRun() } );;
+        }
+
+        if (!action) {
+            this.detectAction().then( (resolve) => {
+                this.perform(resolve.action);
+            });
+        } else {
+            this.perform(action);
+        }
+    }
+
+    perform(action) {
+        switch(action) {
+            case 'doRoll':
+                if(this._actions.preRoll) {
+                    this.preRoll();
+                }
+                this._elements.captcha.isSolved().then(() => { this.clickRoll() });
+                break;
+            case 'needToWait':
+                this.updateResult();
+                break;
+            default:
+                break;
+        }
+    }
+
+    async detectAction() {
+        return wait().then( () => {
+            if ( this.isCountdownVisible() ) {
+                return Promise.resolve({action: 'needToWait'});
+            } else if ( this.isRollButtonVisible() ) {
+                return Promise.resolve({action: 'doRoll'});
             } else {
-                return;
+                return this.detectAction();
             }
+        });
+    }
+
+    preRoll() {
+        throw new Error('PreRoll not implemented!');
+    }
+
+    preRun() {
+        throw new Error('PreRun not implemented!');
+    }
+
+    altValidation() {
+        throw new Error('AltValidation not implemented!');
+    }
+
+    isCountdownVisible() {
+        return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly;
+    }
+
+    isRollButtonVisible() {
+        return this._elements.rollButton && this._elements.rollButton.isUserFriendly;
+    }
+
+    clickRoll() {
+        try {
+            this._elements.rollButton.click();
+            this.validateRun();
+        } catch (err) {
+            shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
         }
+    }
 
-        async spin() {
-            let clickables = document.querySelectorAll('.fury-wheel__wheel-btn, .fury-wheel__btn-wrap, .fury-wheel__btn-content, .fury-wheel__btn-img');
-            if (clickables.length > 0) {
-                clickables[Math.floor(Math.random()*clickables.length)].click();
-                wait(15000).then ( () => { shared.closeWindow(this._result); } );
-            }
-            return;
-        }
+    failureValidation() {
+        throw new Error('FailureValidation not implemented!');
+    }
 
-        async preRun() {
-            return wait().then( () => {
-                try {
-                    let popup = document.querySelector('.modal-wrapper .modal:not(.free-box-withdraw,fury-wheel-modal) .modal__btn-close');
-                    if (popup) {
-                        popup.click();
-                        popup.click(); // twice
-                    }
-                } catch (err) {}
-
-                if (this.trySpin) {
-                    let spinUnavailable = document.querySelector('.bonus.bonus_furywheel.wait');
-                    if (spinUnavailable) {
-                    } else {
-                        let spinBtn = document.querySelector('.wheel-amin'); //bonus bonus_furywheel wait
-                        if (spinBtn) {
-                            spinBtn.click();
-                            wait(10000).then ( () => { this.spin() } );
-                            return wait(60000).then ( () => { this.preRun(); } );
-                        }
-                    }
-                }
-
-                if (!this._elements.progressBar || !this._elements.progressBar.isUserFriendly) {
-                    return this.preRun();
-                }
-
-                if (this._elements.preRunButton.isUserFriendly) {
-                    if (!this._elements.preRunButton.isUserFriendly.disabled) {
-                        return this._elements.preRunButton.click();
-                    } else {
-                        this._timeout.restart();
-                        shared.closeWindow(this._result);
-                        return;
-                    }
-                } else if (document.querySelectorAll('.free-box').length > 1) {
-                    shared.closeWithError(K.ErrorType.ERROR, 'Box might not exist for your account.');
+    async validateRun() {
+        return wait(this._actions.useFailureValidation ? 6000 : null).then( () => {
+            if (this._actions.useFailureValidation) {
+                if (this.failureValidation()) {
                     return;
                 }
-                return this.preRun();
-            });
-        }
-
-        async validateRun() {
-            return wait(7000).then( () => {
-                let gtHook = document.querySelector('div.geetest_slice_bg');
-                if (gtHook) {
-                    if (gtHook.isUserFriendly()) {
-                        return this.validateRun();
-                    }
-                }
-                let popup = document.querySelector('.modal-wrapper .modal:not(.free-box-withdraw,fury-wheel-modal) .modal__btn-close');
-                if (!popup) {
-                    if (this._elements.preRunButton.isUserFriendly && !this._elements.preRunButton.isUserFriendly.disabled) {
-                        this._elements.preRunButton.click();
-                        return this.validateRun();
-                    }
-                } else {
-                    try {
-                        if (popup) {
-                            popup.click();
-                            popup.click();
-                        }
-                    } catch (err) {}
-                }
-
-                if (this._elements.success.isUserFriendly) {
+            }
+            if (this._elements.success.isUserFriendly) {
+                return this.updateResult();
+            } else if(this._actions.altValidation) {
+                if(this.altValidation()) {
                     return this.updateResult();
-                } else if(this._actions.altValidation) {
-                    if(this.altValidation()) {
-                        return this.updateResult();
-                    }
                 }
-                return this.validateRun();
-            });
+            }
+            return wait(2000).then( () => { this.validateRun() });
+        });
+    }
+
+    async updateResult() {
+        if(this._actions.readClaimed) {
+            this._result.claimed = this.readClaimed();
+        }
+        if(this._actions.readBalance) {
+            this._result.balance = this.readBalance();
+        }
+        if(this._actions.readTimeLeft) {
+            this._result.nextRoll = this.readNextRoll();
+        }
+        if(this._actions.readRolledNumber) {
+            this._result.rolledNumber = this.readRolledNumber();
+        }
+        if (this._actions.isMultiClaim) {
+            shared.setProp('tempResults', this._result);
+            return this._actions.postRun ? this.postRun() : true;
+        }
+        if (this._actions.preSaveResult) {
+            this.preSaveResult();
+        }
+        if (this._actions.updateWithoutClosing) {
+            shared.updateWithoutClosing(this._result);
+            return this._actions.postRun ? this.postRun() : true;
+        } else {
+            shared.closeWindow(this._result);
         }
     }
 
-    class DutchyRoll extends Faucet {
-        constructor() {
-            let elements = {
-                countdownMinutes: new CountdownWidget({selector: '#timer', parser: Parsers.splitAndIdxToInt, options: { splitter: 'Minutes', idx: 0} }), // "26 Minutes 23"
-                captcha: new HCaptchaWidget(),
-                rollButton: new ButtonWidget({selector: '#claim'}), //w/booster video: '#unlockbutton' & then #claim_boosted
-                success: new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse'}),
-                claimed: new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.freeEthereumIoClaimed}) //"You Won 0.00409070 TRX + 20 XP"
-            };
-            let actions = {
-                preRun: true,
-                readClaimed: true,
-                readBalance: false,
-                readRolledNumber: false
-            };
-            super(elements, actions);
+    readNextRoll() {
+        try {
+            if (this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly) {
+                return helpers.addMinutes(this._elements.countdownMinutes.timeLeft);
+            }
+        } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
+        return null;
+    }
+
+    readRolledNumber() {
+        let rolled = 0;
+        try {
+            if(this._elements.rolledNumber.isUserFriendly) {
+                rolled = this._elements.rolledNumber.value;
+            }
+        } catch (err) { shared.devlog(`@readRolledNumber: ${err}`); }
+        return rolled;
+    }
+
+    readBalance() {
+        let balance = 0;
+        try {
+            if(this._elements.balance.isUserFriendly) {
+                balance = this._elements.balance.value;
+            }
+        } catch (err) { shared.devlog(`@readBalance: ${err}`); }
+        return balance;
+    }
+
+    readClaimed() { //TODO: review if previous claimed should be received as arg
+        let claimed = this._result.claimed ?? 0;
+        if (this._actions.isMultiClaim) {
+            this._oldClaimed = claimed;
+        } else {
         }
 
-        init() {
-            switch(window.location.host) {
-                case 'autofaucet.dutchycorp.space':
-                    if (this._url.includes('/roll.php')) {
-                        this._elements.claimed = new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.dutchysClaimed})
-                    } else if (this._url.includes('/login.php')) {
-                        shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
-                        return;
-                    }
-                    break;
-                case 'express.dutchycorp.space':
-                    if (this._url.includes('/roll.php')) {
-                        this._elements.claimed = new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.dutchysClaimed})
-                    } else if (this._url.includes('/coin_roll.php')) {
-                        this._elements.claimed = new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.dutchysClaimedToFloat})
-                    } else if (this._url.includes('/index.php')) {
-                        shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'You need to login using ExpressCrypto (EC-UserId-XXXXXX).');
-                        return;
-                    }
-                    break;
+        try {
+            if(this._elements.claimed.isUserFriendly) {
+                claimed = +claimed + +this._elements.claimed.value;
+            } else {
             }
+        } catch (err) { shared.devlog(`@readClaimed: ${err}`); }
+        return claimed;
+    }
+
+    checkIfOutOfFunds() {
+        let divAlerts = [...document.querySelectorAll(this._elements.outOfFundsDivSelector)];
+        divAlerts.forEach( function (d) {
+            if (d.innerText.toLowerCase().includes('not have sufficient funds')) {
+                shared.closeWithError(K.ErrorType.FAUCET_EMPTY, d.innerText);
+                return;
+            }
+        });
+    }
+}
+
+class BFRoll extends Faucet {
+    constructor(coinPrefix, trySpin = false) {
+        let elements = {
+            preRunButton: new ButtonWidget({selector: '.free-box.free-box__' + coinPrefix + ' button'}), //'#' + coinPrefix + '_free_box_withdraw_page'}),
+            captcha: new NoCaptchaWidget({ selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth' }),
+            rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth'}),
+            success: new ReadableWidget({selector: '.modal:not(.free-box-withdraw,fury-wheel-modal), .vue-notification-template.my-notify.success'}),
+            claimed: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix, parser: Parsers.bfBoxClaimed}),
+            progressBar: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix + ' .free-box__progress-bar progress'}),
+        };
+
+        let actions = {
+            preRun: true,
+            readClaimed: true,
+            readBalance: false,
+            readRolledNumber: false
+        };
+        super(elements, actions);
+        this.coinPrefix = coinPrefix;
+        this.trySpin = trySpin;
+    }
+
+    init() {
+        if (this._url.includes('https://betfury.io/boxes/all')) {
             this.run();
             return;
-        }
-
-        async preRun() {
-            if (this._elements.captcha.isUserFriendly) {
-                if (shared.getConfig()['dutchy.useBoosted']) {
-                    this._elements.rollButton = new ButtonWidget({selector: '#unlockbutton'});
-                    this._elements.confirmBoost = new ButtonWidget({selector: '#claim_boosted'});
-                    setInterval(() => {
-                        try {
-                            if (this._elements.confirmBoost.isUserFriendly) {
-                                this._elements.confirmBoost.click();
-                            }
-                        } catch (err) {}
-                    }, 8000);
-                }
-                return true;
-            } else {
-                return wait().preRun();
-            }
-        }
-    }
-
-    class YCoin extends Faucet {
-        constructor() {
-            let elements = {
-                rollButton: new ButtonWidget({selector: 'input[type="submit"][value="Get Free Crypto!"]'}),
-                claimed: new ReadableWidget({selector: 'div.alert.alert-info', parser: Parsers.freeEthereumIoClaimed}),
-                captcha: new HCaptchaWidget(),
-                balance: new ReadableWidget({selector: 'a.wha[href="/account?page=history"]', parser: Parsers.trimNaNs}),
-                success: new ReadableWidget({selector: 'div.alert.alert-info'}),
-                login: {
-                    inputUser: new TextboxWidget({ selector: 'input[name="number"]' }),
-                    inputPass: new TextboxWidget({ selector: 'input[name="pass"]' }),
-                    inputSubmit: new SubmitWidget({ selector: 'input[type="submit"][value="Login!"]' }),
-                    setCredentials: false
-                },
-            };
-
-            if(shared.getConfig()['ycoin.credentials.mode'] == 1) {
-                elements.login.setCredentials = {
-                    username: shared.getConfig()['ycoin.credentials.username'],
-                    password: shared.getConfig()['ycoin.credentials.password']
-                };
-            }
-
-            let actions = {
-                preRun: true,
-                readClaimed: true,
-                readBalance: true,
-                readRolledNumber: false,
-                checkIfOutOfFunds: false
-            };
-            super(elements, actions);
-        }
-
-        async preRun() {
-            let msgDiv;
-            msgDiv = document.querySelector('p.info.success');
-            if (msgDiv && msgDiv.innerText.includes('has been transferred')) {
-                let result = {};
-                if (msgDiv.innerText.includes('0 claims')) {
-                    result.nextRoll = helpers.addMinutes(60 * 24 + helpers.randomInt(10, 50));
-                } else {
-                    result.nextRoll = helpers.addMinutes('60');
-                }
-                result.claimed = +msgDiv.innerText.split(' ')[0];
-                result.balance = this.readBalance();
-                shared.closeWindow(result);
-                return;
-            }
-
-            msgDiv = document.querySelector('p.info.warn');
-            if (msgDiv) {
-                if (msgDiv.innerText.includes('can claim only')) {
-                    let result = {};
-                    result.nextRoll = helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
-                    shared.closeWindow(result);
-                    return;
-                } else if (msgDiv.innerText.includes('Please wait')) {
-                    let result = {};
-                    try {
-                        let unit = msgDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
-                        let val = msgDiv.innerText.split('Please wait ')[1].replace(/\D/g, '');
-                        if (unit == ' seconds') {
-                            result.nextRoll = helpers.addSeconds(val);
-                        } else {
-                            result.nextRoll = helpers.addMinutes(val);
-                        }
-                    } catch {
-                        result.nextRoll = helpers.addMinutes(60);
-                    }
-                    shared.closeWindow(result);
-                    return;
-                }
-            }
-
-            if (this._elements.captcha.isUserFriendly) {
-            } else {
-                if (this._elements.rollButton) {
-                    this._elements.rollButton.click();
-                    return;
-                }
-            }
-        }
-
-        async init() {
-            if (this._url.includes('/faucet')) {
-                let needToLoginButton = document.querySelector('input[type="submit"][value="Login / Signup"]');
-                if (needToLoginButton) {
-                    needToLoginButton.click();
-                    return;
-                }
-
-                this.run();
-                return;
-            } else if (this._url.includes('/account')) {
-                this.doLogin();
-                return;
-            }
-        }
-
-        async doLogin() {
-            return wait().then( () => {
-                let container = document.querySelector('#cc');
-                if (container.innerText.includes('You are now logged in as account')) {
-                    let toFaucetButton = document.querySelector('#mmenu a[href="/faucet"]');
-                    if (toFaucetButton) {
-                        toFaucetButton.click();
-                        return;
-                    }
-                    return this.doLogin();
-                }
-                if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    return this.doLogin();
-                }
-
-                let loginErrorDiv = document.querySelector('#cc .info.fail');
-                if (loginErrorDiv && loginErrorDiv.innerText.includes('Invalid')) {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
-                    return;
-                }
-
-                if (this._elements.login.setCredentials != false) {
-                    this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
-                    this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
-                }
-
-                try {
-                    this._elements.login.rememberMe.isUserFriendly.checked = true;
-                } catch (err) {}
-
-                if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    this._elements.login.inputSubmit.click();
-                } else {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
-                    return;
-                }
-            });
-        }
-
-    }
-
-    class CDiversity extends Faucet {
-        constructor() {
-            let elements = {
-                claimed: new ReadableWidget({selector: 'p.success', parser: Parsers.trimNaNs}),
-                captcha: new HCaptchaWidget(),
-                rollButton: new ButtonWidget({selector: 'input[type="submit"][value="Get Free Crypto!"]'}),
-            };
-            let actions = {
-                readTimeLeft: true,
-                readRolledNumber: false,
-                readBalance: false
-            };
-            super(elements, actions);
-        }
-
-        init() {
-            if(this.hasErrorMessage()) {
-                shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
-                return;
-            }
-
-            let claimed = this.readClaimed();
-            if (claimed != 0) {
-                let result = {
-                    claimed: claimed,
-                    nextRoll: this.readNextRoll()
-                };
-                shared.closeWindow(result);
-                return;
-            }
-
-            let nextRoll = this.readNextRoll();
-            if(nextRoll) {
-                let result = {
-                    nextRoll: nextRoll
-                };
-                shared.closeWindow(result);
-                return;
-            }
-
-            this.solve();
-        }
-
-        hasErrorMessage() {
-            return document.body.innerText.toLowerCase().includes('suspicious activity');
-        }
-
-        isFirstStep() {
-            return document.querySelector('form select[name="coin"]') ? true : false;
-        }
-
-        async doFirstStep() {
-            let form = document.querySelector('form');
-            if (!form) {
-                this.updateResult();
-                return;
-            }
-            let coinSelect = form.querySelector('select[name="coin"]');
-            if (!coinSelect) {
-                this.updateResult();
-                return;
-            }
-            let userInput = form.querySelector('input[name="ado"]');
-            if (!userInput) {
-                this.updateResult();
-                return;
-            }
-            let submitButton = form.querySelector('input[type="submit"]');
-            if (!submitButton) {
-                this.updateResult();
-                return;
-            }
-            coinSelect.value = this.getCoin();
-            userInput.value = this._params.address;
-
-            submitButton.parentElement.submit();
+        } else {
             return;
         }
-
-        getCoin() {
-            try {
-                let tds = document.querySelectorAll('table tr td:nth-child(2)');
-                return tds[helpers.randomInt(0, 5)].innerText.split(' ')[1]
-            } catch (err) {
-                return 'BTC';
-            }
-        }
-
-        isSecondStep() {
-            let ps = [...document.querySelectorAll('p')];
-            return ps.findIndex(x => x.innerText.toLowerCase().includes('one more step...')) >= 0;
-        }
-
-        async solve() {
-            if (this.isSecondStep()) {
-                return this.run();
-            }
-            if (this.isFirstStep()) {
-                return this.doFirstStep();
-            }
-        }
-
-        isCountdownVisible() {
-            let successDiv = document.querySelector('p.success');
-            if (!successDiv) {
-                return false;
-            }
-            if (successDiv.innerText.includes('0 claims')) {
-                return true;
-            }
-
-            return false;
-        }
-
-        readClaimed() {
-            let successDiv = document.querySelector('p.success');
-            if (successDiv) {
-                return successDiv.innerText.split(' ')[0];
-            } else {
-                return 0;
-            }
-        }
-
-        readNextRoll() {
-            try {
-                let successDiv = document.querySelector('p.success');
-                if (successDiv && successDiv.innerText.includes('You have')) {
-                    let claimsLeft;
-                    try {
-                        claimsLeft = successDiv.innerText.split(' claims')[0].split('have ')[1];
-                    } catch (err) {}
-                    if (claimsLeft) {
-                        return helpers.addMinutes(helpers.randomInt(6, 22));
-                    } else if (claimsLeft === '0') {
-                        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
-                    }
-                }
-            } catch (err) { }
-
-            try {
-                let warnDiv = document.querySelector('p.warn');
-                if (warnDiv) {
-                    if (warnDiv.innerText.includes('You can claim only')) {
-                        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
-                    }
-
-                    if (warnDiv.innerText.includes('Please wait ')) {
-                        try {
-                            let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
-                            let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
-                            if (unit == ' seconds') {
-                                return helpers.addSeconds(val);
-                            } else {
-                                return helpers.addMinutes(val);
-                            }
-                        } catch { }
-                        let claimsLeft;
-                        try {
-                            claimsLeft = warnDiv.innerText.split(' seconds')[0].split('wait ')[1];
-                        } catch (err) {}
-                        if (claimsLeft) {
-                            return helpers.addMinutes(helpers.randomInt(6, 22));
-                        }
-                    }
-                }
-
-            } catch (err) { }
-            return null;
-        }
     }
 
-    class CTop extends Faucet {
-        constructor() {
-            let elements = {
-                claimed: new ReadableWidget({selector: 'p.success', parser: Parsers.trimNaNs}),
-                captcha: new HCaptchaWidget(),
-                rollButton: new ButtonWidget({selector: 'input[type="submit"]'}),
-            };
-            let actions = {
-                readTimeLeft: true,
-                readRolledNumber: false,
-                readBalance: false
-            };
-            super(elements, actions);
+    async spin() {
+        let clickables = document.querySelectorAll('.fury-wheel__wheel-btn, .fury-wheel__btn-wrap, .fury-wheel__btn-content, .fury-wheel__btn-img');
+        if (clickables.length > 0) {
+            clickables[Math.floor(Math.random()*clickables.length)].click();
+            wait(15000).then ( () => { shared.closeWindow(this._result); } );
         }
-
-        init() {
-            if(this.hasErrorMessage()) {
-                shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
-                return;
-            }
-
-            let claimed = this.readClaimed();
-            if (claimed != 0) {
-                let result = {
-                    claimed: claimed,
-                    nextRoll: this.readNextRoll()
-                };
-                shared.closeWindow(result);
-                return;
-            }
-
-            let nextRoll = this.readNextRoll();
-            if(nextRoll) {
-                let result = {
-                    nextRoll: nextRoll
-                };
-                shared.closeWindow(result);
-                return;
-            }
-
-            this.solve();
-        }
-
-        hasErrorMessage() {
-            return document.body.innerText.toLowerCase().includes('suspicious activity');
-        }
-
-        isFirstStep() {
-            return document.querySelector('form input[name="adr"]') ? true : false;
-        }
-
-        async doFirstStep() {
-            let form = document.querySelector('form');
-            if (!form) {
-                this.updateResult();
-                return;
-            }
-            let userInput = form.querySelector('input[name="adr"]');
-            if (!userInput) {
-                this.updateResult();
-                return;
-            }
-            let submitButton = form.querySelector('input[type="submit"]');
-            if (!submitButton) {
-                this.updateResult();
-                return;
-            }
-            userInput.value = this._params.address;
-
-            submitButton.closest('form').submit();
-            return;
-        }
-
-        isSecondStep() {
-            let ps = [...document.querySelectorAll('p')];
-            return ps.findIndex(x => x.innerText.toLowerCase().includes('one more step...')) >= 0;
-        }
-
-        async solve() {
-            if (this.isSecondStep()) {
-                return this.run();
-            }
-            if (this.isFirstStep()) {
-                return this.doFirstStep();
-            }
-        }
-
-        isCountdownVisible() {
-            let successDiv = document.querySelector('p.success');
-            if (!successDiv) {
-                return false;
-            }
-            if (successDiv.innerText.includes('0 claims')) {
-                return true;
-            }
-
-            return false;
-        }
-
-        readClaimed() {
-            let successDiv = document.querySelector('p.success');
-            if (successDiv) {
-                return successDiv.innerText.split(' ')[0];
-            } else {
-                return 0;
-            }
-        }
-
-        readNextRoll() {
-            try {
-                let successDiv = document.querySelector('p.success');
-                if (successDiv && successDiv.innerText.includes('You have')) {
-                    let claimsLeft;
-                    try {
-                        claimsLeft = successDiv.innerText.split(' claims')[0].split('have ')[1];
-                    } catch (err) {}
-                    if (claimsLeft) {
-                        return helpers.addMinutes(helpers.randomInt(6, 22));
-                    } else if (claimsLeft === '0') {
-                        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
-                    }
-                }
-            } catch (err) { }
-
-            try {
-                let warnDiv = document.querySelector('p.warn');
-                if (warnDiv) {
-                    if (warnDiv.innerText.includes('You can claim only')) {
-                        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
-                    }
-
-                    if (warnDiv.innerText.includes('Please wait ')) {
-                        try {
-                            let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
-                            let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
-                            if (unit == ' seconds') {
-                                return helpers.addSeconds(val);
-                            } else {
-                                return helpers.addMinutes(val);
-                            }
-                        } catch { }
-                        let claimsLeft;
-                        try {
-                            claimsLeft = warnDiv.innerText.split(' seconds')[0].split('wait ')[1];
-                        } catch (err) {}
-                        if (claimsLeft) {
-                            return helpers.addMinutes(helpers.randomInt(6, 22));
-                        }
-                    }
-                }
-
-            } catch (err) { }
-            return null;
-        }
+        return;
     }
 
-    class BscAds extends Faucet {
-        constructor() {
-            let elements = {
-                rollButton: new ButtonWidget({selector: 'button.btn.btn-primary.btn-lg'}),
-                claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.trimNaNs}),
-                captcha: new HCaptchaWidget(),
-                countdownMinutes: new CountdownWidget({selector: '#faucet_timer', parser: Parsers.fromTextTimer }), // 0 hours 15 minutes 36 seconds
-                success: new ReadableWidget({selector: 'div.alert.alert-success'}),
-                login: {
-                    inputUser: new TextboxWidget({ selector: 'input[name="username"]' }),
-                    inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
-                    inputSubmit: new ButtonWidget({ selector: 'button.btn' }),
-                    setCredantials: false
+    async preRun() {
+        return wait().then( () => {
+            try {
+                let popup = document.querySelector('.modal-wrapper .modal:not(.free-box-withdraw,fury-wheel-modal) .modal__btn-close');
+                if (popup) {
+                    popup.click();
+                    popup.click(); // twice
+                }
+            } catch (err) {}
+
+            if (this.trySpin) {
+                let spinUnavailable = document.querySelector('.bonus.bonus_furywheel.wait');
+                if (spinUnavailable) {
+                } else {
+                    let spinBtn = document.querySelector('.wheel-amin'); //bonus bonus_furywheel wait
+                    if (spinBtn) {
+                        spinBtn.click();
+                        wait(10000).then ( () => { this.spin() } );
+                        return wait(60000).then ( () => { this.preRun(); } );
+                    }
                 }
             }
 
-            if(shared.getConfig()['bscads.credentials.mode'] == 1) {
-                elements.login.setCredentials = {
-                    username: shared.getConfig()['bscads.credentials.username'],
-                    password: shared.getConfig()['bscads.credentials.password']
-                };
+            if (!this._elements.progressBar || !this._elements.progressBar.isUserFriendly) {
+                return this.preRun();
             }
 
-            let actions = {
-                readClaimed: true,
-                readBalance: false,
-                readRolledNumber: false
-            };
-            super(elements, actions);
-        }
+            if (this._elements.preRunButton.isUserFriendly) {
+                if (!this._elements.preRunButton.isUserFriendly.disabled) {
+                    return this._elements.preRunButton.click();
+                } else {
+                    this._timeout.restart();
+                    shared.closeWindow(this._result);
+                    return;
+                }
+            } else if (document.querySelectorAll('.free-box').length > 1) {
+                shared.closeWithError(K.ErrorType.ERROR, 'Box might not exist for your account.');
+                return;
+            }
+            return this.preRun();
+        });
+    }
 
-        init() {
-            if (this._url.includes('/faucet/access')) {
-                this.run();
-                return;
-            } else if (this._url.includes('/faucet')) {
-                this.doPrePostFaucet();
-                return;
-            } else if (this._url.includes('/login')) {
-                this.doLogin();
-                return;
+    async validateRun() {
+        return wait(7000).then( () => {
+            let gtHook = document.querySelector('div.geetest_slice_bg');
+            if (gtHook) {
+                if (gtHook.isUserFriendly()) {
+                    return this.validateRun();
+                }
+            }
+            let popup = document.querySelector('.modal-wrapper .modal:not(.free-box-withdraw,fury-wheel-modal) .modal__btn-close');
+            if (!popup) {
+                if (this._elements.preRunButton.isUserFriendly && !this._elements.preRunButton.isUserFriendly.disabled) {
+                    this._elements.preRunButton.click();
+                    return this.validateRun();
+                }
             } else {
-                location.replace('faucet');
-                return;
-            }
-        }
-
-        async doPrePostFaucet() {
-            return wait(10000).then( () => {
-                let button = document.querySelector('button.btn.btn-primary.btn-lg');
-                if (button) {
-                    button.click();
-                    return;
-                }
-                if (!button) {
-                    return this.run();
-
-                }
-            });
-        }
-
-        async doLogin() {
-            if (document.body.innerText.toLowerCase().includes('please wait during')) {
-                return wait(8000).then( () => {
-                    location.replace('faucet');
-                });
-            }
-            return wait().then( () => {
-                if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    return this.doLogin();
-                }
-
-                let loginErrorDiv = document.querySelector('div.alert.alert-danger');
-                if (loginErrorDiv && loginErrorDiv.innerText.toLowerCase().includes('invalid')) {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
-                    return;
-                }
-
-                if (this._elements.login.setCredentials != false) {
-                    this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
-                    this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
-                }
-
                 try {
-                    this._elements.login.rememberMe.isUserFriendly.checked = true;
+                    if (popup) {
+                        popup.click();
+                        popup.click();
+                    }
                 } catch (err) {}
-
-                if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    this._elements.captcha.isSolved().then(() => {
-                        this._elements.login.inputSubmit.click();
-                        return;
-                    });
-                } else {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
-                    return;
-                }
-            });
-        }
-
-        async preRun() {
-        }
-    }
-
-    class FPB extends Faucet {
-        constructor(sitePrefix = null) {
-            let elements = {
-                rollButton: new ButtonWidget({selector: 'input[type="submit"][value="Claim From Faucet"],input[type="submit"][name="claim"]'}),
-                claimed: new ReadableWidget({selector: 'div.alert.alert-info', parser: Parsers.freeEthereumIoClaimed}),
-                captcha: new HCaptchaWidget(),
-                success: new ReadableWidget({selector: 'div.alert.alert-info'}),
-                login: {
-                    inputUser: new TextboxWidget({ selector: 'input[name="user_name"]' }),
-                    inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
-                    rememberMe: new TextboxWidget({ selector: 'input[name="remember_me"]' }),
-                    inputSubmit: new ButtonWidget({ selector: 'input[type="submit"][name="login"]' }),
-                    setCredentials: false
-                },
-                outOfFundsDivSelector: '.alert.alert-info'
-            };
-
-            if(shared.getConfig()[sitePrefix + '.credentials.mode'] == 1) {
-                elements.login.setCredentials = {
-                    username: shared.getConfig()[sitePrefix + '.credentials.username'],
-                    password: shared.getConfig()[sitePrefix + '.credentials.password']
-                };
             }
 
-            let actions = {
-                readClaimed: true,
-                readBalance: false,
-                readRolledNumber: false,
-                checkIfOutOfFunds: true
-            };
-            super(elements, actions);
-        }
-
-        init() {
-            if (this._url.includes('/dashboard')) {
-                this.run();
-                return;
-            } else if (this._url.includes('/login')) {
-                this.doLogin();
-                return;
-            }
-        }
-
-        async doLogin() {
-            return wait().then( () => {
-                if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    return this.doLogin();
-                }
-
-                let loginErrorDiv = document.querySelector('div.alert.alert-info');
-                if (loginErrorDiv && loginErrorDiv.innerText.includes('not valid')) {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
-                    return;
-                }
-
-                if (this._elements.login.setCredentials != false) {
-                    this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
-                    this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
-                }
-
-                try {
-                    this._elements.login.rememberMe.isUserFriendly.checked = true;
-                } catch (err) {}
-
-                if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    this._elements.captcha.isSolved().then(() => {
-                        this._elements.login.inputSubmit.click();
-                        return;
-                    });
-                } else {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
-                    return;
-                }
-            });
-        }
-
-        async detectAction() {
-            return wait().then( () => {
-                if ( this.isCountdownVisible() ) {
-                    return Promise.resolve({action: 'needToWait'});
-                } else if ( this._elements.success.isUserFriendly ) {
-                    return this.updateResult();
-                } else if ( this.isRollButtonVisible() ) {
-                    return Promise.resolve({action: 'doRoll'});
-                } else {
-                    return this.detectAction();
-                }
-            });
-        }
-
-        clickRoll() {
-            try {
-                try {
-                    window.scrollTo(0, document.body.scrollHeight);
-                    this._elements.rollButton.scrollIntoView(false);
-                } catch (err) { }
-                this._elements.rollButton.click();
-                setTimeout( () => { this._elements.rollButton.click(); }, 5000);
-            } catch (err) {
-                shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
-            }
-        }
-    }
-
-    class VieRoll extends Faucet {
-        constructor() {
-            let elements = {
-                rollButton: new SubmitWidget({selector: '.main-content button[type="submit"]'}),
-                claimed: new ReadableWidget({selector: '.swal2-html-container', parser: Parsers.trimNaNs}),
-                captcha: new HCaptchaWidget(),
-                success: new ReadableWidget({selector: '.swal2-success-ring'}),
-                login: {
-                    inputUser: new TextboxWidget({ selector: '#email' }),
-                    inputPass: new TextboxWidget({ selector: '#password' }),
-                    inputSubmit: new SubmitWidget({ selector: 'button[type="submit"]' })
-                }
-            };
-
-            let actions = {
-                readClaimed: true,
-                readBalance: false,
-                readTimeLeft: false,
-                readRolledNumber: false,
-                preSaveResult: false,
-                preRun: true
-            };
-            super(elements, actions);
-        }
-
-        getClaimsQty() {
-            let statWidgets = document.querySelectorAll('.card.mini-stats-wid');
-            if (statWidgets.length < 4) return false;
-
-            let claimCounts = statWidgets[3].querySelector('p');
-            if (!claimCounts) return false;
-
-            claimCounts = claimCounts.innerText.split('/');
-            if (claimCounts.length != 2) return false;
-
-            return claimCounts[0];
-        }
-
-        async evalClaimsQty() {
-            let current = this.getClaimsQty();
-
-            if (current) {
-                current = +current;
-            } else {
-                return;
-            }
-
-            let previous = await shared.getProp('tempClaimsQty') || 0;
-            if (!isNaN(previous)) previous = +previous;
-
-            if (current == previous) {
-                return;
-            } else if (current < previous) {
+            if (this._elements.success.isUserFriendly) {
                 return this.updateResult();
-            } else {
-                await shared.setProp('tempClaimsQty', current);
+            } else if(this._actions.altValidation) {
+                if(this.altValidation()) {
+                    return this.updateResult();
+                }
             }
-        }
+            return this.validateRun();
+        });
+    }
+}
 
-        readClaimed() {
-            let claimed = 0.12;
-            try {
-                claimed = +document.querySelectorAll('.card.mini-stats-wid')[2].querySelector('p').innerText.split(' ')[0];
-            } catch (err) { }
-            return claimed;
-        }
-
-        async init() {
-            await this.evalClaimsQty();
-
-            if (window.location.pathname.includes('/faucet')) {
-                this.run();
-                return;
-            } else if (window.location.pathname.includes('/firewall')) {
-                this.solveFirewall();
-                return;
-            } else if (window.location.pathname.includes('/dashboard')) {
-                window.location.href = (new URL('faucet', window.location)).href;
-                return;
-            } else if (window.location.pathname == '/') {
-                let loginBtn = document.querySelector('.btn.btn-success');
-                if (loginBtn) {
-                    loginBtn.click();
-                    return;
-                } else {
-                    window.location.href = (new URL('login', window.location)).href;
-                }
-                return;
-            } else if (this._url.includes('/login')) {
-
-                let credentialsMode = this._params.credentials.mode;
-                switch(credentialsMode) {
-                    case -1:
-                        shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'Manual login required.');
-                        break;
-                    case 0:
-                        shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'Login required and autologin is not configured.');
-                        break;
-                    default:
-                        this.doLogin();
-                        break;
-                }
-                return;
-            }
-        }
-
-        async preRun() {
-            return;
-        }
-
-        async solveFirewall() {
-            this.closeSwal();
-
-            this._elements.captcha.isSolved().then(() => {
-                let btn = new SubmitWidget({selector: 'form:not(.p-3) button[type="submit"]'});
-                btn.click();
-            });
-        }
-
-        async doLogin() {
-            return wait().then( () => {
-                if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    return this.doLogin();
-                }
-
-                let loginErrorDiv = document.querySelector('div.alert.alert-danger');
-                if (loginErrorDiv) {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
-                    return;
-                }
-
-                if (this._params.credentials.mode == 1) {
-                    this._elements.login.inputUser.value = this._params.credentials.username;
-                    this._elements.login.inputPass.value = this._params.credentials.password;
-                }
-
-                if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    this._elements.captcha.isSolved().then(() => {
-                        this._elements.login.inputSubmit.click();
-                        return;
-                    });
-                } else {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
-                    return;
-                }
-            });
-        }
-
-        preSaveResult() {
-            this.closeSwal();
-        }
-
-        closeSwal() {
-            let okButton = document.querySelector('button.swal2-confirm');
-            if (okButton) {
-                okButton.click();
-            }
-        }
+class DutchyRoll extends Faucet {
+    constructor() {
+        let elements = {
+            countdownMinutes: new CountdownWidget({selector: '#timer', parser: Parsers.splitAndIdxToInt, options: { splitter: 'Minutes', idx: 0} }), // "26 Minutes 23"
+            captcha: new HCaptchaWidget(),
+            rollButton: new ButtonWidget({selector: '#claim'}), //w/booster video: '#unlockbutton' & then #claim_boosted
+            success: new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse'}),
+            claimed: new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.freeEthereumIoClaimed}) //"You Won 0.00409070 TRX + 20 XP"
+        };
+        let actions = {
+            preRun: true,
+            readClaimed: true,
+            readBalance: false,
+            readRolledNumber: false
+        };
+        super(elements, actions);
     }
 
-    class GRCRoll extends Faucet {
-        constructor() {
-            let elements = {
-                countdownMinutes: new CountdownWidget({selector: '#roll_wait_text', parser: Parsers.freeGrcCountdown}),
-                rollButton: new ButtonWidget({selector: 'input[id="roll_button"]'}),
-                balance: new ReadableWidget({selector: '#balance', parser: Parsers.trimNaNs}),
-                claimed: new ReadableWidget({selector: '#roll_comment .won', parser: Parsers.trimNaNs}),
-                rolledNumber: new ReadableWidget({selector: '#roll_result', parser: Parsers.trimNaNs}),
-                captcha: new NoCaptchaWidget({selector: '#roll_button'}),
-                success: new ReadableWidget({selector: '#roll_result'})
-            };
-            let actions = {
-                readTimeLeft: true,
-                readRolledNumber: true
-            };
-            super(elements, actions);
-        }
-
-        init() {
-            if (this._url.includes('#free_roll')) {
-                if (document.querySelectorAll('a[href="#login"]').length > 0) {
+    init() {
+        switch(window.location.host) {
+            case 'autofaucet.dutchycorp.space':
+                if (this._url.includes('/roll.php')) {
+                    this._elements.claimed = new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.dutchysClaimed})
+                } else if (this._url.includes('/login.php')) {
                     shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
                     return;
-                } else {
-                    this.run();
+                }
+                break;
+            case 'express.dutchycorp.space':
+                if (this._url.includes('/roll.php')) {
+                    this._elements.claimed = new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.dutchysClaimed})
+                } else if (this._url.includes('/coin_roll.php')) {
+                    this._elements.claimed = new ReadableWidget({selector: '.card.green.pulse p,.card.blue.pulse,.card.green.animated,.card.green.pulse', parser: Parsers.dutchysClaimedToFloat})
+                } else if (this._url.includes('/index.php')) {
+                    shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'You need to login using ExpressCrypto (EC-UserId-XXXXXX).');
                     return;
                 }
+                break;
+        }
+        this.run();
+        return;
+    }
+
+    async preRun() {
+        if (this._elements.captcha.isUserFriendly) {
+            if (shared.getConfig()['dutchy.useBoosted']) {
+                this._elements.rollButton = new ButtonWidget({selector: '#unlockbutton'});
+                this._elements.confirmBoost = new ButtonWidget({selector: '#claim_boosted'});
+                setInterval(() => {
+                    try {
+                        if (this._elements.confirmBoost.isUserFriendly) {
+                            this._elements.confirmBoost.click();
+                        }
+                    } catch (err) {}
+                }, 8000);
+            }
+            return true;
+        } else {
+            return wait().preRun();
+        }
+    }
+}
+
+class YCoin extends Faucet {
+    constructor() {
+        let elements = {
+            rollButton: new ButtonWidget({selector: 'input[type="submit"][value="Get Free Crypto!"]'}),
+            claimed: new ReadableWidget({selector: 'div.alert.alert-info', parser: Parsers.freeEthereumIoClaimed}),
+            captcha: new HCaptchaWidget(),
+            balance: new ReadableWidget({selector: 'a.wha[href="/account?page=history"]', parser: Parsers.trimNaNs}),
+            success: new ReadableWidget({selector: 'div.alert.alert-info'}),
+            login: {
+                inputUser: new TextboxWidget({ selector: 'input[name="number"]' }),
+                inputPass: new TextboxWidget({ selector: 'input[name="pass"]' }),
+                inputSubmit: new SubmitWidget({ selector: 'input[type="submit"][value="Login!"]' }),
+                setCredentials: false
+            },
+        };
+
+        if(shared.getConfig()['ycoin.credentials.mode'] == 1) {
+            elements.login.setCredentials = {
+                username: shared.getConfig()['ycoin.credentials.username'],
+                password: shared.getConfig()['ycoin.credentials.password']
+            };
+        }
+
+        let actions = {
+            preRun: true,
+            readClaimed: true,
+            readBalance: true,
+            readRolledNumber: false,
+            checkIfOutOfFunds: false
+        };
+        super(elements, actions);
+    }
+
+    async preRun() {
+        let msgDiv;
+        msgDiv = document.querySelector('p.info.success');
+        if (msgDiv && msgDiv.innerText.includes('has been transferred')) {
+            let result = {};
+            if (msgDiv.innerText.includes('0 claims')) {
+                result.nextRoll = helpers.addMinutes(60 * 24 + helpers.randomInt(10, 50));
             } else {
+                result.nextRoll = helpers.addMinutes('60');
+            }
+            result.claimed = +msgDiv.innerText.split(' ')[0];
+            result.balance = this.readBalance();
+            shared.closeWindow(result);
+            return;
+        }
+
+        msgDiv = document.querySelector('p.info.warn');
+        if (msgDiv) {
+            if (msgDiv.innerText.includes('can claim only')) {
+                let result = {};
+                result.nextRoll = helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+                shared.closeWindow(result);
+                return;
+            } else if (msgDiv.innerText.includes('Please wait')) {
+                let result = {};
+                try {
+                    let unit = msgDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
+                    let val = msgDiv.innerText.split('Please wait ')[1].replace(/\D/g, '');
+                    if (unit == ' seconds') {
+                        result.nextRoll = helpers.addSeconds(val);
+                    } else {
+                        result.nextRoll = helpers.addMinutes(val);
+                    }
+                } catch {
+                    result.nextRoll = helpers.addMinutes(60);
+                }
+                shared.closeWindow(result);
                 return;
             }
         }
 
-        isCountdownVisible() {
-            return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly && this._elements.countdownMinutes.isUserFriendly.innerText != '';
+        if (this._elements.captcha.isUserFriendly) {
+        } else {
+            if (this._elements.rollButton) {
+                this._elements.rollButton.click();
+                return;
+            }
         }
     }
 
-    class O24Roll extends Faucet {
-        constructor() {
-            let elements = {
-                claimed: new ReadableWidget({selector: '#roll_comment .won', parser: Parsers.trimNaNs})
-            };
-            let actions = {
-                readTimeLeft: true,
-                readRolledNumber: false,
-                readBalance: false
-            };
-            super(elements, actions);
-        }
-
-        init() {
-            if (this.isCountdownVisible() || this.readClaimed() != 0) {
-                this.updateResult();
+    async init() {
+        if (this._url.includes('/faucet')) {
+            let needToLoginButton = document.querySelector('input[type="submit"][value="Login / Signup"]');
+            if (needToLoginButton) {
+                needToLoginButton.click();
                 return;
             }
 
-            this.solve();
+            this.run();
+            return;
+        } else if (this._url.includes('/account')) {
+            this.doLogin();
+            return;
         }
+    }
 
-        getSpotsAvailable() {
+    async doLogin() {
+        return wait().then( () => {
+            let container = document.querySelector('#cc');
+            if (container.innerText.includes('You are now logged in as account')) {
+                let toFaucetButton = document.querySelector('#mmenu a[href="/faucet"]');
+                if (toFaucetButton) {
+                    toFaucetButton.click();
+                    return;
+                }
+                return this.doLogin();
+            }
+            if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
+                return this.doLogin();
+            }
+
+            let loginErrorDiv = document.querySelector('#cc .info.fail');
+            if (loginErrorDiv && loginErrorDiv.innerText.includes('Invalid')) {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
+                return;
+            }
+
+            if (this._elements.login.setCredentials != false) {
+                this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
+                this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
+            }
+
             try {
-                let soldSpots = document.querySelectorAll('.pos:not(.pfree)').length;
-                let available = 1024-soldSpots;
-                return {
-                    sold: '' + soldSpots,
-                    available: '' + available
-                }
-            } catch (err) {
+                this._elements.login.rememberMe.isUserFriendly.checked = true;
+            } catch (err) {}
+
+            if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
+                this._elements.login.inputSubmit.click();
+            } else {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
+                return;
             }
+        });
+    }
+
+}
+
+class CDiversity extends Faucet {
+    constructor() {
+        let elements = {
+            claimed: new ReadableWidget({selector: 'p.success', parser: Parsers.trimNaNs}),
+            captcha: new HCaptchaWidget(),
+            rollButton: new ButtonWidget({selector: 'input[type="submit"][value="Get Free Crypto!"]'}),
+        };
+        let actions = {
+            readTimeLeft: true,
+            readRolledNumber: false,
+            readBalance: false
+        };
+        super(elements, actions);
+    }
+
+    init() {
+        if(this.hasErrorMessage()) {
+            shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
+            return;
         }
 
-        isPrime(num) {
-            for(var i = 2; i < num; i++){
-                if(num % i === 0){
-                    return false;
-                }
-            }
-            return num > 1;
+        let claimed = this.readClaimed();
+        if (claimed != 0) {
+            let result = {
+                claimed: claimed,
+                nextRoll: this.readNextRoll()
+            };
+            shared.closeWindow(result);
+            return;
         }
 
-        async solve() {
-            let spots = this.getSpotsAvailable();
-            if(!spots) {
-                this.updateResult();
-                return;
-            }
-
-            const findNotPrime = document.querySelector('select[name="pr"]').parentElement.innerText.includes('not a prime')
-            let numbers = [...document.querySelectorAll('select[name="pr"] option[value]')].map(x => x.innerText)
-            let prime = null;
-            if (findNotPrime) {
-                prime = numbers.find(x => {
-                    return !this.isPrime(x)
-                });
-            } else {
-                prime = numbers.find(x => {
-                return this.isPrime(x)
-            });
-            }
-            if(!prime) {
-                this.updateResult();
-                return;
-            }
-
-            let addrInput = document.querySelector('label input[name="a"]');
-            if (addrInput) {
-                addrInput.value = this._params.address;
-            } else {
-                this.updateResult();
-                return;
-            }
-            await wait(helpers.randomInt(1500, 3000));
-
-            let answersList = [...document.querySelectorAll('select[name="tt"] option')].map(x => x.value);
-            if (answersList.includes(spots.sold)) {
-                document.querySelector('select[name="tt"]').value=spots.sold;
-            } else if (answersList.includes(spots.available)) {
-                document.querySelector('select[name="tt"]').value=spots.available;
-            } else {
-                this.updateResult();
-                return;
-            }
-
-            await wait(helpers.randomInt(400, 5000));
-
-            let primeSelect = document.querySelector('select[name="pr"]');
-            helpers.triggerMouseEvent (primeSelect, "mouseenter");
-            await wait(helpers.randomInt(5600, 29000));
-            helpers.triggerMouseEvent (primeSelect, "mouseout");
-            primeSelect.value=prime.toString()
-            await wait(helpers.randomInt(1500, 5000));
-
-            let claimForm = document.querySelector('form');
-            if(claimForm) {
-                claimForm.submit();
-            }
+        let nextRoll = this.readNextRoll();
+        if(nextRoll) {
+            let result = {
+                nextRoll: nextRoll
+            };
+            shared.closeWindow(result);
+            return;
         }
 
-        isCountdownVisible() {
-            let pars = [...document.querySelectorAll('p')];
-            if (pars.find(x => x.innerText.includes('wait until next day'))) {
-                return true;
-            }
+        this.solve();
+    }
 
-            if (pars.find(x => x.innerText.includes('PROBLEM'))) {
-                return true;
-            }
+    hasErrorMessage() {
+        return document.body.innerText.toLowerCase().includes('suspicious activity');
+    }
 
+    isFirstStep() {
+        return document.querySelector('form select[name="coin"]') ? true : false;
+    }
+
+    async doFirstStep() {
+        let form = document.querySelector('form');
+        if (!form) {
+            this.updateResult();
+            return;
+        }
+        let coinSelect = form.querySelector('select[name="coin"]');
+        if (!coinSelect) {
+            this.updateResult();
+            return;
+        }
+        let userInput = form.querySelector('input[name="ado"]');
+        if (!userInput) {
+            this.updateResult();
+            return;
+        }
+        let submitButton = form.querySelector('input[type="submit"]');
+        if (!submitButton) {
+            this.updateResult();
+            return;
+        }
+        coinSelect.value = this.getCoin();
+        userInput.value = this._params.address;
+
+        submitButton.parentElement.submit();
+        return;
+    }
+
+    getCoin() {
+        try {
+            let tds = document.querySelectorAll('table tr td:nth-child(2)');
+            return tds[helpers.randomInt(0, 5)].innerText.split(' ')[1]
+        } catch (err) {
+            return 'BTC';
+        }
+    }
+
+    isSecondStep() {
+        let ps = [...document.querySelectorAll('p')];
+        return ps.findIndex(x => x.innerText.toLowerCase().includes('one more step...')) >= 0;
+    }
+
+    async solve() {
+        if (this.isSecondStep()) {
+            return this.run();
+        }
+        if (this.isFirstStep()) {
+            return this.doFirstStep();
+        }
+    }
+
+    isCountdownVisible() {
+        let successDiv = document.querySelector('p.success');
+        if (!successDiv) {
             return false;
         }
-
-        readClaimed() {
-            let pars = [...document.querySelectorAll('p')];
-            let claimedElm = pars.find(x => x.innerText.includes('been transferred to your account'));
-            if (claimedElm) {
-                return claimedElm.innerText.split(' ')[0];
-            } else {
-                return 0;
-            }
+        if (successDiv.innerText.includes('0 claims')) {
+            return true;
         }
 
-        readNextRoll() {
-            try {
-                let pars = [...document.querySelectorAll('p')];
-                if (pars.find(x => x.innerText.includes('until next day') || x.innerText.includes('ALL DAILY CLAIMS') || x.innerText.includes('You have 0 claims left'))) {
+        return false;
+    }
+
+    readClaimed() {
+        let successDiv = document.querySelector('p.success');
+        if (successDiv) {
+            return successDiv.innerText.split(' ')[0];
+        } else {
+            return 0;
+        }
+    }
+
+    readNextRoll() {
+        try {
+            let successDiv = document.querySelector('p.success');
+            if (successDiv && successDiv.innerText.includes('You have')) {
+                let claimsLeft;
+                try {
+                    claimsLeft = successDiv.innerText.split(' claims')[0].split('have ')[1];
+                } catch (err) {}
+                if (claimsLeft) {
+                    return helpers.addMinutes(helpers.randomInt(6, 22));
+                } else if (claimsLeft === '0') {
+                    return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+                }
+            }
+        } catch (err) { }
+
+        try {
+            let warnDiv = document.querySelector('p.warn');
+            if (warnDiv) {
+                if (warnDiv.innerText.includes('You can claim only')) {
                     return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
                 }
 
-                if (pars.find(x => x.innerText.includes('PROBLEM'))) {
-                    return helpers.addMinutes(helpers.randomInt(6, 22));
+                if (warnDiv.innerText.includes('Please wait ')) {
+                    try {
+                        let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
+                        let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
+                        if (unit == ' seconds') {
+                            return helpers.addSeconds(val);
+                        } else {
+                            return helpers.addMinutes(val);
+                        }
+                    } catch { }
+                    let claimsLeft;
+                    try {
+                        claimsLeft = warnDiv.innerText.split(' seconds')[0].split('wait ')[1];
+                    } catch (err) {}
+                    if (claimsLeft) {
+                        return helpers.addMinutes(helpers.randomInt(6, 22));
+                    }
                 }
+            }
 
-                if (pars.find(x => x.innerText.includes('You have'))) {
-                    return helpers.addMinutes(helpers.randomInt(6, 22));
-                }
-            } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
-            return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
-        }
+        } catch (err) { }
+        return null;
+    }
+}
+
+class CTop extends Faucet {
+    constructor() {
+        let elements = {
+            claimed: new ReadableWidget({selector: 'p.success', parser: Parsers.trimNaNs}),
+            captcha: new HCaptchaWidget(),
+            rollButton: new ButtonWidget({selector: 'input[type="submit"]'}),
+        };
+        let actions = {
+            readTimeLeft: true,
+            readRolledNumber: false,
+            readBalance: false
+        };
+        super(elements, actions);
     }
 
-    class FCryptoRoll extends Faucet {
-        constructor() {
-            let elements = {
-                countdownMinutes: new CountdownWidget({selector: '.sidebar-links .cursor-not-allowed span.notranslate', parser: Parsers.splitAndIdxToInt, options: { splitter: ':', idx: 1} }), // '00:21:28'
-                rollButton: new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'}),
-                balance: new ReadableWidget({selector: 'div.flex.badge.text-bg-yellow', parser: Parsers.trimNaNs}), // '405.81 Coins'
-                claimed: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium', parser: Parsers.splitAndIdxTrimNaNs, options: { splitter: '(', idx: 0} }), // '25.05 Coins (12 + 13.05)'
-                captcha: new HCaptchaWidget({selector: '#hcap-script > iframe'}),
-                success: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium'})
-            };
-            let actions = {
-                isMultiClaim: true,
-                preRoll: true,
-                postRun: true,
-                readRolledNumber: false,
-            };
-            super(elements, actions);
-            this._paths = {
-                faucet: '/task/faucet-claim',
-                dashboard: '/dashboard'
-            };
-            this._linkSelectors = {
-                Faucet: 'a[href="https://faucetcrypto.com/task/faucet-claim"]'
-            }
-            this.useUrlListener();
-        }
-
-        init() {
-            this._elements.captcha = new HCaptchaWidget({selector: '#hcap-script > iframe'});
-            this._elements.rollButton = new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
-            if (this._url.endsWith(this._paths.dashboard)) {
-                return this.runDashboard();
-            } else if (this._url.includes(this._paths.faucet)) {
-                return wait().then( () => { this.run(); });
-            }
-
+    init() {
+        if(this.hasErrorMessage()) {
+            shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
             return;
         }
 
-        readSections() {
-            let sections = {};
-            try {
-                for (var l in this._linkSelectors) {
-                    sections[l] = {};
-                    sections[l].elm = document.querySelector(this._linkSelectors[l]);
-                    if (sections[l].elm) {
-                        let qty = sections[l].elm.querySelector('span.ml-auto');
-                        sections[l].qty = (qty && !isNaN(qty.innerText)) ? qty.innerText : 0;
-                    }
-                }
-            } catch {}
-
-            this.sections = sections;
+        let claimed = this.readClaimed();
+        if (claimed != 0) {
+            let result = {
+                claimed: claimed,
+                nextRoll: this.readNextRoll()
+            };
+            shared.closeWindow(result);
+            return;
         }
 
-        runDashboard() {
-            this.readSections();
+        let nextRoll = this.readNextRoll();
+        if(nextRoll) {
+            let result = {
+                nextRoll: nextRoll
+            };
+            shared.closeWindow(result);
+            return;
+        }
 
-            if (this.sections['Faucet'].elm) {
-                this.sections['Faucet'].elm.click();
+        this.solve();
+    }
+
+    hasErrorMessage() {
+        return document.body.innerText.toLowerCase().includes('suspicious activity');
+    }
+
+    isFirstStep() {
+        return document.querySelector('form input[name="adr"]') ? true : false;
+    }
+
+    async doFirstStep() {
+        let form = document.querySelector('form');
+        if (!form) {
+            this.updateResult();
+            return;
+        }
+        let userInput = form.querySelector('input[name="adr"]');
+        if (!userInput) {
+            this.updateResult();
+            return;
+        }
+        let submitButton = form.querySelector('input[type="submit"]');
+        if (!submitButton) {
+            this.updateResult();
+            return;
+        }
+        userInput.value = this._params.address;
+
+        submitButton.closest('form').submit();
+        return;
+    }
+
+    isSecondStep() {
+        let ps = [...document.querySelectorAll('p')];
+        return ps.findIndex(x => x.innerText.toLowerCase().includes('one more step...')) >= 0;
+    }
+
+    async solve() {
+        if (this.isSecondStep()) {
+            return this.run();
+        }
+        if (this.isFirstStep()) {
+            return this.doFirstStep();
+        }
+    }
+
+    isCountdownVisible() {
+        let successDiv = document.querySelector('p.success');
+        if (!successDiv) {
+            return false;
+        }
+        if (successDiv.innerText.includes('0 claims')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    readClaimed() {
+        let successDiv = document.querySelector('p.success');
+        if (successDiv) {
+            return successDiv.innerText.split(' ')[0];
+        } else {
+            return 0;
+        }
+    }
+
+    readNextRoll() {
+        try {
+            let successDiv = document.querySelector('p.success');
+            if (successDiv && successDiv.innerText.includes('You have')) {
+                let claimsLeft;
+                try {
+                    claimsLeft = successDiv.innerText.split(' claims')[0].split('have ')[1];
+                } catch (err) {}
+                if (claimsLeft) {
+                    return helpers.addMinutes(helpers.randomInt(6, 22));
+                } else if (claimsLeft === '0') {
+                    return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+                }
+            }
+        } catch (err) { }
+
+        try {
+            let warnDiv = document.querySelector('p.warn');
+            if (warnDiv) {
+                if (warnDiv.innerText.includes('You can claim only')) {
+                    return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+                }
+
+                if (warnDiv.innerText.includes('Please wait ')) {
+                    try {
+                        let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
+                        let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
+                        if (unit == ' seconds') {
+                            return helpers.addSeconds(val);
+                        } else {
+                            return helpers.addMinutes(val);
+                        }
+                    } catch { }
+                    let claimsLeft;
+                    try {
+                        claimsLeft = warnDiv.innerText.split(' seconds')[0].split('wait ')[1];
+                    } catch (err) {}
+                    if (claimsLeft) {
+                        return helpers.addMinutes(helpers.randomInt(6, 22));
+                    }
+                }
+            }
+
+        } catch (err) { }
+        return null;
+    }
+}
+
+class BscAds extends Faucet {
+    constructor() {
+        let elements = {
+            rollButton: new ButtonWidget({selector: 'button.btn.btn-primary.btn-lg'}),
+            claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.trimNaNs}),
+            captcha: new HCaptchaWidget(),
+            countdownMinutes: new CountdownWidget({selector: '#faucet_timer', parser: Parsers.fromTextTimer }), // 0 hours 15 minutes 36 seconds
+            success: new ReadableWidget({selector: 'div.alert.alert-success'}),
+            login: {
+                inputUser: new TextboxWidget({ selector: 'input[name="username"]' }),
+                inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
+                inputSubmit: new ButtonWidget({ selector: 'button.btn' }),
+                setCredantials: false
+            }
+        }
+
+        if(shared.getConfig()['bscads.credentials.mode'] == 1) {
+            elements.login.setCredentials = {
+                username: shared.getConfig()['bscads.credentials.username'],
+                password: shared.getConfig()['bscads.credentials.password']
+            };
+        }
+
+        let actions = {
+            readClaimed: true,
+            readBalance: false,
+            readRolledNumber: false
+        };
+        super(elements, actions);
+    }
+
+    init() {
+        if (this._url.includes('/faucet/access')) {
+            this.run();
+            return;
+        } else if (this._url.includes('/faucet')) {
+            this.doPrePostFaucet();
+            return;
+        } else if (this._url.includes('/login')) {
+            this.doLogin();
+            return;
+        } else {
+            location.replace('faucet');
+            return;
+        }
+    }
+
+    async doPrePostFaucet() {
+        return wait(10000).then( () => {
+            let button = document.querySelector('button.btn.btn-primary.btn-lg');
+            if (button) {
+                button.click();
+                return;
+            }
+            if (!button) {
+                return this.run();
+
+            }
+        });
+    }
+
+    async doLogin() {
+        if (document.body.innerText.toLowerCase().includes('please wait during')) {
+            return wait(8000).then( () => {
+                location.replace('faucet');
+            });
+        }
+        return wait().then( () => {
+            if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
+                return this.doLogin();
+            }
+
+            let loginErrorDiv = document.querySelector('div.alert.alert-danger');
+            if (loginErrorDiv && loginErrorDiv.innerText.toLowerCase().includes('invalid')) {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
+                return;
+            }
+
+            if (this._elements.login.setCredentials != false) {
+                this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
+                this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
+            }
+
+            try {
+                this._elements.login.rememberMe.isUserFriendly.checked = true;
+            } catch (err) {}
+
+            if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
+                this._elements.captcha.isSolved().then(() => {
+                    this._elements.login.inputSubmit.click();
+                    return;
+                });
+            } else {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
+                return;
+            }
+        });
+    }
+
+    async preRun() {
+    }
+}
+
+class FPB extends Faucet {
+    constructor(sitePrefix = null) {
+        let elements = {
+            rollButton: new ButtonWidget({selector: 'input[type="submit"][value="Claim From Faucet"],input[type="submit"][name="claim"]'}),
+            claimed: new ReadableWidget({selector: 'div.alert.alert-info', parser: Parsers.freeEthereumIoClaimed}),
+            captcha: new HCaptchaWidget(),
+            success: new ReadableWidget({selector: 'div.alert.alert-info'}),
+            login: {
+                inputUser: new TextboxWidget({ selector: 'input[name="user_name"]' }),
+                inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
+                rememberMe: new TextboxWidget({ selector: 'input[name="remember_me"]' }),
+                inputSubmit: new ButtonWidget({ selector: 'input[type="submit"][name="login"]' }),
+                setCredentials: false
+            },
+            outOfFundsDivSelector: '.alert.alert-info'
+        };
+
+        if(shared.getConfig()[sitePrefix + '.credentials.mode'] == 1) {
+            elements.login.setCredentials = {
+                username: shared.getConfig()[sitePrefix + '.credentials.username'],
+                password: shared.getConfig()[sitePrefix + '.credentials.password']
+            };
+        }
+
+        let actions = {
+            readClaimed: true,
+            readBalance: false,
+            readRolledNumber: false,
+            checkIfOutOfFunds: true
+        };
+        super(elements, actions);
+    }
+
+    init() {
+        if (this._url.includes('/dashboard')) {
+            this.run();
+            return;
+        } else if (this._url.includes('/login')) {
+            this.doLogin();
+            return;
+        }
+    }
+
+    async doLogin() {
+        return wait().then( () => {
+            if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
+                return this.doLogin();
+            }
+
+            let loginErrorDiv = document.querySelector('div.alert.alert-info');
+            if (loginErrorDiv && loginErrorDiv.innerText.includes('not valid')) {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
+                return;
+            }
+
+            if (this._elements.login.setCredentials != false) {
+                this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
+                this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
+            }
+
+            try {
+                this._elements.login.rememberMe.isUserFriendly.checked = true;
+            } catch (err) {}
+
+            if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
+                this._elements.captcha.isSolved().then(() => {
+                    this._elements.login.inputSubmit.click();
+                    return;
+                });
+            } else {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
+                return;
+            }
+        });
+    }
+
+    async detectAction() {
+        return wait().then( () => {
+            if ( this.isCountdownVisible() ) {
+                return Promise.resolve({action: 'needToWait'});
+            } else if ( this._elements.success.isUserFriendly ) {
+                return this.updateResult();
+            } else if ( this.isRollButtonVisible() ) {
+                return Promise.resolve({action: 'doRoll'});
+            } else {
+                return this.detectAction();
+            }
+        });
+    }
+
+    clickRoll() {
+        try {
+            try {
+                window.scrollTo(0, document.body.scrollHeight);
+                this._elements.rollButton.scrollIntoView(false);
+            } catch (err) { }
+            this._elements.rollButton.click();
+            setTimeout( () => { this._elements.rollButton.click(); }, 5000);
+        } catch (err) {
+            shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
+        }
+    }
+}
+
+class VieRoll extends Faucet {
+    constructor() {
+        let elements = {
+            rollButton: new SubmitWidget({selector: '.main-content button[type="submit"]'}),
+            claimed: new ReadableWidget({selector: '.swal2-html-container', parser: Parsers.trimNaNs}),
+            captcha: new HCaptchaWidget(),
+            success: new ReadableWidget({selector: '.swal2-success-ring'}),
+            login: {
+                inputUser: new TextboxWidget({ selector: '#email' }),
+                inputPass: new TextboxWidget({ selector: '#password' }),
+                inputSubmit: new SubmitWidget({ selector: 'button[type="submit"]' })
+            }
+        };
+
+        let actions = {
+            readClaimed: true,
+            readBalance: false,
+            readTimeLeft: false,
+            readRolledNumber: false,
+            preSaveResult: false,
+            preRun: true
+        };
+        super(elements, actions);
+    }
+
+    getClaimsQty() {
+        let statWidgets = document.querySelectorAll('.card.mini-stats-wid');
+        if (statWidgets.length < 4) return false;
+
+        let claimCounts = statWidgets[3].querySelector('p');
+        if (!claimCounts) return false;
+
+        claimCounts = claimCounts.innerText.split('/');
+        if (claimCounts.length != 2) return false;
+
+        return claimCounts[0];
+    }
+
+    async evalClaimsQty() {
+        let current = this.getClaimsQty();
+
+        if (current) {
+            current = +current;
+        } else {
+            return;
+        }
+
+        let previous = await shared.getProp('tempClaimsQty') || 0;
+        if (!isNaN(previous)) previous = +previous;
+
+        if (current == previous) {
+            return;
+        } else if (current < previous) {
+            return this.updateResult();
+        } else {
+            await shared.setProp('tempClaimsQty', current);
+        }
+    }
+
+    readClaimed() {
+        let claimed = 0.12;
+        try {
+            claimed = +document.querySelectorAll('.card.mini-stats-wid')[2].querySelector('p').innerText.split(' ')[0];
+        } catch (err) { }
+        return claimed;
+    }
+
+    async init() {
+        await this.evalClaimsQty();
+
+        if (window.location.pathname.includes('/faucet')) {
+            this.run();
+            return;
+        } else if (window.location.pathname.includes('/firewall')) {
+            this.solveFirewall();
+            return;
+        } else if (window.location.pathname.includes('/dashboard')) {
+            window.location.href = (new URL('faucet', window.location)).href;
+            return;
+        } else if (window.location.pathname == '/') {
+            let loginBtn = document.querySelector('.btn.btn-success');
+            if (loginBtn) {
+                loginBtn.click();
                 return;
             } else {
-                return wait().then( () => { this.run(); });
+                window.location.href = (new URL('login', window.location)).href;
             }
-        }
+            return;
+        } else if (this._url.includes('/login')) {
 
-        scrollTo() {
-            let mainContainer = document.querySelector('main');
-            if (mainContainer) {
-                mainContainer.scrollTo(0, mainContainer.scrollHeight - mainContainer.offsetHeight);
+            let credentialsMode = this._params.credentials.mode;
+            switch(credentialsMode) {
+                case -1:
+                    shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'Manual login required.');
+                    break;
+                case 0:
+                    shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, 'Login required and autologin is not configured.');
+                    break;
+                default:
+                    this.doLogin();
+                    break;
             }
+            return;
         }
+    }
 
-        preRoll() { // search for 'You don't need to solve any captcha! The system is telling me that you are a good person :)'
-            this.scrollTo();
-            let checkCircleSpan = document.querySelector('p.font-medium.flex.justify-center.leading-0 span.text-green-500.mr-3 svg');
-            if(checkCircleSpan) {
-                if (checkCircleSpan.parentElement.parentElement.innerText.toLowerCase().includes('the system is telling me that you are a good person')) {
-                    this._elements.captcha = new NoCaptchaWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
+    async preRun() {
+        return;
+    }
+
+    async solveFirewall() {
+        this.closeSwal();
+
+        this._elements.captcha.isSolved().then(() => {
+            let btn = new SubmitWidget({selector: 'form:not(.p-3) button[type="submit"]'});
+            btn.click();
+        });
+    }
+
+    async doLogin() {
+        return wait().then( () => {
+            if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
+                return this.doLogin();
+            }
+
+            let loginErrorDiv = document.querySelector('div.alert.alert-danger');
+            if (loginErrorDiv) {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
+                return;
+            }
+
+            if (this._params.credentials.mode == 1) {
+                this._elements.login.inputUser.value = this._params.credentials.username;
+                this._elements.login.inputPass.value = this._params.credentials.password;
+            }
+
+            if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
+                this._elements.captcha.isSolved().then(() => {
+                    this._elements.login.inputSubmit.click();
                     return;
-                }
+                });
+            } else {
+                shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
+                return;
             }
+        });
+    }
+
+    preSaveResult() {
+        this.closeSwal();
+    }
+
+    closeSwal() {
+        let okButton = document.querySelector('button.swal2-confirm');
+        if (okButton) {
+            okButton.click();
+        }
+    }
+}
+
+class GRCRoll extends Faucet {
+    constructor() {
+        let elements = {
+            countdownMinutes: new CountdownWidget({selector: '#roll_wait_text', parser: Parsers.freeGrcCountdown}),
+            rollButton: new ButtonWidget({selector: 'input[id="roll_button"]'}),
+            balance: new ReadableWidget({selector: '#balance', parser: Parsers.trimNaNs}),
+            claimed: new ReadableWidget({selector: '#roll_comment .won', parser: Parsers.trimNaNs}),
+            rolledNumber: new ReadableWidget({selector: '#roll_result', parser: Parsers.trimNaNs}),
+            captcha: new NoCaptchaWidget({selector: '#roll_button'}),
+            success: new ReadableWidget({selector: '#roll_result'})
+        };
+        let actions = {
+            readTimeLeft: true,
+            readRolledNumber: true
+        };
+        super(elements, actions);
+    }
+
+    init() {
+        if (this._url.includes('#free_roll')) {
+            if (document.querySelectorAll('a[href="#login"]').length > 0) {
+                shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
+                return;
+            } else {
+                this.run();
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+
+    isCountdownVisible() {
+        return this._elements.countdownMinutes && this._elements.countdownMinutes.isUserFriendly && this._elements.countdownMinutes.isUserFriendly.innerText != '';
+    }
+}
+
+class O24Roll extends Faucet {
+    constructor() {
+        let elements = {
+            claimed: new ReadableWidget({selector: '#roll_comment .won', parser: Parsers.trimNaNs})
+        };
+        let actions = {
+            readTimeLeft: true,
+            readRolledNumber: false,
+            readBalance: false
+        };
+        super(elements, actions);
+    }
+
+    init() {
+        if (this.isCountdownVisible() || this.readClaimed() != 0) {
+            this.updateResult();
+            return;
         }
 
-        postRun() {
+        this.solve();
+    }
 
-            if (this._url.endsWith(this._paths.dashboard) || this._oldClaimed != this._result.claimed) {
-                try {
-                    this._elements.claimed.isUserFriendly.parentElement.parentElement.parentElement.querySelector('button');
-                } catch (err) {
+    getSpotsAvailable() {
+        try {
+            let soldSpots = document.querySelectorAll('.pos:not(.pfree)').length;
+            let available = 1024-soldSpots;
+            return {
+                sold: '' + soldSpots,
+                available: '' + available
+            }
+        } catch (err) {
+        }
+    }
+
+    isPrime(num) {
+        for(var i = 2; i < num; i++){
+            if(num % i === 0){
+                return false;
+            }
+        }
+        return num > 1;
+    }
+
+    async solve() {
+        let spots = this.getSpotsAvailable();
+        if(!spots) {
+            this.updateResult();
+            return;
+        }
+
+        const findNotPrime = document.querySelector('select[name="pr"]').parentElement.innerText.includes('not a prime')
+        let numbers = [...document.querySelectorAll('select[name="pr"] option[value]')].map(x => x.innerText)
+        let prime = null;
+        if (findNotPrime) {
+            prime = numbers.find(x => {
+                return !this.isPrime(x)
+            });
+        } else {
+            prime = numbers.find(x => {
+            return this.isPrime(x)
+        });
+        }
+        if(!prime) {
+            this.updateResult();
+            return;
+        }
+
+        let addrInput = document.querySelector('label input[name="a"]');
+        if (addrInput) {
+            addrInput.value = this._params.address;
+        } else {
+            this.updateResult();
+            return;
+        }
+        await wait(helpers.randomInt(1500, 3000));
+
+        let answersList = [...document.querySelectorAll('select[name="tt"] option')].map(x => x.value);
+        if (answersList.includes(spots.sold)) {
+            document.querySelector('select[name="tt"]').value=spots.sold;
+        } else if (answersList.includes(spots.available)) {
+            document.querySelector('select[name="tt"]').value=spots.available;
+        } else {
+            this.updateResult();
+            return;
+        }
+
+        await wait(helpers.randomInt(400, 5000));
+
+        let primeSelect = document.querySelector('select[name="pr"]');
+        helpers.triggerMouseEvent (primeSelect, "mouseenter");
+        await wait(helpers.randomInt(5600, 29000));
+        helpers.triggerMouseEvent (primeSelect, "mouseout");
+        primeSelect.value=prime.toString()
+        await wait(helpers.randomInt(1500, 5000));
+
+        let claimForm = document.querySelector('form');
+        if(claimForm) {
+            claimForm.submit();
+        }
+    }
+
+    isCountdownVisible() {
+        let pars = [...document.querySelectorAll('p')];
+        if (pars.find(x => x.innerText.includes('wait until next day'))) {
+            return true;
+        }
+
+        if (pars.find(x => x.innerText.includes('PROBLEM'))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    readClaimed() {
+        let pars = [...document.querySelectorAll('p')];
+        let claimedElm = pars.find(x => x.innerText.includes('been transferred to your account'));
+        if (claimedElm) {
+            return claimedElm.innerText.split(' ')[0];
+        } else {
+            return 0;
+        }
+    }
+
+    readNextRoll() {
+        try {
+            let pars = [...document.querySelectorAll('p')];
+            if (pars.find(x => x.innerText.includes('until next day') || x.innerText.includes('ALL DAILY CLAIMS') || x.innerText.includes('You have 0 claims left'))) {
+                return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+            }
+
+            if (pars.find(x => x.innerText.includes('PROBLEM'))) {
+                return helpers.addMinutes(helpers.randomInt(6, 22));
+            }
+
+            if (pars.find(x => x.innerText.includes('You have'))) {
+                return helpers.addMinutes(helpers.randomInt(6, 22));
+            }
+        } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
+        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+    }
+}
+
+class FCryptoRoll extends Faucet {
+    constructor() {
+        let elements = {
+            countdownMinutes: new CountdownWidget({selector: '.sidebar-links .cursor-not-allowed span.notranslate', parser: Parsers.splitAndIdxToInt, options: { splitter: ':', idx: 1} }), // '00:21:28'
+            rollButton: new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'}),
+            balance: new ReadableWidget({selector: 'div.flex.badge.text-bg-yellow', parser: Parsers.trimNaNs}), // '405.81 Coins'
+            claimed: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium', parser: Parsers.splitAndIdxTrimNaNs, options: { splitter: '(', idx: 0} }), // '25.05 Coins (12 + 13.05)'
+            captcha: new HCaptchaWidget({selector: '#hcap-script > iframe'}),
+            success: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium'})
+        };
+        let actions = {
+            isMultiClaim: true,
+            preRoll: true,
+            postRun: true,
+            readRolledNumber: false,
+        };
+        super(elements, actions);
+        this._paths = {
+            faucet: '/task/faucet-claim',
+            dashboard: '/dashboard'
+        };
+        this._linkSelectors = {
+            Faucet: 'a[href="https://faucetcrypto.com/task/faucet-claim"]'
+        }
+        this.useUrlListener();
+    }
+
+    init() {
+        this._elements.captcha = new HCaptchaWidget({selector: '#hcap-script > iframe'});
+        this._elements.rollButton = new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
+        if (this._url.endsWith(this._paths.dashboard)) {
+            return this.runDashboard();
+        } else if (this._url.includes(this._paths.faucet)) {
+            return wait().then( () => { this.run(); });
+        }
+
+        return;
+    }
+
+    readSections() {
+        let sections = {};
+        try {
+            for (var l in this._linkSelectors) {
+                sections[l] = {};
+                sections[l].elm = document.querySelector(this._linkSelectors[l]);
+                if (sections[l].elm) {
+                    let qty = sections[l].elm.querySelector('span.ml-auto');
+                    sections[l].qty = (qty && !isNaN(qty.innerText)) ? qty.innerText : 0;
                 }
-                this._oldClaimed = null;
-                this.readSections();
-                if (this.sections != {}) {
-                    if (this.sections['Faucet'].elm) {
-                        this.sections['Faucet'].elm.click();
-                        return;
-                    } else {
-                    }
+            }
+        } catch {}
+
+        this.sections = sections;
+    }
+
+    runDashboard() {
+        this.readSections();
+
+        if (this.sections['Faucet'].elm) {
+            this.sections['Faucet'].elm.click();
+            return;
+        } else {
+            return wait().then( () => { this.run(); });
+        }
+    }
+
+    scrollTo() {
+        let mainContainer = document.querySelector('main');
+        if (mainContainer) {
+            mainContainer.scrollTo(0, mainContainer.scrollHeight - mainContainer.offsetHeight);
+        }
+    }
+
+    preRoll() { // search for 'You don't need to solve any captcha! The system is telling me that you are a good person :)'
+        this.scrollTo();
+        let checkCircleSpan = document.querySelector('p.font-medium.flex.justify-center.leading-0 span.text-green-500.mr-3 svg');
+        if(checkCircleSpan) {
+            if (checkCircleSpan.parentElement.parentElement.innerText.toLowerCase().includes('the system is telling me that you are a good person')) {
+                this._elements.captcha = new NoCaptchaWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
+                return;
+            }
+        }
+    }
+
+    postRun() {
+
+        if (this._url.endsWith(this._paths.dashboard) || this._oldClaimed != this._result.claimed) {
+            try {
+                this._elements.claimed.isUserFriendly.parentElement.parentElement.parentElement.querySelector('button');
+            } catch (err) {
+            }
+            this._oldClaimed = null;
+            this.readSections();
+            if (this.sections != {}) {
+                if (this.sections['Faucet'].elm) {
+                    this.sections['Faucet'].elm.click();
+                    return;
                 } else {
                 }
             } else {
             }
+        } else {
+        }
 
-            this._result = shared.getProp('tempResults');
-            shared.closeWindow(this._result);
+        this._result = shared.getProp('tempResults');
+        shared.closeWindow(this._result);
+        return;
+    }
+
+    async runPtcList() {
+        let listItems = [...document.querySelectorAll('.grid.grid-responsive-3 .feather.feather-eye')].map(x => x.parentElement.parentElement).filter(x => x.isUserFriendly());
+        if (listItems.length > 0) {
+            listItems[0].click();
             return;
-        }
-
-        async runPtcList() {
-            let listItems = [...document.querySelectorAll('.grid.grid-responsive-3 .feather.feather-eye')].map(x => x.parentElement.parentElement).filter(x => x.isUserFriendly());
-            if (listItems.length > 0) {
-                listItems[0].click();
-                return;
-            } else {
-                return wait().then( () => { this.runPtcList() } );
-            }
-        }
-
-        runPtcSingleStart() {
-            return this.run('doRoll');
-        }
-
-        runPtcSingleWait() {
-            this._elements.captcha = new NoCaptchaWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
-            this._elements.rollButton = new ButtonWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
-            return this.run('doRoll');
+        } else {
+            return wait().then( () => { this.runPtcList() } );
         }
     }
+
+    runPtcSingleStart() {
+        return this.run('doRoll');
+    }
+
+    runPtcSingleWait() {
+        this._elements.captcha = new NoCaptchaWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
+        this._elements.rollButton = new ButtonWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
+        return this.run('doRoll');
+    }
+}
 
     let landing, instance, siteTimer;
     let useTimer;

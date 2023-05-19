@@ -1,0 +1,9 @@
+{{ui/renderers/base.js}}
+{{ui/renderers/ui-sites-renderer.js}}
+{{ui/renderers/ui-promos-renderer.js}}
+{{ui/renderers/ui-config-renderer.js}}
+{{ui/renderers/ui-wallet-renderer.js}}
+{{ui/renderers/ui-schedules-renderer.js}}
+{{ui/renderers/ui-site-parameter-renderer.js}}
+{{ui/renderers/ui-cf-site-parameters-handler.js}}
+{{ui/renderers/ui-renderer.js}}
