@@ -24,6 +24,26 @@ class UiRenderer {
         console.log(dlg);
         dlg.querySelectorAll(".modal-content").forEach(x => x.classList.add('d-none'));
         switch (id) {
+            case 'modal-backup':
+                console.info('TODO: GM_listValues => loop keys => save json as blob');
+                break;
+                // const keys = GM_listValues();
+                // const asyncKeys = await GM.listValues();
+
+                // var str = JSON.stringify(obj);
+                // var data = encode( str );
+            
+                // var blob = new Blob( [ data ], {
+                //     type: 'application/octet-stream'
+                // });
+                
+                // var url = URL.createObjectURL( blob );
+                // var link = document.createElement( 'a' );
+                // link.setAttribute( 'href', url );
+                // link.setAttribute( 'download', 'data.json' );
+                // var event = document.createEvent( 'MouseEvents' );
+                // event.initMouseEvent( 'click', true, true, window, 1, 0, 0, 0, 0, false, false, false, false, 0, null);
+                // link.dispatchEvent( event );
             case 'modal-ereport':
             case 'modal-config':
             case 'modal-site':

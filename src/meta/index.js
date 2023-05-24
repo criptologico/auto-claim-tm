@@ -1,7 +1,6 @@
 // ==UserScript==
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
-// @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
-// @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
+{{meta/description.js}}
 {{meta/version.js}}
 // @author       satology
 // @namespace    satology.onrender.com

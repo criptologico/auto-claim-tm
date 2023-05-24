@@ -7,6 +7,8 @@
  */
 
 const fs = require('fs');
+const workDir = 'src/';
+const mainFile = 'index.js';
 
 /**
  * removeTrailingLines: returns the string without empty lines at the end 
@@ -34,9 +36,9 @@ String.prototype.replacePlaceholders = function() {
  * removes empty lines at the end and 
  * replaces {{file}} placeholdes recursively
  */
-const mixer = (file) => fs.readFileSync(file, 'utf-8').trim().removeTrailingLines().replacePlaceholders();
+const mixer = (file) => fs.readFileSync(workDir + file, 'utf-8').trim().removeTrailingLines().replacePlaceholders();
 
-let contents = mixer('main.js');
+let contents = mixer(mainFile);
 
 // Remove all commented lines after '==/UserScript=='
 let lines = contents.split('\n');
