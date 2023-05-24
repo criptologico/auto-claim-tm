@@ -9,11 +9,21 @@
 let arguments = process.argv;
 
 const defaults = {
+  removeComments: false,
   removeLogs: false,
+  removeSharedDevLog: false
 };
 
 if (arguments.includes('--no-console-log')) {
   defaults.removeLogs = true;
+}
+
+if (arguments.includes('--no-faucet-log')) {
+  defaults.removeSharedDevLog = true;
+}
+
+if (arguments.includes('--no-comments')) {
+  defaults.removeComments = true;
 }
 
 const fs = require('fs');
@@ -49,26 +59,28 @@ String.prototype.replacePlaceholders = function() {
 const mixer = (file) => fs.readFileSync(workDir + file, 'utf-8').trim().removeTrailingLines().replacePlaceholders();
 
 let contents = mixer(mainFile);
+let filteredLines = contents.split('\n');
 
-// Remove all commented lines after '==/UserScript=='
-let lines = contents.split('\n');
-const endMetaLineNumber = lines.findIndex(x => x.includes('==/UserScript=='));
-if (endMetaLineNumber < 0) {
-    console.error('Metadata end line not found');
-    return;
+if (defaults.removeComments) {
+  // Remove all commented lines after '==/UserScript=='
+  const endMetaLineNumber = filteredLines.findIndex(x => x.includes('==/UserScript=='));
+  if (endMetaLineNumber < 0) {
+      console.error('Metadata end line not found');
+      return;
+  }
+
+  filteredLines = filteredLines.filter((line, index) => {
+    if (index <= endMetaLineNumber) {
+      return true;
+    }
+    let tempLine = line.trim();
+    if (tempLine.startsWith('//')) {
+      return false;
+    } else {
+      return true;
+    }
+  });
 }
-
-let filteredLines = lines.filter((line, index) => {
-  if (index <= endMetaLineNumber) {
-    return true;
-  }
-  let tempLine = line.trim();
-  if (tempLine.startsWith('//')) {
-    return false;
-  } else {
-    return true;
-  }
-});
 
 if (defaults.removeLogs) {
   // Remove all lines that contain console.log
@@ -82,15 +94,17 @@ if (defaults.removeLogs) {
   });
 }
 
-// Remove all lines that contain shared.devlog
-filteredLines = filteredLines.filter((line, index) => {
-  let tempLine = line.trim();
-  if (tempLine.startsWith('shared.devlog') && tempLine.includes(');')) {
-    return false;
-  } else {
-    return true;
-  }
-});
+if (defaults.removeSharedDevLog) {
+  // Remove all lines that contain shared.devlog
+  filteredLines = filteredLines.filter((line, index) => {
+    let tempLine = line.trim();
+    if (tempLine.startsWith('shared.devlog') && tempLine.includes(');')) {
+      return false;
+    } else {
+      return true;
+    }
+  });
+}
 
 // Remove whitespaces if line is empty
 filteredLines = filteredLines.map((line) => {

@@ -8217,6 +8217,7 @@ class FCryptoRoll extends Faucet {
         log: log
     }
 }
+
     async function init() {
         eventer = new EventEmitter();
         persistence = new Persistence();

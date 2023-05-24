@@ -2185,6 +2185,7 @@
 
     {{manager/legacy.js}}
     {{ui/legacy.js}}
+
     async function init() {
         // persistence = objectGenerator.createPersistence();
         eventer = new EventEmitter();

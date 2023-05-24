@@ -5,7 +5,7 @@
     "main": "main.js",
     "scripts": {
       "test": "echo \"Error: no test specified\" && exit 1",
-      "build": "node builder.js --no-console-log",
+      "build": "node builder.js --no-console-log --no-faucet-log --no-comments",
       "dev": "node builder.js dev"
     },
     "repository": {
