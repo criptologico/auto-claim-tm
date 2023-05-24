@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.13
+// @version      3.0.14
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -243,185 +243,185 @@
     let uiRenderer;
 
     Element.prototype.isVisible = function() {
-        return !!(this.offsetWidth||this.offsetHeight||this.getClientRects().length);
-    };
-    Element.prototype.isUserFriendly = function(selector) {
-        let e = selector ? this.querySelector(selector) : this;
-        return e && e.isVisible()  ? e : null;
-    };
-    Document.prototype.isUserFriendly = Element.prototype.isUserFriendly;
+    return !!(this.offsetWidth||this.offsetHeight||this.getClientRects().length);
+};
+Element.prototype.isUserFriendly = function(selector) {
+    let e = selector ? this.querySelector(selector) : this;
+    return e && e.isVisible()  ? e : null;
+};
+Document.prototype.isUserFriendly = Element.prototype.isUserFriendly;
 
-    Number.prototype.toDate = function() {
-        return new Date(this);
-    };
-    Number.prototype.msToCountdown = function() {
-        const remainingSeconds = Math.ceil(this / 1000);
-        const hours = Math.floor(remainingSeconds / 3600).toString().padStart(2, '0');
-        const minutes = Math.floor((remainingSeconds % 3600) / 60).toString().padStart(2, '0');
-        const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
-        return `${hours}:${minutes}:${seconds}`;
-    };
+Number.prototype.toDate = function() {
+    return new Date(this);
+};
+Number.prototype.msToCountdown = function() {
+    const remainingSeconds = Math.ceil(this / 1000);
+    const hours = Math.floor(remainingSeconds / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((remainingSeconds % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+};
 
-    String.prototype.clean = function() {
-        let output = "";
-        for (let i = 0; i < this.length; i++) {
-            if (this.charCodeAt(i) <= 127) {
-                output += this.charAt(i);
-            }
-        }
-        return output;
-    };
-    Array.prototype.shuffle = function () {
-        let currentIndex = this.length, temporaryValue, randomIndex;
-
-        while (0 !== currentIndex) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex -= 1;
-            temporaryValue = this[currentIndex];
-            this[currentIndex] = this[randomIndex];
-            this[randomIndex] = temporaryValue;
-        }
-
-        return this;
-    };
-
-    let helpers = {
-        getTdPrintableTime: function (date = new Date()) {
-            if (date != null) {
-                return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
-            }
-            return '';
-        },
-        getPrintableTime: function (date = new Date()) {
-            if (date == null) {
-                return '';
-            }
-            return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
-        },
-        getPrintableDateTime: function (date) {
-            if (date != null) {
-                return ('0' + date.getDate()).slice(-2) + '/' + ('0' + (date.getMonth() + 1)).slice(-2) + ' ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
-            } else {
-                return '';
-            }
-        },
-        getEnumText: function (enm, value) {
-            return Object.keys(enm).find(key => enm[key] === value) || '_ERR';
-        },
-        randomMs: function (a, b){
-            return a + (b - a) * Math.random();
-        },
-        addMinutes: function(mins, date = new Date()) {
-            return date.setMinutes(date.getMinutes() + +mins);
-        },
-        addSeconds: function(secs, date = new Date()) {
-            return date.setSeconds(date.getSeconds() + +secs);
-        },
-        randomHexColor: function() {
-            const hexChars = '0123456789abcdef';
-            let color = '';
-            for (let i = 0; i < 6; i++) {
-              color += hexChars[Math.floor(Math.random() * hexChars.length)];
-            }
-            return color;
-        },
-        randomString: function(length) {
-            let str = '';
-            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-            const charactersLength = characters.length;
-
-            for (let i = 0; i < length; i++) {
-                str += characters.charAt(Math.floor(Math.random() * charactersLength));
-            }
-
-            return str;
-        },
-        randomInt: function(min, max) {
-            min = Math.ceil(min);
-            max = Math.floor(max);
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        },
-        addMs: function(ms, date = new Date()) {
-            return date.setMilliseconds(date.getMilliseconds() + ms);
-        },
-        getRandomMs: function(minute, rangeDiffInPercentage) { // Now will be a random value between minute and minute + rangeDiffPercentage%; Example if minute = 30 and rangeDiffPercentage = 5 => random in the range [30, 31.5]
-            let msMin = minute * 60 * 1000;
-            let msMax = msMin + rangeDiffInPercentage/100 * msMin;
-            return helpers.randomMs(msMin, msMax);
-        },
-        hsToMs: function(hours) {
-            return hours * 60 * 60 * 1000;
-        },
-        minToMs: function(min) {
-            return min * 60 * 1000;
-        },
-        getEmojiForPromoStatus: function(promoStatus) {
-            switch (promoStatus) {
-                case K.CF.PromoStatus.NOCODE:
-                    return '⚪';
-                case K.CF.PromoStatus.PENDING:
-                    return '⏳';
-                case K.CF.PromoStatus.ACCEPTED:
-                    return '✔️';
-                case K.CF.PromoStatus.USEDBEFORE:
-                    return '🕙';
-                case K.CF.PromoStatus.INVALID:
-                    return '❌';
-                case K.CF.PromoStatus.EXPIRED:
-                    return '📅';
-                case K.CF.PromoStatus.UNKNOWNERROR:
-                    return '❗';
-            }
-        },
-        getHost: function(url, withHttps = false) {
-            if (url.includes('//')) {
-                url = url.split('//')[1];
-            }
-            url = url.split('/')[0];
-            return withHttps ? ('https://' + url) : url;
-        },
-        cf: {
-            getUrlType: function(url) {
-                if (url.endsWith('/free-rolls')) {
-                    return K.CF.UrlType.FREEROLLS;
-                }
-                if (url.split('?')[0].endsWith('/free')) {
-                    return K.CF.UrlType.FREE;
-                }
-                if (url.includes('/promotion/')) {
-                    return K.CF.UrlType.PROMOTION;
-                }
-                if (url.endsWith('/contact-twitter')) {
-                    return K.CF.UrlType.CONTACTTWITTER;
-                }
-                if (url.endsWith('/settings')) {
-                    return K.CF.UrlType.SETTINGS;
-                }
-                if (url.endsWith('/stats')) {
-                    return K.CF.UrlType.STATS;
-                }
-                if (url.endsWith('/')) {
-                    url = url.slice(0, -1);
-                    if (url == helpers.getHost(url, true)) {
-                        return K.CF.UrlType.HOME;
-                    }
-                }
-
-                return K.CF.UrlType.IGNORE;
-            }
-        },
-        triggerMouseEvent: function (elm, eventType) {
-            let clickEvent = document.createEvent('MouseEvents');
-            clickEvent.initEvent (eventType, true, true);
-            elm.dispatchEvent (clickEvent);
-        },
-        alternativeClick: function (elm) {
-            helpers.triggerMouseEvent (elm, "mouseover");
-            helpers.triggerMouseEvent (elm, "mousedown");
-            helpers.triggerMouseEvent (elm, "mouseup");
-            helpers.triggerMouseEvent (elm, "click");
+String.prototype.clean = function() {
+    let output = "";
+    for (let i = 0; i < this.length; i++) {
+        if (this.charCodeAt(i) <= 127) {
+            output += this.charAt(i);
         }
     }
+    return output;
+};
+Array.prototype.shuffle = function () {
+    let currentIndex = this.length, temporaryValue, randomIndex;
+
+    while (0 !== currentIndex) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex -= 1;
+        temporaryValue = this[currentIndex];
+        this[currentIndex] = this[randomIndex];
+        this[randomIndex] = temporaryValue;
+    }
+
+    return this;
+};
+
+    let helpers = {
+    getTdPrintableTime: function (date = new Date()) {
+        if (date != null) {
+            return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
+        }
+        return '';
+    },
+    getPrintableTime: function (date = new Date()) {
+        if (date == null) {
+            return '';
+        }
+        return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
+    },
+    getPrintableDateTime: function (date) {
+        if (date != null) {
+            return ('0' + date.getDate()).slice(-2) + '/' + ('0' + (date.getMonth() + 1)).slice(-2) + ' ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
+        } else {
+            return '';
+        }
+    },
+    getEnumText: function (enm, value) {
+        return Object.keys(enm).find(key => enm[key] === value) || '_ERR';
+    },
+    randomMs: function (a, b){
+        return a + (b - a) * Math.random();
+    },
+    addMinutes: function(mins, date = new Date()) {
+        return date.setMinutes(date.getMinutes() + +mins);
+    },
+    addSeconds: function(secs, date = new Date()) {
+        return date.setSeconds(date.getSeconds() + +secs);
+    },
+    randomHexColor: function() {
+        const hexChars = '0123456789abcdef';
+        let color = '';
+        for (let i = 0; i < 6; i++) {
+            color += hexChars[Math.floor(Math.random() * hexChars.length)];
+        }
+        return color;
+    },
+    randomString: function(length) {
+        let str = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const charactersLength = characters.length;
+
+        for (let i = 0; i < length; i++) {
+            str += characters.charAt(Math.floor(Math.random() * charactersLength));
+        }
+
+        return str;
+    },
+    randomInt: function(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+    addMs: function(ms, date = new Date()) {
+        return date.setMilliseconds(date.getMilliseconds() + ms);
+    },
+    getRandomMs: function(minute, rangeDiffInPercentage) { // Now will be a random value between minute and minute + rangeDiffPercentage%; Example if minute = 30 and rangeDiffPercentage = 5 => random in the range [30, 31.5]
+        let msMin = minute * 60 * 1000;
+        let msMax = msMin + rangeDiffInPercentage/100 * msMin;
+        return helpers.randomMs(msMin, msMax);
+    },
+    hsToMs: function(hours) {
+        return hours * 60 * 60 * 1000;
+    },
+    minToMs: function(min) {
+        return min * 60 * 1000;
+    },
+    getEmojiForPromoStatus: function(promoStatus) {
+        switch (promoStatus) {
+            case K.CF.PromoStatus.NOCODE:
+                return '⚪';
+            case K.CF.PromoStatus.PENDING:
+                return '⏳';
+            case K.CF.PromoStatus.ACCEPTED:
+                return '✔️';
+            case K.CF.PromoStatus.USEDBEFORE:
+                return '🕙';
+            case K.CF.PromoStatus.INVALID:
+                return '❌';
+            case K.CF.PromoStatus.EXPIRED:
+                return '📅';
+            case K.CF.PromoStatus.UNKNOWNERROR:
+                return '❗';
+        }
+    },
+    getHost: function(url, withHttps = false) {
+        if (url.includes('//')) {
+            url = url.split('//')[1];
+        }
+        url = url.split('/')[0];
+        return withHttps ? ('https://' + url) : url;
+    },
+    cf: {
+        getUrlType: function(url) {
+            if (url.endsWith('/free-rolls')) {
+                return K.CF.UrlType.FREEROLLS;
+            }
+            if (url.split('?')[0].endsWith('/free')) {
+                return K.CF.UrlType.FREE;
+            }
+            if (url.includes('/promotion/')) {
+                return K.CF.UrlType.PROMOTION;
+            }
+            if (url.endsWith('/contact-twitter')) {
+                return K.CF.UrlType.CONTACTTWITTER;
+            }
+            if (url.endsWith('/settings')) {
+                return K.CF.UrlType.SETTINGS;
+            }
+            if (url.endsWith('/stats')) {
+                return K.CF.UrlType.STATS;
+            }
+            if (url.endsWith('/')) {
+                url = url.slice(0, -1);
+                if (url == helpers.getHost(url, true)) {
+                    return K.CF.UrlType.HOME;
+                }
+            }
+
+            return K.CF.UrlType.IGNORE;
+        }
+    },
+    triggerMouseEvent: function (elm, eventType) {
+        let clickEvent = document.createEvent('MouseEvents');
+        clickEvent.initEvent (eventType, true, true);
+        elm.dispatchEvent (clickEvent);
+    },
+    alternativeClick: function (elm) {
+        helpers.triggerMouseEvent (elm, "mouseover");
+        helpers.triggerMouseEvent (elm, "mousedown");
+        helpers.triggerMouseEvent (elm, "mouseup");
+        helpers.triggerMouseEvent (elm, "click");
+    }
+}
 
     class Persistence {
         constructor(prefix = 'autoWeb_') {
@@ -5743,116 +5743,116 @@ class UiRenderer {
 }
 
     class EventEmitter {
-        constructor() {
-            this.events = {};
-        }
-
-        on(eventName, callback) {
-            if (!this.events[eventName]) {
-                this.events[eventName] = [];
-            }
-            this.events[eventName].push(callback);
-        }
-
-        emit(eventName, data) {
-            const eventCallbacks = this.events[eventName];
-            if (eventCallbacks) {
-                eventCallbacks.forEach(callback => {
-                    callback(data);
-                });
-            }
-        }
+    constructor() {
+        this.events = {};
     }
 
-    class Timeout {
-        constructor(seconds) {
-            this.startedAt;
-            this.interval;
-            this.cb = (() => { shared.closeWithError(K.ErrorType.TIMEOUT, '') });
-            if (seconds) {
-                this.wait = seconds;
+    on(eventName, callback) {
+        if (!this.events[eventName]) {
+            this.events[eventName] = [];
+        }
+        this.events[eventName].push(callback);
+    }
+
+    emit(eventName, data) {
+        const eventCallbacks = this.events[eventName];
+        if (eventCallbacks) {
+            eventCallbacks.forEach(callback => {
+                callback(data);
+            });
+        }
+    }
+}
+
+class Timeout {
+    constructor(seconds) {
+        this.startedAt;
+        this.interval;
+        this.cb = (() => { shared.closeWithError(K.ErrorType.TIMEOUT, '') });
+        if (seconds) {
+            this.wait = seconds;
+        } else {
+            let paramTimeout =  shared.getParam('timeout');
+            if (paramTimeout) {
+                this.wait = paramTimeout * 60;
             } else {
-                let paramTimeout =  shared.getParam('timeout');
-                if (paramTimeout) {
-                    this.wait = paramTimeout * 60;
-                } else {
-                    this.wait = shared.getConfig()['defaults.timeout'] * 60
-                }
+                this.wait = shared.getConfig()['defaults.timeout'] * 60
             }
-            this.restart();
         }
+        this.restart();
+    }
 
-        get elapsed() {
-            return Date.now() - this.startedAt;
+    get elapsed() {
+        return Date.now() - this.startedAt;
+    }
+
+    restart(addSeconds = false) {
+        if(this.interval) {
+            clearTimeout(this.interval);
         }
+        this.startedAt = Date.now();
+        if(addSeconds) {
+            this.wait = this.wait + addSeconds;
+        }
+        this.interval = setTimeout( () => { this.cb() }, this.wait * 1000);
+    }
+}
 
-        restart(addSeconds = false) {
-            if(this.interval) {
-                clearTimeout(this.interval);
-            }
-            this.startedAt = Date.now();
-            if(addSeconds) {
-                this.wait = this.wait + addSeconds;
-            }
-            this.interval = setTimeout( () => { this.cb() }, this.wait * 1000);
+class Timer {
+    constructor(params) {
+        Object.assign(this, params);
+        if(!useTimer || (this.webType && !Timer.webTypes().includes(this.webType))) {
+            return;
+        }
+        this.delay = this.delaySeconds * 1000;
+
+        if(!this.isManager) {
+            this.tick();
+            this.interval = setInterval(
+                () => { this.tick() }, this.delay);
         }
     }
 
-    class Timer {
-        constructor(params) {
-            Object.assign(this, params);
-            if(!useTimer || (this.webType && !Timer.webTypes().includes(this.webType))) {
-                return;
-            }
-            this.delay = this.delaySeconds * 1000;
+    static webTypes() {
+        return [K.WebType.FREELITECOIN, K.WebType.FREEETHEREUMIO, K.WebType.BIGBTC, K.WebType.FCRYPTO, K.WebType.FPB, K.WebType.BSCADS]
+    };
 
-            if(!this.isManager) {
-                this.tick();
-                this.interval = setInterval(
-                    () => { this.tick() }, this.delay);
-            }
+    startCheck(webType) {
+        this.webType = webType;
+        if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
+            return;
         }
+        persistence.save(this.uuid + '_lastAccess', Date.now());
+        this.interval = setInterval(() => {
+            this.isAlive();
+        }, this.delay);
+    }
 
-        static webTypes() {
-            return [K.WebType.FREELITECOIN, K.WebType.FREEETHEREUMIO, K.WebType.BIGBTC, K.WebType.FCRYPTO, K.WebType.FPB, K.WebType.BSCADS]
-        };
-
-        startCheck(webType) {
-            this.webType = webType;
-            if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
-                return;
-            }
-            persistence.save(this.uuid + '_lastAccess', Date.now());
-            this.interval = setInterval(() => {
-                this.isAlive();
-            }, this.delay);
+    stopCheck() {
+        if(!useTimer) {
+            return;
         }
+        clearInterval(this.interval);
+    }
 
-        stopCheck() {
-            if(!useTimer) {
-                return;
-            }
-            clearInterval(this.interval);
+    tick() {
+        if(!useTimer) {
+            return;
         }
+        persistence.save(this.uuid + '_lastAccess', Date.now());
+    }
 
-        tick() {
-            if(!useTimer) {
-                return;
-            }
-            persistence.save(this.uuid + '_lastAccess', Date.now());
+    isAlive() {
+        if(!useTimer) {
+            return;
         }
-
-        isAlive() {
-            if(!useTimer) {
-                return;
-            }
-            let now = Date.now();
-            let newAccess = persistence.load(this.uuid + '_lastAccess');
-            if(newAccess && (now - newAccess > this.delay)) {
-                manager.reloadWorkingTab(schedule);
-            }
+        let now = Date.now();
+        let newAccess = persistence.load(this.uuid + '_lastAccess');
+        if(newAccess && (now - newAccess > this.delay)) {
+            manager.reloadWorkingTab(schedule);
         }
     }
+}
 
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms || 3000));
 
@@ -7375,8 +7375,12 @@ class CTop extends Faucet {
     }
 
     init() {
-        if(this.hasErrorMessage()) {
+        if(this.hasErrorMessage('suspicious activity')) {
             shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
+            return;
+        }
+        if(this.hasErrorMessage('no funds left')) {
+            shared.closeWithError(K.ErrorType.NO_FUNDS, 'Out of Funds');
             return;
         }
 
@@ -7402,8 +7406,8 @@ class CTop extends Faucet {
         this.solve();
     }
 
-    hasErrorMessage() {
-        return document.body.innerText.toLowerCase().includes('suspicious activity');
+    hasErrorMessage(searchTerm) {
+        return document.body.innerText.toLowerCase().includes(searchTerm);
     }
 
     isFirstStep() {

@@ -432,8 +432,12 @@ class CTop extends Faucet {
     }
 
     init() {
-        if(this.hasErrorMessage()) {
+        if(this.hasErrorMessage('suspicious activity')) {
             shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
+            return;
+        }
+        if(this.hasErrorMessage('no funds left')) {
+            shared.closeWithError(K.ErrorType.NO_FUNDS, 'Out of Funds');
             return;
         }
 
@@ -461,8 +465,8 @@ class CTop extends Faucet {
         this.solve();
     }
 
-    hasErrorMessage() {
-        return document.body.innerText.toLowerCase().includes('suspicious activity');
+    hasErrorMessage(searchTerm) {
+        return document.body.innerText.toLowerCase().includes(searchTerm);
     }
 
     isFirstStep() {
