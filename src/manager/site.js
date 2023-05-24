@@ -125,12 +125,12 @@ class Site {
         Site.getAll().push(newSite);
 
 
-        let schedule = manager.Schedule.getById(newSite.schedule);
+        let schedule = Schedule.getById(newSite.schedule);
 
         // Quick fix for Schedule errors: refactor
         if (!schedule) {
             try {
-                schedule = manager.Schedule.getAll()[0];
+                schedule = Schedule.getAll()[0];
             } catch (err) {
                 console.warn('No schedules found! Reseting to default schedules');
                 let defaultSchedule = new Schedule({ uuid: '4a70e0', name: 'Default' });
@@ -139,7 +139,7 @@ class Site {
                     Schedule.add(defaultSchedule);
                     Schedule.add(sampleSchedule);
                 }
-                schedule = manager.Schedule.getAll()[0];
+                schedule = Schedule.getAll()[0];
             }
         }
 
@@ -162,7 +162,7 @@ class Site {
         if (idx > -1 && this._sites[idx].isExternal) {
             let siteName = this._sites[idx].name;
             this._sites = Site.getAll().filter(x => x.id !== siteId);
-            manager.Schedule.getAll().forEach(sch => {
+            Schedule.getAll().forEach(sch => {
                 sch.removeSite(siteId);
             });
             eventer.emit('siteRemoved', {
@@ -236,11 +236,11 @@ class Site {
         let oldScheduleId = null;
         if (this.schedule) {
             oldScheduleId = this.schedule;
-            manager.Schedule.getById(this.schedule)?.removeSite(this.id);
+            Schedule.getById(this.schedule)?.removeSite(this.id);
             // eventer.emit('removeSiteFromSchedule', { site_id: this.id, schedule_id: this.schedule });
         }
         this.schedule = newScheduleId;
-        let newSchedule = manager.Schedule.getById(this.schedule);
+        let newSchedule = Schedule.getById(this.schedule);
         newSchedule.addSite(this); // maybe use just the ids...
         eventer.emit('siteChangedSchedule', {
             siteId: this.id,

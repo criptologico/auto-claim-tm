@@ -30,7 +30,7 @@ class UiSiteParameterRenderer extends UiBaseRenderer {
             // TODO: save
             let data = this.uiRenderer.parseContainer(form);
             console.log({astsData: data});
-            // manager.Site.getById(data.site_id).changeSchedule(data.schedule);
+            // Site.getById(data.site_id).changeSchedule(data.schedule);
             $(modal).modal('hide');
         }
     }
@@ -70,7 +70,7 @@ class UiSiteParameterRenderer extends UiBaseRenderer {
     }
 
     renderEditSiteParameters(args) { // { site_id: 'x' }
-        const site = manager.Site.getById(args.site_id);
+        const site = Site.getById(args.site_id);
 
         const siteParameters = site.getSiteParameters(); // async? for external site parameters that need to be loaded from other stg...
         // Should return the handler's name to be used + the values/data
@@ -173,7 +173,7 @@ class UiSiteParameterRenderer extends UiBaseRenderer {
         // modalSiteParameters.querySelector('input[name="original_schedule_id"]').value = args.schedule_id;
         // let selectElm = modalSiteParameters.querySelector('select');
         // let options = [];
-        // manager.Schedule.getAllForCrud().forEach(sch => {
+        // Schedule.getAllForCrud().forEach(sch => {
         //     // TODO: icon is not rendered.. try .selectpicker or something else (dropdown with a disabled or hidden input to store the selection?)
         //     options.push(`<option value="${sch.uuid}"><i class="fas fa-square" style="color: #${sch.uuid}"></i>${sch.name}</option>`);
         // });

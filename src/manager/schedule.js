@@ -302,7 +302,7 @@ class Schedule {
             if (this.currentSite.wallet) {
                 //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
                 try {
-                    params.address = userWallet.find(x => x.type == this.currentSite.wallet).address;
+                    params.address = manager.userWallet.find(x => x.type == this.currentSite.wallet).address;
                 } catch {
                     shared.addError(K.ErrorType.NO_ADDRESS, 'You need to add your address to the wallet before claiming this faucet.', this.uuid);
                     ui.log({ schedule: this.uuid, siteName: this.currentSite.name, msg: `Unable to launch ${this.currentSite.name}: Address not detected > add it to the wallet.`});
@@ -311,7 +311,7 @@ class Schedule {
                 }
             }
             if(this.currentSite.type == K.WebType.BESTCHANGE) {
-                params.address = shared.getConfig()['bestchange.address'] == '1' ? userWallet.find(x => x.type == 1).address : params.address;
+                params.address = shared.getConfig()['bestchange.address'] == '1' ? manager.userWallet.find(x => x.type == 1).address : params.address;
             }
             params.timeout = this.getCustomOrDefaultVal('defaults.timeout', this.useOverride('defaults.timeout'));
             params.cmc = this.currentSite.cmc;
@@ -399,7 +399,7 @@ class Schedule {
     // };
 
     waitForResult() {
-        if(isObsolete()) {
+        if(manager.isObsolete()) {
             return;
         }
 
@@ -450,7 +450,7 @@ class Schedule {
                     this.timeWaiting = 0;
 
                     this.currentSite.nextRoll = new Date(754000 + +this.currentSite.id);
-                    update(false);
+                    manager.update(false);
                     this.open(promoCode);
                     return;
                 }
@@ -464,8 +464,8 @@ class Schedule {
         this.status = STATUS.IDLE;
         // ui.log({ schedule: this.uuid, msg: `Clearing flow control for ${this.uuid}`});
         shared.clearFlowControl(this.uuid);
-        update(true);
-        readUpdateValues(true);
+        manager.update(true);
+        manager.readUpdateValues(true);
         return;
     }
 
@@ -550,11 +550,11 @@ class Schedule {
             }
 
             shared.clearFlowControl(this.uuid);
-            update(true);
+            manager.update(true);
             this.timeWaiting = 0;
             this.status = STATUS.IDLE;
             shared.clearFlowControl(this.uuid);
-            readUpdateValues(true);
+            manager.readUpdateValues(true);
             return true;
         }
         return false;
@@ -668,11 +668,11 @@ class Schedule {
         shared.devlog(`@moveAfterNormalRun: ${this.currentSite.nextRoll}`);
 
         shared.clearFlowControl(this.uuid);
-        update(true);
+        manager.update(true);
         this.timeWaiting = 0;
         this.status = STATUS.IDLE;
         shared.clearFlowControl(this.uuid);
-        readUpdateValues(true);
+        manager.readUpdateValues(true);
     }
 
     moveNextAfterTimeoutOrError() {
@@ -692,11 +692,11 @@ class Schedule {
         shared.devlog(`@moveNextAfterTimeoutOrError: ${this.currentSite.nextRoll}`);
 
         shared.clearFlowControl(this.uuid);
-        update(true);
+        manager.update(true);
         this.timeWaiting = 0;
         this.status = STATUS.IDLE;
         shared.clearFlowControl(this.uuid);
-        readUpdateValues(true);
+        manager.readUpdateValues(true);
     }
 
 }

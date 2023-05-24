@@ -6,6 +6,16 @@
  * 4- <<temporary>> Removes all shared.devlog lines
  */
 
+let arguments = process.argv;
+
+const defaults = {
+  removeLogs: false,
+};
+
+if (arguments.includes('--no-console-log')) {
+  defaults.removeLogs = true;
+}
+
 const fs = require('fs');
 const workDir = 'src/';
 const mainFile = 'index.js';
@@ -60,15 +70,17 @@ let filteredLines = lines.filter((line, index) => {
   }
 });
 
-// Remove all lines that contain console.log
-filteredLines = filteredLines.filter((line) => {
-  let tempLine = line.trim();
-  if (tempLine.startsWith('console.log') && tempLine.includes(');')) {
-    return false;
-  } else {
-    return true;
-  }
-});
+if (defaults.removeLogs) {
+  // Remove all lines that contain console.log
+  filteredLines = filteredLines.filter((line) => {
+    let tempLine = line.trim();
+    if (tempLine.startsWith('console.log') && tempLine.includes(');')) {
+      return false;
+    } else {
+      return true;
+    }
+  });
+}
 
 // Remove all lines that contain shared.devlog
 filteredLines = filteredLines.filter((line, index) => {

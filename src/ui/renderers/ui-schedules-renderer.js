@@ -57,7 +57,7 @@ class UiSchedulesRenderer extends UiBaseRenderer {
 
     renderTBody() {
         let rows = [];
-        manager.Schedule.getAllForCrud().forEach(sch => {
+        Schedule.getAllForCrud().forEach(sch => {
             rows.push(this.renderRow(sch));
         });
         return rows.join('');

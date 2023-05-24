@@ -301,7 +301,7 @@ class UiSitesRenderer extends UiBaseRenderer {
             this.uiRenderer.openModal('modal-site', row.dataset.id);
         } else if (actionElement.classList.contains('action-run-asap')) {
             e.stopPropagation();
-            manager.Site.setAsRunAsap(row.dataset.id);
+            Site.setAsRunAsap(row.dataset.id);
         } else if (actionElement.classList.contains('action-site-assign-schedule')) {
             // e.stopPropagation();
             console.log('opening siteAssignSchedule dialog', row.dataset.id);
@@ -312,7 +312,7 @@ class UiSitesRenderer extends UiBaseRenderer {
             this.uiRenderer.openModal('modal-site-parameters', { site_id: row.dataset.id });
         } else if (actionElement.classList.contains('action-site-remove-external')) {
             // e.stopPropagation();
-            manager.Site.remove(row.dataset.id);
+            Site.remove(row.dataset.id);
             console.info('TODO: remove site and all the related configuration', row.dataset.id);
         }
     }
@@ -325,7 +325,7 @@ class UiSitesRenderer extends UiBaseRenderer {
             if (data.original_schedule_id == data.schedule) {
                 console.log(`Schedule did not change!`);
             } else {
-                manager.Site.getById(data.site_id).changeSchedule(data.schedule);
+                Site.getById(data.site_id).changeSchedule(data.schedule);
             }
         }
     }
@@ -349,12 +349,12 @@ class UiSitesRenderer extends UiBaseRenderer {
 
             console.warn('Savable new site');
             console.log(data);
-            manager.Site.add(data);
+            Site.add(data);
             return;
             if (data.original_schedule_id == data.schedule) {
                 console.log(`Schedule did not change!`);
             } else {
-                manager.Site.getById(data.site_id).changeSchedule(data.schedule);
+                Site.getById(data.site_id).changeSchedule(data.schedule);
             }
         }
     }
@@ -435,7 +435,7 @@ class UiSitesRenderer extends UiBaseRenderer {
         let selectElm = modalAssignSchedule.querySelector('select');
         let options = [];
         let firstSchedule = '';
-        manager.Schedule.getAllForCrud().forEach(sch => {
+        Schedule.getAllForCrud().forEach(sch => {
             // TODO: icon is not rendered.. try .selectpicker or something else (dropdown with a disabled or hidden input to store the selection?)
             if (firstSchedule == '') {
                 firstSchedule = sch.uuid;
@@ -453,7 +453,7 @@ class UiSitesRenderer extends UiBaseRenderer {
         modalAssignSchedule.querySelector('input[name="original_schedule_id"]').value = values.schedule_id;
         let selectElm = modalAssignSchedule.querySelector('select');
         let options = [];
-        manager.Schedule.getAllForCrud().forEach(sch => {
+        Schedule.getAllForCrud().forEach(sch => {
             // TODO: icon is not rendered.. try .selectpicker or something else (dropdown with a disabled or hidden input to store the selection?)
             options.push(`<option value="${sch.uuid}"><i class="fas fa-square" style="color: #${sch.uuid}"></i>${sch.name}</option>`)
         });
