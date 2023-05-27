@@ -284,10 +284,12 @@ function createUi() {
                         } else {
                             let timeVal = +nroll - Date.now();
                             sp.querySelector('span').innerText = timeVal.msToCountdown();
-                            if (timeVal < -15000) {
+                            if (timeVal < -60000) {
                                 // TODO: trigger a resync!
-                                console.warn(`HITTING RELOAD: ${timeVal}`);
-                                console.info(sp);
+                                // Forcing refresh
+                                location.reload();
+                                // console.warn(`HITTING RELOAD: ${timeVal}`);
+                                // console.info(sp);
                                 // location.reload();
                             }
                         }
