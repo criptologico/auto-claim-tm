@@ -42,13 +42,23 @@ String.prototype.removeTrailingLines = function() {
 };
 
 /**
+ * addIndentation: adds whitespaces
+ */
+String.prototype.addIndentation = function(spaces = 0) {
+    let str = this;
+    let strLines = str.split('\n').map(line => `${' '.repeat(spaces)}${line}`);
+    return strLines.join('\n');
+};
+
+/**
  * replacePlaceholders: calls mixer for each {{file}} placeholder
  */
 String.prototype.replacePlaceholders = function() {
     let str = this;
-    const phRegex = /{{([^}]+)}}/g;
-    return str.replace(phRegex, (_, fName) => mixer(fName.trim()));
+    const phRegex = /([ \t]*){{([^}]+)}}/g;
+    return str.replace(phRegex, (_, indentation, fName) => mixer(fName.trim(), indentation.length));
 };
+
 
 
 /**
@@ -56,7 +66,7 @@ String.prototype.replacePlaceholders = function() {
  * removes empty lines at the end and 
  * replaces {{file}} placeholdes recursively
  */
-const mixer = (file) => fs.readFileSync(workDir + file, 'utf-8').trim().removeTrailingLines().replacePlaceholders();
+const mixer = (file, indentation) => fs.readFileSync(workDir + file, 'utf-8').trim().removeTrailingLines().addIndentation(indentation).replacePlaceholders();
 
 let contents = mixer(mainFile);
 let filteredLines = contents.split('\n');

@@ -698,5 +698,4 @@ class Schedule {
         shared.clearFlowControl(this.uuid);
         manager.readUpdateValues(true);
     }
-
 }
