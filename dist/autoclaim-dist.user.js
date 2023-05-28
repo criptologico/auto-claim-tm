@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.18
+// @version      3.0.19
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -4976,23 +4976,6 @@
             this.solve();
         }
 
-        readNextRoll() {
-            try {
-                let ps = document.querySelectorAll('p');
-                for(let i = 0; i < ps.length; ps++) {
-                    let elm = ps[i];
-                    if (elm.classList.contains('warn') && elm.innerText.toLowerCase().includes('please wait')) {
-                        let seconds = null;
-                        try { seconds = elm.innerText.toLowerCase().split('please wait')[1].replace(/\D/g, ''); } catch(err) {}
-                        if (seconds) {
-                            return helpers.addSeconds(seconds + helpers.randomInt(30, 180));
-                        }
-                    }
-                }
-                return null;
-            } catch (err) { return null; }
-        }
-
         hasErrorMessage(searchTerm) {
             return document.body.innerText.toLowerCase().includes(searchTerm);
         }
@@ -5082,9 +5065,9 @@
 
                     if (warnDiv.innerText.includes('Please wait ')) {
                         try {
-                            let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
+                            let unit = warnDiv.innerText.includes(' seconds') ? ' seconds ' : ' minutes ';
                             let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
-                            if (unit == ' seconds') {
+                            if (unit == ' seconds ') {
                                 return helpers.addSeconds(val + helpers.randomInt(90, 180));
                             } else {
                                 return helpers.addMinutes(val + helpers.randomInt(1, 5));

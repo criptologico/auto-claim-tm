@@ -48,22 +48,22 @@ class CTop extends Faucet {
         this.solve();
     }
 
-    readNextRoll() {
-        try {
-            let ps = document.querySelectorAll('p');
-            for(let i = 0; i < ps.length; ps++) {
-                let elm = ps[i];
-                if (elm.classList.contains('warn') && elm.innerText.toLowerCase().includes('please wait')) {
-                    let seconds = null;
-                    try { seconds = elm.innerText.toLowerCase().split('please wait')[1].replace(/\D/g, ''); } catch(err) {}
-                    if (seconds) {
-                        return helpers.addSeconds(seconds + helpers.randomInt(30, 180));
-                    }
-                }
-            }
-            return null;
-        } catch (err) { return null; }
-    }
+    // readNextRoll() {
+    //     try {
+    //         let ps = document.querySelectorAll('p');
+    //         for(let i = 0; i < ps.length; ps++) {
+    //             let elm = ps[i];
+    //             if (elm.classList.contains('warn') && elm.innerText.toLowerCase().includes('please wait')) {
+    //                 let seconds = null;
+    //                 try { seconds = elm.innerText.toLowerCase().split('please wait')[1].replace(/\D/g, ''); } catch(err) {}
+    //                 if (seconds) {
+    //                     return helpers.addSeconds(seconds + helpers.randomInt(30, 180));
+    //                 }
+    //             }
+    //         }
+    //         return null;
+    //     } catch (err) { return null; }
+    // }
 
     hasErrorMessage(searchTerm) {
         return document.body.innerText.toLowerCase().includes(searchTerm);
@@ -164,9 +164,9 @@ class CTop extends Faucet {
 
                 if (warnDiv.innerText.includes('Please wait ')) {
                     try {
-                        let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
+                        let unit = warnDiv.innerText.includes(' seconds') ? ' seconds ' : ' minutes ';
                         let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
-                        if (unit == ' seconds') {
+                        if (unit == ' seconds ') {
                             return helpers.addSeconds(val + helpers.randomInt(90, 180));
                         } else {
                             return helpers.addMinutes(val + helpers.randomInt(1, 5));
