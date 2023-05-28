@@ -52,5 +52,6 @@
 // @match        https://bnbfaucet.top/*
 // @match        https://dogecoinfaucet.top/*
 // @match        https://tronfaucet.top/*
-// @match        https://tronfaucet.top/*
 // @match        https://ethfaucet.top/*
+// @match        https://freebch.club/*
+// @match        https://zecfaucet.net/*

@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.16
+// @version      3.0.17
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -78,8 +78,9 @@
 // @match        https://bnbfaucet.top/*
 // @match        https://dogecoinfaucet.top/*
 // @match        https://tronfaucet.top/*
-// @match        https://tronfaucet.top/*
 // @match        https://ethfaucet.top/*
+// @match        https://freebch.club/*
+// @match        https://zecfaucet.net/*
 // ==/UserScript==
 
 (function() {
@@ -4933,6 +4934,7 @@
                 claimed: new ReadableWidget({selector: 'p.success', parser: Parsers.trimNaNs}),
                 captcha: new HCaptchaWidget(),
                 rollButton: new ButtonWidget({selector: 'input[type="submit"]'}),
+                addressInput: new TextboxWidget({ selector: 'form input[name="adr"], form input[name="a"]'})
             };
             let actions = {
                 readTimeLeft: true,
@@ -4996,7 +4998,7 @@
         }
 
         isFirstStep() {
-            return document.querySelector('form input[name="adr"]') ? true : false;
+            return this._elements.addressInput.isUserFriendly;
         }
 
         async doFirstStep() {
@@ -5005,8 +5007,7 @@
                 this.updateResult();
                 return;
             }
-            let userInput = form.querySelector('input[name="adr"]');
-            if (!userInput) {
+            if (!this._elements.addressInput.isUserFriendly) {
                 this.updateResult();
                 return;
             }
@@ -5015,7 +5016,7 @@
                 this.updateResult();
                 return;
             }
-            userInput.value = this._params.address;
+            this._elements.addressInput.value = this._params.address;
 
             submitButton.closest('form').submit();
             return;
@@ -5065,7 +5066,7 @@
                         claimsLeft = successDiv.innerText.split(' claims')[0].split('have ')[1];
                     } catch (err) {}
                     if (claimsLeft) {
-                        return helpers.addMinutes(helpers.randomInt(6, 22));
+                        return helpers.addMinutes(helpers.randomInt(12, 22));
                     } else if (claimsLeft === '0') {
                         return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
                     }
@@ -5084,9 +5085,9 @@
                             let unit = warnDiv.innerText.includes(' seconds') ? ' seconds' : ' minutes';
                             let val = warnDiv.innerText.split('Please wait ')[1].split(unit)[0].replace(/\D/g, '');
                             if (unit == ' seconds') {
-                                return helpers.addSeconds(val);
+                                return helpers.addSeconds(val + helpers.randomInt(90, 180));
                             } else {
-                                return helpers.addMinutes(val);
+                                return helpers.addMinutes(val + helpers.randomInt(1, 5));
                             }
                         } catch { }
                         let claimsLeft;
@@ -5094,7 +5095,7 @@
                             claimsLeft = warnDiv.innerText.split(' seconds')[0].split('wait ')[1];
                         } catch (err) {}
                         if (claimsLeft) {
-                            return helpers.addMinutes(helpers.randomInt(6, 22));
+                            return helpers.addMinutes(helpers.randomInt(12, 22));
                         }
                     }
                 }
@@ -6708,6 +6709,8 @@
             { id: '98', name: 'Top Doge', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://dogecoinfaucet.top/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.CTOP, clId: 241 },
             { id: '99', name: 'Top Trx', cmc: '1958', wallet: K.WalletType.FP_TRX, url: new URL('https://tronfaucet.top/'), rf: ['?r=TK3ofbD3AyXotN2111UvnwCzr2YaW8Qmx7'], type: K.WebType.CTOP, clId: 242 },
             { id: '100', name: 'Top Eth', cmc: '1027', wallet: K.WalletType.FP_ETH, url: new URL('https://ethfaucet.top/'), rf: ['?r=0xC21FD989118b8C0Db6Ac2eC944B53C09F7293CC8'], type: K.WebType.CTOP, clId: 243 },
+            { id: '101', name: 'Top Bch', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://freebch.club/'), rf: ['?r=qq2qlpzs4rsn30utrumezpkzezpteqj92ykdgfeq5u'], type: K.WebType.CTOP, clId: 244 },
+            { id: '102', name: 'Top Zec', cmc: '1437', wallet: K.WalletType.FP_ZEC, url: new URL('https://zecfaucet.net/'), rf: ['?r=t1erPs9qw3SgnX7kJPmR4uKFnLaoVww2jCy'], type: K.WebType.CTOP, clId: 245 },
         ];
 
         const wallet = [
