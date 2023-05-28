@@ -20,7 +20,7 @@ class CTop extends Faucet {
             return;
         }
         if(this.hasErrorMessage('no funds left')) {
-            shared.closeWithError(K.ErrorType.NO_FUNDS, 'Out of Funds');
+            shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
             return;
         }
 
