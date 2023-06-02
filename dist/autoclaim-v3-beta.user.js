@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.19
+// @version      3.0.20
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -287,6 +287,9 @@
     };
 
     let helpers = {
+        hasValue: function (val) {
+            return val !== null && val !== undefined;
+        },
         getTdPrintableTime: function (date = new Date()) {
             if (date != null) {
                 return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
@@ -978,91 +981,6 @@
                 selectableElements: selectableElements
             };
         },
-        createSGProcessor: function() {
-            let timerSpans;
-            function run() {
-                if(isLoading()) {
-                    setTimeout(run, helpers.randomMs(5000, 10000));
-                    return;
-                } else if (hasPopup()) {
-                    closePopup();
-                    setTimeout(run, helpers.randomMs(5000, 10000));
-                } else {
-                    if(isMinerActive()) {
-                        processRunDetails();
-                    } else {
-                        setTimeout(run, helpers.randomMs(5000, 10000));
-                    }
-                }
-            };
-            function hasPopup() {
-                if (document.querySelector('div.absolute.flex.top-0.right-0.cursor-pointer.p-4.text-white.md-text-gray-1')) {
-                    return true;
-                }
-                return false;
-            };
-            function closePopup() {
-                try {
-                    document.querySelector("div.absolute.flex.top-0.right-0.cursor-pointer.p-4.text-white.md-text-gray-1").click();
-                    document.querySelector('svg.flex.w-8.h-8.fill-current').parentElement.click();
-                } catch { shared.devlog(`@SG: error closing popup`); }
-            };
-            function isLoading() {
-                return document.getElementById('loader-logo') ? true : false;
-            };
-            function isMinerActive() {
-                timerSpans = document.querySelector('.font-bold.text-center.text-accent.w-11-12.text-18 span');
-
-                if(timerSpans) {
-                    return true;
-                } else {
-                    return false;
-                }
-                return (!!timerSpans);
-            };
-            function activateMiner() {
-                let activateButton = document.querySelector("#region-main button.activate.block.w-full.h-full.mx-auto.p-0.rounded-full.select-none.cursor-pointer.focus-outline-none.border-0.bg-transparent");
-                if (activateButton) {
-                    activateButton.click();
-                    setTimeout(run, helpers.randomMs(10000, 20000));
-                } else {
-                    processRunDetails()
-                }
-            };
-
-            function processRunDetails() {
-                let result = {};
-                result.nextRoll = helpers.addMinutes(readCountdown().toString());
-                result.balance = readBalance();
-                shared.closeWindow(result);
-            };
-
-            function readCountdown() {
-                let synchronizing = document.querySelector('.text-15.font-bold.text-center.text-accent'); // use
-                let mins = 15;
-                try {
-                    let timeLeft = timerSpans.innerText.split(':');
-                    if (timeLeft[0] == 'Synchronizing') {
-                    }
-
-                    if(timeLeft.length === 3) {
-                        mins = parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
-                    }
-                } catch (err) { shared.devlog(`SG Error reading countdown: ${err}`); }
-                return mins;
-            };
-            function readBalance() {
-                let balance = "";
-                try {
-                    balance = document.querySelector('span.text-accent').innerText + " BTC";
-                } catch (err) { }
-                return balance;
-            };
-            return {
-                run: run,
-                processRunDetails: processRunDetails
-            };
-        },
         createCFProcessor: function() {
             const NavigationProcess = {
                 ROLLING: 1,
@@ -1611,108 +1529,6 @@
                 run: run
             };
         },
-        createFPProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
-            let captcha = new HCaptchaWidget();
-
-            function init() {
-                if(window.location.href.includes('ptc/view')) {
-                    addDuration();
-                    ptcSingle();
-                } else if (window.location.href.includes('ptc')) {
-                    ptcList();
-                } else if (window.location.href.includes('account/login')) {
-                    tryLogin();
-                } else if (window.location.href.includes('page/user-admin')) {
-                    window.location.href = 'https://faucetpay.io/ptc';
-                }
-                return;
-            }
-
-            function tryLogin() {
-                let username = document.querySelector('input[name="user_name"');
-                let password = document.querySelector('input[name="password"');
-                let captcha = document.querySelector('.h-captcha > iframe');
-                let btn = document.querySelector('button[type="submit"');
-                if (username && password && btn && username.value != '' && password.value != '') {
-                    if ( captcha && captcha.getAttribute('data-hcaptcha-response').length > 0 ) {
-                        btn.click();
-                    } else {
-                        setTimeout(tryLogin, helpers.randomMs(9000, 11000));
-                    }
-                } else {
-                    shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
-                }
-            }
-
-            function addDuration() {
-                let duration = document.querySelector('#duration');
-                if(duration && !isNaN(duration.innerText)) {
-                    timeout.restart(parseInt(duration.innerText));
-                } else {
-                    setTimeout(addDuration, 10000);
-                }
-            }
-
-            function ptcList() {
-                let result;
-                let runMsgDiv = document.querySelector('.alert.alert-info');
-                if (runMsgDiv) {
-                    let runMsg = runMsgDiv.innerHTML;
-                    if (runMsg.includes('invalid captcha')) {
-                    } else if (runMsg.includes('Good job')) {
-                        try {
-                            let idx = runMsg.search(/\d/);
-                            let claimed = parseFloat(runMsg.slice(idx, idx + 10));
-                            result = shared.getResult();
-                            result.claimed = (result.claimed ?? 0) + claimed;
-                            shared.updateWithoutClosing(result, 'WORKING');
-                        } catch { }
-                    }
-                }
-
-                if ([...document.querySelectorAll('b')].filter(x => x.innerText.includes('Whoops!')).length > 0) {
-                    result = shared.getResult();
-                    shared.closeWindow(result);
-                    return;
-                }
-
-                let adButtons = [...document.querySelectorAll('button')].filter(x => x .innerHTML.includes('VISIT AD FOR'));
-
-                if (adButtons.length > 0) {
-                    if (shared.getConfig()['fp.randomPtcOrder']) {
-                    adButtons[helpers.randomInt(0, adButtons.length-1)].click();
-                    } else {
-                        adButtons[0].click();
-                    }
-                    return;
-                }
-
-                setTimeout(ptcList, helpers.randomMs(10000, 12000));
-            }
-
-            function ptcSingle() {
-                if(document.querySelector('input[name="complete"]').isVisible()) {
-                    captcha.isSolved().then(() => { clickClaim(); });
-                } else if (document.querySelector('body').innerText.toLowerCase().includes('ad does not exist')) {
-                    window.location.href = 'https://faucetpay.io/ptc';
-                } else {
-                    setTimeout(ptcSingle, helpers.randomMs(5000, 6000));
-                }
-            }
-
-            function clickClaim() {
-                let input = document.querySelector('input[name="complete"]');
-                input.focus();
-                input.onclick = '';
-                input.click();
-                setTimeout(shared.closeWithError.bind(null, 'TIMEOUT', 'Timed out after clicking a CLAIM button.'), helpers.minToMs(shared.getConfig()['defaults.timeout']));
-            }
-
-            return {
-                init: init
-            };
-        },
         createBigBtcProcessor: function() {
             let timeout = new Timeout(this.maxSeconds);
             let countdownMinutes;
@@ -2020,7 +1836,7 @@
         siteTimer = new Timer({ isManager: false, delaySeconds: 20, uuid: shared.getProp('schedule'), webType: typeFromManager });
         switch( typeFromManager ) {
             case K.WebType.STORMGAIN:
-                SiteProcessor = objectGenerator.createSGProcessor();
+                SiteProcessor = createSGProcessor();
                 setTimeout(SiteProcessor.run, helpers.randomMs(10000, 20000));
                 break;
             case K.WebType.CRYPTOSFAUCETS:
@@ -2032,7 +1848,7 @@
                 setTimeout(SiteProcessor.run, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.FAUCETPAY:
-                SiteProcessor = objectGenerator.createFPProcessor();
+                SiteProcessor = createFPProcessor();
                 setTimeout(SiteProcessor.init, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.BIGBTC:
@@ -3388,7 +3204,7 @@
 
         startCheck(webType) {
             this.webType = webType;
-            if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
+            if(!useTimer || (helpers.hasValue(webType) && !Timer.webTypes().includes(webType))) {
                 return;
             }
             persistence.save(this.uuid + '_lastAccess', Date.now());
@@ -3418,7 +3234,7 @@
             let now = Date.now();
             let newAccess = persistence.load(this.uuid + '_lastAccess');
             if(newAccess && (now - newAccess > this.delay)) {
-                manager.reloadWorkingTab(schedule);
+                manager.reloadWorkingTab(this.uuid);
             }
         }
     }
@@ -3427,16 +3243,21 @@
 
     class CrawlerWidget {
         constructor(params) {
-            if (!params || !params.selector) {
-                throw new Error('CrawlerWidget requires a selector parameter');
+            if (!params || (!params.selector && !params.fnSelector)) {
+                throw new Error('CrawlerWidget requires a selector or a function selector parameter');
             }
             this.context = this.context || document;
             Object.assign(this, params);
         }
 
         get isUserFriendly() {
-            this.element = this.context.isUserFriendly(this.selector);
-            return this.element;
+            if (this.selector) {
+                this.element = this.context.isUserFriendly(this.selector);
+                return this.element;
+            } else {
+                this.element = this.fnSelector();
+                return this.element;
+            }
         }
     }
 
@@ -4086,6 +3907,28 @@
             let defaultParams = {
                 selector: 'svg.feather-check-circle',
                 waitMs: 10000
+            };
+            for (let p in params) {
+                defaultParams[p] = params[p];
+            }
+            super(defaultParams);
+        }
+
+        async isSolved() {
+            return wait().then( () => {
+                if (this.isUserFriendly) {
+                    return Promise.resolve(true);
+                }
+                return this.isSolved();
+            });
+        }
+    }
+
+    class GeeTestCaptchaWidget extends CaptchaWidget {
+        constructor(params) {
+            let defaultParams = {
+                selector: '.geetest_captcha.geetest_lock_success',
+                waitMs: 2000
             };
             for (let p in params) {
                 defaultParams[p] = params[p];
@@ -5765,6 +5608,196 @@
         }
     }
 
+    function createFPProcessor() {
+        let timeout = new Timeout(this.maxSeconds);
+        let captcha = new HCaptchaWidget();
+
+        function init() {
+            if(window.location.href.includes('ptc/view')) {
+                addDuration();
+                ptcSingle();
+            } else if (window.location.href.includes('ptc')) {
+                ptcList();
+            } else if (window.location.href.includes('account/login')) {
+                tryLogin();
+            } else if (window.location.href.includes('page/user-admin')) {
+                window.location.href = 'https://faucetpay.io/ptc';
+            }
+            return;
+        }
+
+        function tryLogin() {
+            let username = document.querySelector('input[name="user_name"');
+            let password = document.querySelector('input[name="password"');
+            let captcha = document.querySelector('.h-captcha > iframe');
+            let btn = document.querySelector('button[type="submit"');
+            if (username && password && btn && username.value != '' && password.value != '') {
+                if ( captcha && captcha.getAttribute('data-hcaptcha-response').length > 0 ) {
+                    btn.click();
+                } else {
+                    setTimeout(tryLogin, helpers.randomMs(9000, 11000));
+                }
+            } else {
+                shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
+            }
+        }
+
+        function addDuration() {
+            let duration = document.querySelector('#duration');
+            if(duration && !isNaN(duration.innerText)) {
+                timeout.restart(parseInt(duration.innerText));
+            } else {
+                setTimeout(addDuration, 10000);
+            }
+        }
+
+        function ptcList() {
+            let result;
+            let runMsgDiv = document.querySelector('.alert.alert-info');
+            if (runMsgDiv) {
+                let runMsg = runMsgDiv.innerHTML;
+                if (runMsg.includes('invalid captcha')) {
+                } else if (runMsg.includes('Good job')) {
+                    try {
+                        let idx = runMsg.search(/\d/);
+                        let claimed = parseFloat(runMsg.slice(idx, idx + 10));
+                        result = shared.getResult();
+                        result.claimed = (result.claimed ?? 0) + claimed;
+                        shared.updateWithoutClosing(result, 'WORKING');
+                    } catch { }
+                }
+            }
+
+            if ([...document.querySelectorAll('b')].filter(x => x.innerText.includes('Whoops!')).length > 0) {
+                result = shared.getResult();
+                shared.closeWindow(result);
+                return;
+            }
+
+            let adButtons = [...document.querySelectorAll('button')].filter(x => x .innerHTML.includes('VISIT AD FOR'));
+
+            if (adButtons.length > 0) {
+                if (shared.getConfig()['fp.randomPtcOrder']) {
+                adButtons[helpers.randomInt(0, adButtons.length-1)].click();
+                } else {
+                    adButtons[0].click();
+                }
+                return;
+            }
+
+            setTimeout(ptcList, helpers.randomMs(10000, 12000));
+        }
+
+        function ptcSingle() {
+            if(document.querySelector('input[name="complete"]').isVisible()) {
+                captcha.isSolved().then(() => { clickClaim(); });
+            } else if (document.querySelector('body').innerText.toLowerCase().includes('ad does not exist')) {
+                window.location.href = 'https://faucetpay.io/ptc';
+            } else {
+                setTimeout(ptcSingle, helpers.randomMs(5000, 6000));
+            }
+        }
+
+        function clickClaim() {
+            let input = document.querySelector('input[name="complete"]');
+            input.focus();
+            input.onclick = '';
+            input.click();
+            setTimeout(shared.closeWithError.bind(null, 'TIMEOUT', 'Timed out after clicking a CLAIM button.'), helpers.minToMs(shared.getConfig()['defaults.timeout']));
+        }
+
+        return {
+            init: init
+        };
+    }
+
+    function createSGProcessor() {
+        let timerSpans;
+        function run() {
+            if(isLoading()) {
+                setTimeout(run, helpers.randomMs(5000, 10000));
+                return;
+            } else if (hasPopup()) {
+                closePopup();
+                setTimeout(run, helpers.randomMs(5000, 10000));
+            } else {
+                if(isMinerActive()) {
+                    processRunDetails();
+                } else {
+                    setTimeout(run, helpers.randomMs(5000, 10000));
+                    activateMiner();
+                }
+            }
+        };
+        function hasPopup() {
+            if (document.querySelector('div.absolute.flex.top-0.right-0.cursor-pointer.p-4.text-white.md-text-gray-1')) {
+                return true;
+            }
+            return false;
+        };
+        function closePopup() {
+            try {
+                document.querySelector("div.absolute.flex.top-0.right-0.cursor-pointer.p-4.text-white.md-text-gray-1").click();
+                document.querySelector('svg.flex.w-8.h-8.fill-current').parentElement.click();
+            } catch { shared.devlog(`@SG: error closing popup`); }
+        };
+        function isLoading() {
+            return document.getElementById('loader-logo') ? true : false;
+        };
+        function isMinerActive() {
+            timerSpans = document.querySelector('.font-bold.text-center.text-accent.w-11-12.text-18 span');
+
+            if(timerSpans) {
+                return true;
+            } else {
+                return false;
+            }
+            return (!!timerSpans);
+        };
+        function activateMiner() {
+            let activateButton = document.querySelector("#region-main button.activate.block.w-full.h-full.mx-auto.p-0.rounded-full.select-none.cursor-pointer.focus-outline-none.border-0.bg-transparent");
+            if (activateButton) {
+                activateButton.click();
+                setTimeout(run, helpers.randomMs(10000, 20000));
+            } else {
+                processRunDetails()
+            }
+        };
+
+        function processRunDetails() {
+            let result = {};
+            result.nextRoll = helpers.addMinutes(readCountdown().toString());
+            result.balance = readBalance();
+            shared.closeWindow(result);
+        };
+
+        function readCountdown() {
+            let synchronizing = document.querySelector('.text-15.font-bold.text-center.text-accent'); // use
+            let mins = 15;
+            try {
+                let timeLeft = timerSpans.innerText.split(':');
+                if (timeLeft[0] == 'Synchronizing') {
+                }
+
+                if(timeLeft.length === 3) {
+                    mins = parseInt(timeLeft[0]) * 60 + parseInt(timeLeft[1]);
+                }
+            } catch (err) { shared.devlog(`SG Error reading countdown: ${err}`); }
+            return mins;
+        };
+        function readBalance() {
+            let balance = "";
+            try {
+                balance = document.querySelector('span.text-accent').innerText + " BTC";
+            } catch (err) { }
+            return balance;
+        };
+        return {
+            run: run,
+            processRunDetails: processRunDetails
+        };
+    }
+
     let landing, instance, siteTimer;
     let useTimer;
 
@@ -6088,7 +6121,6 @@
                 worker: null
             }, params)
             this.timer = new Timer({ isManager: true, delaySeconds: 30, uuid: this.uuid, webType: null });
-            this.timer = new Timer(true, 30, this.uuid);
         }
 
         static schedules = [];
@@ -6298,7 +6330,11 @@
         }
 
         closeTab() {
-            this.tab.close();
+            try {
+                this.tab.close();
+            } catch (err) {
+                console.warn('Error while trying to close tab', err);
+            }
         };
 
         reopenTab() {
@@ -6366,10 +6402,7 @@
                 }, 15000);
 
                 if (this.tab && !this.tab.closed) {
-                    try {
-                        this.tab.close();
-                    } catch {
-                    }
+                        this.closeTab(); // this.tab.close();
                 } else {
                 }
 
