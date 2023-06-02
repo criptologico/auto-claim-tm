@@ -1,7 +1,7 @@
 class CrawlerWidget {
     constructor(params) {
-        if (!params || !params.selector) {
-            throw new Error('CrawlerWidget requires a selector parameter');
+        if (!params || (!params.selector && !params.fnSelector)) {
+            throw new Error('CrawlerWidget requires a selector or a function selector parameter');
         }
         this.context = this.context || document;
         Object.assign(this, params);
@@ -9,8 +9,13 @@ class CrawlerWidget {
 
     get isUserFriendly() {
         // Changed to select the element each time
-        this.element = this.context.isUserFriendly(this.selector);
-        return this.element;
+        if (this.selector) {
+            this.element = this.context.isUserFriendly(this.selector);
+            return this.element;
+        } else {
+            this.element = this.fnSelector();
+            return this.element;
+        }
         // this.element = this.element || this.context.isUserFriendly(this.selector);
         // return this.element;
     }
