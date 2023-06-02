@@ -13,7 +13,7 @@ function createSGProcessor() {
             } else {
                 // Wait for captcha to be solved
                 setTimeout(run, helpers.randomMs(5000, 10000));
-                // activateMiner();
+                activateMiner();
             }
         }
     };
