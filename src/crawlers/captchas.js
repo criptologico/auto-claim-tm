@@ -372,6 +372,31 @@ class NoCaptchaWidget extends CaptchaWidget {
     }
 }
 
+class GeeTestCaptchaWidget extends CaptchaWidget {
+    constructor(params) {
+        let defaultParams = {
+            selector: '.geetest_captcha.geetest_lock_success',
+            waitMs: 2000
+        };
+        for (let p in params) {
+            defaultParams[p] = params[p];
+        }
+        super(defaultParams);
+    }
+
+    async isSolved() {
+        shared.devlog(`@gt.isSolved`);
+        return wait().then( () => {
+            if (this.isUserFriendly) {
+                shared.devlog(`gt solved`);
+                return Promise.resolve(true);
+            }
+            shared.devlog(`gt waiting`);
+            return this.isSolved();
+        });
+    }
+}
+
 class CBL01CaptchaWidget extends CaptchaWidget {
     constructor(params) {
         let defaultParams = {
