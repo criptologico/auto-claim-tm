@@ -62,15 +62,16 @@ class Timer {
         }
         this.delay = this.delaySeconds * 1000;
 
-        if(!this.isManager) {
-            this.tick();
-            this.interval = setInterval(
-                () => { this.tick() }, this.delay);
-        }
+        // Temporary disabled: mulfunctioning
+        // if(!this.isManager) {
+        //     this.tick();
+        //     this.interval = setInterval(
+        //         () => { this.tick() }, this.delay);
+        // }
     }
 
     static webTypes() {
-        return [K.WebType.FREELITECOIN, K.WebType.FREEETHEREUMIO, K.WebType.BIGBTC, K.WebType.FCRYPTO, K.WebType.FPB, K.WebType.BSCADS]
+        return [K.WebType.FREELITECOIN, K.WebType.FREEETHEREUMIO, K.WebType.BIGBTC, K.WebType.FCRYPTO, K.WebType.FPB] // , K.WebType.BSCADS]
     };
 
     startCheck(webType) {
@@ -99,18 +100,20 @@ class Timer {
     }
 
     isAlive() {
-        if(!useTimer) {
-            return;
-        }
-        let now = Date.now();
-        let newAccess = persistence.load(this.uuid + '_lastAccess');
-        if(newAccess && (now - newAccess > this.delay)) {
-            //Close working tab and force restart
-            // shared.devlog(`Timer is closing the working tab`);
-            // shared.addError(K.ErrorType.FORCE_CLOSED, 'Site was unresponsive or redirected', this.uuid);
-            // manager.closeWorkingTab(schedule);
-            shared.devlog(`Trying to reload original site instead of FORCE_CLOSED`);
-            manager.reloadWorkingTab(this.uuid);
-        }
+        return;
+        // Temporary disabled: mullfunctioning
+        // if(!useTimer) {
+        //     return;
+        // }
+        // let now = Date.now();
+        // let newAccess = persistence.load(this.uuid + '_lastAccess');
+        // if(newAccess && (now - newAccess > this.delay)) {
+        //     //Close working tab and force restart
+        //     // shared.devlog(`Timer is closing the working tab`);
+        //     // shared.addError(K.ErrorType.FORCE_CLOSED, 'Site was unresponsive or redirected', this.uuid);
+        //     // manager.closeWorkingTab(schedule);
+        //     shared.devlog(`Trying to reload original site instead of FORCE_CLOSED`);
+        //     manager.reloadWorkingTab(this.uuid);
+        // }
     }
 }
