@@ -1,4 +1,7 @@
 let helpers = {
+    hasValue: function (val) {
+        return val !== null && val !== undefined;
+    },
     getTdPrintableTime: function (date = new Date()) {
         if (date != null) {
             return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);

@@ -75,7 +75,7 @@ class Timer {
 
     startCheck(webType) {
         this.webType = webType;
-        if(!useTimer || (webType && !Timer.webTypes().includes(webType))) {
+        if(!useTimer || (helpers.hasValue(webType) && !Timer.webTypes().includes(webType))) {
             return;
         }
         persistence.save(this.uuid + '_lastAccess', Date.now());
@@ -110,7 +110,7 @@ class Timer {
             // shared.addError(K.ErrorType.FORCE_CLOSED, 'Site was unresponsive or redirected', this.uuid);
             // manager.closeWorkingTab(schedule);
             shared.devlog(`Trying to reload original site instead of FORCE_CLOSED`);
-            manager.reloadWorkingTab(schedule);
+            manager.reloadWorkingTab(this.uuid);
         }
     }
 }

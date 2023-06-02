@@ -13,7 +13,7 @@ class Schedule {
             worker: null
         }, params)
         this.timer = new Timer({ isManager: true, delaySeconds: 30, uuid: this.uuid, webType: null });
-        this.timer = new Timer(true, 30, this.uuid);
+        // this.timer = new Timer(true, 30, this.uuid);
     }
 
     static schedules = [];
@@ -275,7 +275,9 @@ class Schedule {
     }
 
     closeTab() {
-        this.tab.close();
+        try {
+            this.tab.close();
+        } catch (err) { }
     };
 
     reopenTab() {
@@ -351,7 +353,7 @@ class Schedule {
             if (this.tab && !this.tab.closed) {
                 try {
                     shared.devlog(`Tab closed from Manager`);
-                    this.tab.close();
+                    this.closeTab(); // this.tab.close();
                 } catch {
                     shared.devlog(`ERROR: unable to close tab from Manager`);
                 }
