@@ -277,7 +277,9 @@ class Schedule {
     closeTab() {
         try {
             this.tab.close();
-        } catch (err) { }
+        } catch (err) {
+            console.warn('Error while trying to close tab', err);
+        }
     };
 
     reopenTab() {
@@ -351,12 +353,8 @@ class Schedule {
             }, 15000);
 
             if (this.tab && !this.tab.closed) {
-                try {
                     shared.devlog(`Tab closed from Manager`);
                     this.closeTab(); // this.tab.close();
-                } catch {
-                    shared.devlog(`ERROR: unable to close tab from Manager`);
-                }
             } else {
                 shared.devlog(`No open tabs detected`);
             }
