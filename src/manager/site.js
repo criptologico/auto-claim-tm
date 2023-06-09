@@ -37,13 +37,13 @@ class Site {
             this.schedule = '65329c';
         }
 
-        if (this.type == K.WebType.BFBOX) {
-            this.params['defaults.nextRun.override'] = true;
-            this.params['defaults.nextRun.useCountdown'] = false;
-            this.params['defaults.nextRun'] = 0;
-            this.params['defaults.nextRun.min'] = 21;
-            this.params['defaults.nextRun.max'] = 25;
-        }
+        // if (this.type == K.WebType.BFBOX) {
+        //     this.params['defaults.nextRun.override'] = true;
+        //     this.params['defaults.nextRun.useCountdown'] = false;
+        //     this.params['defaults.nextRun'] = 0;
+        //     this.params['defaults.nextRun.min'] = 21;
+        //     this.params['defaults.nextRun.max'] = 25;
+        // }
 
         if (this.type == K.WebType.FREEBITCOIN) {
             this.params['custom.useWofRp'] = 0;

@@ -432,4 +432,10 @@ class CDiversity extends Faucet {
 
 {{crawlers/sites/_legacy_fp.js}}
 
+{{crawlers/sites/_legacy_fb.js}}
+
+{{crawlers/sites/_legacy_bbtc.js}}
+
+{{crawlers/sites/_legacy_bexchange.js}}
+
 {{crawlers/sites/_legacy_sg.js}}

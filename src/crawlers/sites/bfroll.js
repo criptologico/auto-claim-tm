@@ -3,9 +3,9 @@ class BFRoll extends Faucet {
         let elements = {
             preRunButton: new ButtonWidget({selector: '.free-box.free-box__' + coinPrefix + ' button'}), //'#' + coinPrefix + '_free_box_withdraw_page'}),
             // captcha: new HCaptchaWidget({selector: '.free-box-withdraw__captcha iframe'}),
-            captcha: new NoCaptchaWidget({ selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth' }),
+            captcha: new NoCaptchaWidget({ selector: '.free-box-withdraw__footer button' }), // .button_red.button_center.button_fullwidth' }),
             //rollButton: new ButtonWidget({selector: '.modal__container button.button.button_md.button_red.fullwidth'}), //'#free_box_withdraw_popup'}),
-            rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth'}),
+            rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer button' }), // .button_red.button_center.button_fullwidth'}),
             success: new ReadableWidget({selector: '.modal:not(.free-box-withdraw,fury-wheel-modal), .vue-notification-template.my-notify.success'}),
             claimed: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix, parser: Parsers.bfBoxClaimed}),
             progressBar: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix + ' .free-box__progress-bar progress'}),

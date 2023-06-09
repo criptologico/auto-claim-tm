@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.21
+// @version      3.0.22
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -1402,413 +1402,6 @@
                 getRollsMeta: getRollsMeta
             }
         },
-        createFBProcessor: function() {
-            let countdownMinutes;
-            let timeout = new Timeout(this.maxSeconds);
-            let captcha = new HCaptchaWidget();
-
-            function run() {
-                setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
-            };
-            function findCountdownOrRollButton() {
-                if ( isCountdownVisible() ) {
-                    timeout.restart();
-                    countdownMinutes = +document.querySelectorAll('.free_play_time_remaining.hasCountdown .countdown_amount')[0].innerHTML + 1;
-                    let result = {};
-                    result.balance = readBalance();
-                    result.nextRoll = helpers.addMinutes(countdownMinutes.toString());
-
-                    shared.closeWindow(result);
-                    return;
-                }
-
-                if ( isRollButtonVisible() ) {
-
-                    try {
-                        let doBonus = false; // true;
-                        if (doBonus) {
-                            if (!document.getElementById('bonus_span_free_wof')) {
-                                RedeemRPProduct('free_wof_5');
-                                setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
-                                return;
-                            }
-                        }
-                    } catch { }
-
-                    /* For 'Play without captcha accounts' */
-                    if (!captcha.isUserFriendly) {
-                        clickRoll()
-                    } else {
-                        captcha.isSolved().then(() => { clickRoll(); });
-                    }
-                } else {
-                    setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
-                }
-            };
-            function isCountdownVisible() {
-                return document.querySelectorAll('.free_play_time_remaining.hasCountdown .countdown_amount').length > 0;
-            };
-            function isHCaptchaVisible() {
-                let hCaptchaFrame = document.querySelector('.h-captcha > iframe');
-                if (hCaptchaFrame && hCaptchaFrame.isVisible()) {
-                    return true;
-                }
-                return false;
-            };
-            function isRollButtonVisible() {
-                return document.getElementById('free_play_form_button').isVisible();
-            };
-            function clickRoll() {
-                try {
-                    document.getElementById('free_play_form_button').click();
-                    setTimeout(processRunDetails, helpers.randomMs(3000, 10000));
-                } catch (err) {
-                    shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
-                }
-            };
-            function processRunDetails() {
-                if (document.getElementById('winnings').isVisible()) {
-                    closePopup();
-
-                    let result = {};
-                    result.claimed = readClaimed();
-                    result.balance = readBalance();
-                    if(result.claimed != 0) {
-                        result.rolledNumber = readRolledNumber();
-                    }
-                    shared.closeWindow(result);
-                    return;
-                }
-
-                if (document.querySelector('.free_play_result_error').isVisible()) {
-                    shared.closeWithError(K.ErrorType.ROLL_ERROR, document.querySelector('.free_play_result_error').innerHTML);
-                    return;
-                }
-
-                if(document.getElementById('free_play_error').isVisible()) {
-                    shared.closeWithError(K.ErrorType.ROLL_ERROR, document.querySelector('.free_play_error').innerHTML);
-                    return;
-                }
-
-                if (document.getElementById('same_ip_error').isVisible()) {
-                    shared.closeWithError(K.ErrorType.ROLL_ERROR, document.getElementById('same_ip_error').innerHTML);
-                    return;
-                }
-
-                setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
-            };
-            function closePopup() {
-                let closePopupBtn = document.querySelector('.reveal-modal.open .close-reveal-modal');
-                if (closePopupBtn) {
-                    closePopupBtn.click();
-                }
-            };
-            function readRolledNumber() {
-                let rolled = 0;
-                try {
-                    rolled = parseInt([... document.querySelectorAll('#free_play_digits span')].map( x => x.innerHTML).join(''));
-                } catch { }
-                return rolled;
-            };
-            function readBalance() {
-                let balance = 0;
-                try {
-                    balance = document.getElementById('balance').innerHTML;
-                } catch { }
-                return balance;
-            };
-            function readClaimed() {
-                let claimed = 0;
-                try {
-                    claimed = document.getElementById('winnings').innerHTML;
-                } catch { }
-                return claimed;
-            };
-
-            return {
-                run: run
-            };
-        },
-        createBigBtcProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
-            let countdownMinutes;
-            let captcha = new HCaptchaWidget();
-            let selectElement = {
-                loadingDiv: function() {
-                    let loading = document.querySelector('#loading');
-                    if (loading && loading.isVisible()) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                },
-                addressInput: function() {
-                    return document.querySelector('#login input[name="address"]');
-                },
-                loginButton: function() {
-                    return document.querySelector('#login input[type="submit"]');
-                },
-                claimButton: function() {
-                    return document.getElementById('claimbutn');
-                },
-                countdown: function() { // "You have to wait\n60 minutes"
-                    let cd = document.getElementById('countdown');
-                    if(cd && cd.isVisible()) {
-                        return parseInt(cd.innerText);
-                    }
-                    return null;
-                },
-                claimedAmount: function() {
-                    let elm = document.querySelector('.alert.alert-success.pulse'); //"Yuppie! You won 2 satoshi!"
-                    if(elm && elm.isVisible()) {
-                        let val = parseInt(elm.innerText.replace(/\D/g, ''));
-                        if (Number.isInteger(val)) {
-                            val = val / 100000000;
-                        }
-
-                        return val;
-                    } else {
-                        return null;
-                    }
-                },
-                balance: function() {
-                    let elm = document.querySelector('a b');
-                    if (elm && elm.isVisible()) {
-                        let val = parseInt(elm.innerText.replace(',', ''));
-                        if (Number.isInteger(val)) {
-                            val = val / 100000000;
-                        }
-
-                        return val;
-                    } else {
-                        return null;
-                    }
-                },
-                error: function () {
-                    return null;
-                }
-            };
-
-            function init() {
-                window.scrollTo(0, document.body.scrollHeight);
-                let m = document.getElementById('main'); if (m) { m.style.display='block'; }
-                m = document.getElementById('block-adb-enabled'); if (m) { m.style.display='none'; }
-                m = document.getElementById('ielement'); if (m) { m.style.display='block'; }
-                setInterval(() => {
-                    let frames = [...document.querySelectorAll('iframe')];
-                    frames.forEach(x => {
-                        if (!x.src.includes('hcaptcha')) {
-                            x.remove()
-                        }
-                    });
-                }, 5000);
-
-                if (window.location.href.includes('/faucet')) {
-                    setTimeout(runFaucet, helpers.randomMs(12000, 14000));
-                    return;
-                } else {
-                    setTimeout(run, helpers.randomMs(3000, 5000));
-                    return;
-                }
-            }
-
-            function run() {
-                try {
-                    setTimeout(waitIfLoading, helpers.randomMs(12000, 15000));
-                } catch (err) {
-                    shared.closeWithErrors(K.ErrorType.ERROR, err);
-                }
-            };
-            function doLogin() {
-                let address = selectElement.addressInput();
-                if(address && address.value != shared.getCurrent().params.address) {
-                    address.value = shared.getCurrent().params.address;
-                } else {
-                    selectElement.loginButton().click();
-                    return;
-                }
-                setTimeout( doLogin , helpers.randomMs(1000, 2000));
-            };
-            function waitIfLoading() {
-                if ( !selectElement.loadingDiv() ) {
-                    doLogin();
-                    return;
-                } else {
-                }
-
-                setTimeout(waitIfLoading, helpers.randomMs(5000, 7000));
-            };
-            function runFaucet() {
-                let claimedAmount = selectElement.claimedAmount();
-                if(claimedAmount) {
-                    processRunDetails();
-                    return;
-                } else if (selectElement.countdown()) {
-                    let result = {};
-
-                    shared.closeWindow(result);
-                } else {
-                    captcha.isSolved().then(() => { clickClaim(); });
-                }
-            }
-            function clickClaim() {
-                try {
-                    selectElement.claimButton().click();
-                    return;
-                } catch (err) {
-                    shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
-                }
-            };
-            function processRunDetails() {
-                let claimedAmount = selectElement.claimedAmount();
-                let balance = selectElement.balance();
-                let countdown = selectElement.countdown();
-
-                if (claimedAmount && balance) {
-                    let result = {};
-                    result.claimed = claimedAmount;
-                    result.balance = balance;
-
-                    shared.closeWindow(result);
-                    return;
-                }
-
-                setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
-            };
-
-            return {
-                init: init
-            };
-        },
-        createBestChangeProcessor: function() {
-            let timeout = new Timeout(this.maxSeconds);
-            let countdownMinutes;
-            let captcha = new HCaptchaWidget({selector: '.hcaptcha > iframe'});
-            let elements = {
-                captcha: function() {
-                    return document.querySelector('.hcaptcha > iframe');
-                },
-                container: function() {
-                    return document.querySelector('#info_bonus');
-                },
-                containerOpener: function() {
-                    return document.querySelector('#tab_bonus a');
-                },
-                addressInput: function() {
-                    return document.querySelector('#bonus_purse');
-                },
-                claimButton: function() {
-                    return document.querySelector('#bonus_button');
-                },
-                countdown: function() { // Time left: mm:ss
-                    let elm = document.querySelector('#bonus_button');
-                    try {
-                        if (elm.value) {
-                            let timeLeft = elm.value.split(':');
-                            if (timeLeft.length > 1) {
-                                return parseInt(timeLeft[1]);
-                            }
-                        }
-                    } catch (err) {
-                        return null;
-                    }
-                },
-                claimedAmount: function() {
-                    let elm = document.querySelector("#bonus_status b");
-                    try {
-                        let sats = elm.innerText.replace(/\D/g, '');
-                        return sats / 100000000;
-                    } catch (err) {
-                        return null;
-                    }
-                },
-                balance: function() {
-                    let elm = document.querySelector("#faucet_unpaid_balance b");
-                    try {
-                        let sats = elm.innerText.replace(/\D/g, '');
-                        return sats / 100000000;
-                    } catch (err) {
-                        return null;
-                    }
-                }
-            };
-
-            function init() {
-                run();
-            }
-
-            function run() {
-                try {
-                    if (!elements.container().isUserFriendly()) {
-                        let co = elements.containerOpener();
-                        if(co.isUserFriendly()) {
-                            co.onclick = co.onmousedown;
-                            co.click();
-                        }
-                    }
-                    setTimeout(findCountdownOrRoll, helpers.randomMs(4000, 5000));
-                } catch (err) {
-                    shared.closeWithErrors(K.ErrorType.ERROR, err);
-                }
-            };
-            function findCountdownOrRoll() {
-                let countdown = elements.countdown();
-                if(countdown) {
-                    let result = { };
-                    result.nextRoll = helpers.addMinutes(countdown.toString());
-
-                    shared.closeWindow(result);
-                    return;
-                }
-
-                let ai = elements.addressInput();
-
-                if (ai.isUserFriendly()) {
-                    if (ai.value != shared.getCurrent().params.address) {
-                        ai.value = shared.getCurrent().params.address;
-                    }
-                    captcha.isSolved().then(() => { clickClaim(); });
-                    return;
-                }
-
-                setTimeout(findCountdownOrRoll, helpers.randomMs(10000, 12000));
-            };
-
-            function clickClaim() {
-                try {
-                    let btn = elements.claimButton();
-                    if(btn.isUserFriendly()) {
-                        btn.click();
-                        setTimeout(processRunDetails, helpers.randomMs(4000, 8000));
-                    } else {
-                        setTimeout(clickClaim, helpers.randomMs(4000, 8000));
-                    }
-                    return;
-                } catch (err) {
-                    shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
-                }
-            };
-
-            function processRunDetails() {
-                let claimedAmount = elements.claimedAmount();
-                let balance = elements.balance();
-
-                if (claimedAmount && balance) {
-                    let result = {};
-                    result.claimed = claimedAmount;
-                    result.balance = balance;
-
-                    shared.closeWindow(result);
-                    return;
-                }
-
-                setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
-            };
-
-            return {
-                init: init
-            };
-        },
     };
 
     function overrideSelectNativeJS_Functions () {
@@ -1844,7 +1437,7 @@
                 setTimeout(SiteProcessor.init, helpers.randomMs(1000, 3000));
                 break;
             case K.WebType.FREEBITCOIN:
-                SiteProcessor = objectGenerator.createFBProcessor();
+                SiteProcessor = createFBProcessor();
                 setTimeout(SiteProcessor.run, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.FAUCETPAY:
@@ -1852,11 +1445,11 @@
                 setTimeout(SiteProcessor.init, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.BIGBTC:
-                SiteProcessor = objectGenerator.createBigBtcProcessor();
+                SiteProcessor = createBigBtcProcessor();
                 setTimeout(SiteProcessor.init, helpers.randomMs(2000, 4000));
                 break;
             case K.WebType.BESTCHANGE:
-                SiteProcessor = objectGenerator.createBestChangeProcessor();
+                SiteProcessor = createBestChangeProcessor();
                 setTimeout(SiteProcessor.init, helpers.randomMs(4000, 6000));
                 break;
             case K.WebType.BFBOX:
@@ -4271,8 +3864,8 @@
         constructor(coinPrefix, trySpin = false) {
             let elements = {
                 preRunButton: new ButtonWidget({selector: '.free-box.free-box__' + coinPrefix + ' button'}), //'#' + coinPrefix + '_free_box_withdraw_page'}),
-                captcha: new NoCaptchaWidget({ selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth' }),
-                rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer .button_red.button_center.button_fullwidth'}),
+                captcha: new NoCaptchaWidget({ selector: '.free-box-withdraw__footer button' }), // .button_red.button_center.button_fullwidth' }),
+                rollButton: new ButtonWidget({selector: '.free-box-withdraw__footer button' }), // .button_red.button_center.button_fullwidth'}),
                 success: new ReadableWidget({selector: '.modal:not(.free-box-withdraw,fury-wheel-modal), .vue-notification-template.my-notify.success'}),
                 claimed: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix, parser: Parsers.bfBoxClaimed}),
                 progressBar: new ReadableWidget({selector: '.free-box.free-box__' + coinPrefix + ' .free-box__progress-bar progress'}),
@@ -5699,6 +5292,416 @@
         };
     }
 
+    function createFBProcessor() {
+        let countdownMinutes;
+        let timeout = new Timeout(this.maxSeconds);
+        let captcha = new HCaptchaWidget();
+
+        function run() {
+            setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
+        };
+        function findCountdownOrRollButton() {
+            if ( isCountdownVisible() ) {
+                timeout.restart();
+                countdownMinutes = +document.querySelectorAll('.free_play_time_remaining.hasCountdown .countdown_amount')[0].innerHTML + 1;
+                let result = {};
+                result.balance = readBalance();
+                result.nextRoll = helpers.addMinutes(countdownMinutes.toString());
+
+                shared.closeWindow(result);
+                return;
+            }
+
+            if ( isRollButtonVisible() ) {
+
+                try {
+                    let doBonus = false; // true;
+                    if (doBonus) {
+                        if (!document.getElementById('bonus_span_free_wof')) {
+                            RedeemRPProduct('free_wof_5');
+                            setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
+                            return;
+                        }
+                    }
+                } catch { }
+
+                /* For 'Play without captcha accounts' */
+                if (!captcha.isUserFriendly) {
+                    clickRoll()
+                } else {
+                    captcha.isSolved().then(() => { clickRoll(); });
+                }
+            } else {
+                setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
+            }
+        };
+        function isCountdownVisible() {
+            return document.querySelectorAll('.free_play_time_remaining.hasCountdown .countdown_amount').length > 0;
+        };
+        function isHCaptchaVisible() {
+            let hCaptchaFrame = document.querySelector('.h-captcha > iframe');
+            if (hCaptchaFrame && hCaptchaFrame.isVisible()) {
+                return true;
+            }
+            return false;
+        };
+        function isRollButtonVisible() {
+            return document.getElementById('free_play_form_button').isVisible();
+        };
+        function clickRoll() {
+            try {
+                document.getElementById('free_play_form_button').click();
+                setTimeout(processRunDetails, helpers.randomMs(3000, 10000));
+            } catch (err) {
+                shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
+            }
+        };
+        function processRunDetails() {
+            if (document.getElementById('winnings').isVisible()) {
+                closePopup();
+
+                let result = {};
+                result.claimed = readClaimed();
+                result.balance = readBalance();
+                if(result.claimed != 0) {
+                    result.rolledNumber = readRolledNumber();
+                }
+                shared.closeWindow(result);
+                return;
+            }
+
+            if (document.querySelector('.free_play_result_error').isVisible()) {
+                shared.closeWithError(K.ErrorType.ROLL_ERROR, document.querySelector('.free_play_result_error').innerHTML);
+                return;
+            }
+
+            if(document.getElementById('free_play_error').isVisible()) {
+                shared.closeWithError(K.ErrorType.ROLL_ERROR, document.querySelector('.free_play_error').innerHTML);
+                return;
+            }
+
+            if (document.getElementById('same_ip_error').isVisible()) {
+                shared.closeWithError(K.ErrorType.ROLL_ERROR, document.getElementById('same_ip_error').innerHTML);
+                return;
+            }
+
+            setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
+        };
+        function closePopup() {
+            let closePopupBtn = document.querySelector('.reveal-modal.open .close-reveal-modal');
+            if (closePopupBtn) {
+                closePopupBtn.click();
+            }
+        };
+        function readRolledNumber() {
+            let rolled = 0;
+            try {
+                rolled = parseInt([... document.querySelectorAll('#free_play_digits span')].map( x => x.innerHTML).join(''));
+            } catch { }
+            return rolled;
+        };
+        function readBalance() {
+            let balance = 0;
+            try {
+                balance = document.getElementById('balance').innerHTML;
+            } catch { }
+            return balance;
+        };
+        function readClaimed() {
+            let claimed = 0;
+            try {
+                claimed = document.getElementById('winnings').innerHTML;
+            } catch { }
+            return claimed;
+        };
+
+        return {
+            run: run
+        };
+    }
+
+    function createBigBtcProcessor() {
+        let timeout = new Timeout(this.maxSeconds);
+        let countdownMinutes;
+        let captcha = new HCaptchaWidget();
+        let selectElement = {
+            loadingDiv: function() {
+                let loading = document.querySelector('#loading');
+                if (loading && loading.isVisible()) {
+                    return true;
+                } else {
+                    return false;
+                }
+            },
+            addressInput: function() {
+                return document.querySelector('#login input[name="address"]');
+            },
+            loginButton: function() {
+                return document.querySelector('#login input[type="submit"]');
+            },
+            claimButton: function() {
+                return document.getElementById('claimbutn');
+            },
+            countdown: function() { // "You have to wait\n60 minutes"
+                let cd = document.getElementById('countdown');
+                if(cd && cd.isVisible()) {
+                    return parseInt(cd.innerText);
+                }
+                return null;
+            },
+            claimedAmount: function() {
+                let elm = document.querySelector('.alert.alert-success.pulse'); //"Yuppie! You won 2 satoshi!"
+                if(elm && elm.isVisible()) {
+                    let val = parseInt(elm.innerText.replace(/\D/g, ''));
+                    if (Number.isInteger(val)) {
+                        val = val / 100000000;
+                    }
+
+                    return val;
+                } else {
+                    return null;
+                }
+            },
+            balance: function() {
+                let elm = document.querySelector('a b');
+                if (elm && elm.isVisible()) {
+                    let val = parseInt(elm.innerText.replace(',', ''));
+                    if (Number.isInteger(val)) {
+                        val = val / 100000000;
+                    }
+
+                    return val;
+                } else {
+                    return null;
+                }
+            },
+            error: function () {
+                return null;
+            }
+        };
+
+        function init() {
+            window.scrollTo(0, document.body.scrollHeight);
+            let m = document.getElementById('main'); if (m) { m.style.display='block'; }
+            m = document.getElementById('block-adb-enabled'); if (m) { m.style.display='none'; }
+            m = document.getElementById('ielement'); if (m) { m.style.display='block'; }
+            setInterval(() => {
+                let frames = [...document.querySelectorAll('iframe')];
+                frames.forEach(x => {
+                    if (!x.src.includes('hcaptcha')) {
+                        x.remove()
+                    }
+                });
+            }, 5000);
+
+            if (window.location.href.includes('/faucet')) {
+                setTimeout(runFaucet, helpers.randomMs(12000, 14000));
+                return;
+            } else {
+                setTimeout(run, helpers.randomMs(3000, 5000));
+                return;
+            }
+        }
+
+        function run() {
+            try {
+                setTimeout(waitIfLoading, helpers.randomMs(12000, 15000));
+            } catch (err) {
+                shared.closeWithErrors(K.ErrorType.ERROR, err);
+            }
+        };
+        function doLogin() {
+            let address = selectElement.addressInput();
+            if(address && address.value != shared.getCurrent().params.address) {
+                address.value = shared.getCurrent().params.address;
+            } else {
+                selectElement.loginButton().click();
+                return;
+            }
+            setTimeout( doLogin , helpers.randomMs(1000, 2000));
+        };
+        function waitIfLoading() {
+            if ( !selectElement.loadingDiv() ) {
+                doLogin();
+                return;
+            } else {
+            }
+
+            setTimeout(waitIfLoading, helpers.randomMs(5000, 7000));
+        };
+        function runFaucet() {
+            let claimedAmount = selectElement.claimedAmount();
+            if(claimedAmount) {
+                processRunDetails();
+                return;
+            } else if (selectElement.countdown()) {
+                let result = {};
+
+                shared.closeWindow(result);
+            } else {
+                captcha.isSolved().then(() => { clickClaim(); });
+            }
+        }
+        function clickClaim() {
+            try {
+                selectElement.claimButton().click();
+                return;
+            } catch (err) {
+                shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
+            }
+        };
+        function processRunDetails() {
+            let claimedAmount = selectElement.claimedAmount();
+            let balance = selectElement.balance();
+            let countdown = selectElement.countdown();
+
+            if (claimedAmount && balance) {
+                let result = {};
+                result.claimed = claimedAmount;
+                result.balance = balance;
+
+                shared.closeWindow(result);
+                return;
+            }
+
+            setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
+        };
+
+        return {
+            init: init
+        };
+    }
+
+    function createBestChangeProcessor() {
+        let timeout = new Timeout(this.maxSeconds);
+        let countdownMinutes;
+        let captcha = new HCaptchaWidget({selector: '.hcaptcha > iframe'});
+        let elements = {
+            captcha: function() {
+                return document.querySelector('.hcaptcha > iframe');
+            },
+            container: function() {
+                return document.querySelector('#info_bonus');
+            },
+            containerOpener: function() {
+                return document.querySelector('#tab_bonus a');
+            },
+            addressInput: function() {
+                return document.querySelector('#bonus_purse');
+            },
+            claimButton: function() {
+                return document.querySelector('#bonus_button');
+            },
+            countdown: function() { // Time left: mm:ss
+                let elm = document.querySelector('#bonus_button');
+                try {
+                    if (elm.value) {
+                        let timeLeft = elm.value.split(':');
+                        if (timeLeft.length > 1) {
+                            return parseInt(timeLeft[1]);
+                        }
+                    }
+                } catch (err) {
+                    return null;
+                }
+            },
+            claimedAmount: function() {
+                let elm = document.querySelector("#bonus_status b");
+                try {
+                    let sats = elm.innerText.replace(/\D/g, '');
+                    return sats / 100000000;
+                } catch (err) {
+                    return null;
+                }
+            },
+            balance: function() {
+                let elm = document.querySelector("#faucet_unpaid_balance b");
+                try {
+                    let sats = elm.innerText.replace(/\D/g, '');
+                    return sats / 100000000;
+                } catch (err) {
+                    return null;
+                }
+            }
+        };
+
+        function init() {
+            run();
+        }
+
+        function run() {
+            try {
+                if (!elements.container().isUserFriendly()) {
+                    let co = elements.containerOpener();
+                    if(co.isUserFriendly()) {
+                        co.onclick = co.onmousedown;
+                        co.click();
+                    }
+                }
+                setTimeout(findCountdownOrRoll, helpers.randomMs(4000, 5000));
+            } catch (err) {
+                shared.closeWithErrors(K.ErrorType.ERROR, err);
+            }
+        };
+        function findCountdownOrRoll() {
+            let countdown = elements.countdown();
+            if(countdown) {
+                let result = { };
+                result.nextRoll = helpers.addMinutes(countdown.toString());
+
+                shared.closeWindow(result);
+                return;
+            }
+
+            let ai = elements.addressInput();
+
+            if (ai.isUserFriendly()) {
+                if (ai.value != shared.getCurrent().params.address) {
+                    ai.value = shared.getCurrent().params.address;
+                }
+                captcha.isSolved().then(() => { clickClaim(); });
+                return;
+            }
+
+            setTimeout(findCountdownOrRoll, helpers.randomMs(10000, 12000));
+        };
+
+        function clickClaim() {
+            try {
+                let btn = elements.claimButton();
+                if(btn.isUserFriendly()) {
+                    btn.click();
+                    setTimeout(processRunDetails, helpers.randomMs(4000, 8000));
+                } else {
+                    setTimeout(clickClaim, helpers.randomMs(4000, 8000));
+                }
+                return;
+            } catch (err) {
+                shared.closeWithError(K.ErrorType.CLICK_ROLL_ERROR, err);
+            }
+        };
+
+        function processRunDetails() {
+            let claimedAmount = elements.claimedAmount();
+            let balance = elements.balance();
+
+            if (claimedAmount && balance) {
+                let result = {};
+                result.claimed = claimedAmount;
+                result.balance = balance;
+
+                shared.closeWindow(result);
+                return;
+            }
+
+            setTimeout(processRunDetails, helpers.randomMs(5000, 6000));
+        };
+
+        return {
+            init: init
+        };
+    }
+
     function createSGProcessor() {
         let timerSpans;
         function run() {
@@ -5820,14 +5823,6 @@
         setLegacyConditionalDefaults() {
             if (this.type == K.WebType.CRYPTOSFAUCETS) {
                 this.schedule = '65329c';
-            }
-
-            if (this.type == K.WebType.BFBOX) {
-                this.params['defaults.nextRun.override'] = true;
-                this.params['defaults.nextRun.useCountdown'] = false;
-                this.params['defaults.nextRun'] = 0;
-                this.params['defaults.nextRun.min'] = 21;
-                this.params['defaults.nextRun.max'] = 25;
             }
 
             if (this.type == K.WebType.FREEBITCOIN) {
@@ -6689,11 +6684,9 @@
             { id: '52', name: 'BigBtc', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://bigbtc.win/'), rf: '?id=39255652', type: K.WebType.BIGBTC, clId: 200 },
             { id: '53', name: 'BestChange', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.bestchange.com/'), rf: ['index.php?nt=bonus&p=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.BESTCHANGE, clId: 163 },
             { id: '58', name: 'BF BTC', cmc: '1', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
-            { id: '59', name: 'BF BNB', cmc: '1839', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
             { id: '61', name: 'Dutchy', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
             { id: '62', name: 'Dutchy Monthly Coin', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/coin_roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
             { id: '65', name: 'FCrypto Roll', cmc: '-1', url: new URL('https://faucetcrypto.com/dashboard'), rf: 'ref/704060', type: K.WebType.FCRYPTO, clId: 27 },
-            { id: '67', name: 'BF BFG', cmc: '11038', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
             { id: '68', name: 'CF SHIBA', cmc: '5994', coinRef: 'SHIBA', url: new URL('https://freeshibainu.com/free'), rf: '?ref=18226', type: K.WebType.CRYPTOSFAUCETS, clId: 167 },
             { id: '77', name: 'FPig', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('https://faupig-bit.online/page/dashboard'), rf: [''], type: K.WebType.FPB, clId: 154 },
             { id: '78', name: 'CF Cake', cmc: '7186', coinRef: 'CAKE', url: new URL('https://freepancake.com/free'), rf: '?ref=699', type: K.WebType.CRYPTOSFAUCETS, clId: 197 },
@@ -6701,7 +6694,6 @@
             { id: '81', name: 'CF Matic', cmc: '3890', coinRef: 'MATIC', url: new URL('https://freematic.com/free'), rf: '?ref=6435', type: K.WebType.CRYPTOSFAUCETS, clId: 210 },
             { id: '84', name: 'JTFey', cmc: '-1', url: new URL('https://james-trussy.com/faucet'), rf: ['?r=corecrafting'], type: K.WebType.VIE, clId: 213 },
             { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
-            { id: '86', name: 'BF BABY', cmc: '10334', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
             { id: '87', name: 'CF BTT', cmc: '16086', coinRef: 'BTT', url: new URL('https://freebittorrent.com/free'), rf: '?ref=2050', type: K.WebType.CRYPTOSFAUCETS, clId: 218 },
             { id: '88', name: 'BF BSW', cmc: '10746', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BETFURYBOX, clId: 1 },
             { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
