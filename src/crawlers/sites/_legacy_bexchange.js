@@ -1,5 +1,5 @@
 function createBestChangeProcessor() {
-    let timeout = new Timeout(this.maxSeconds);
+    let timeout = new Timeout(); // this.maxSeconds);
     let countdownMinutes;
     let captcha = new HCaptchaWidget({selector: '.hcaptcha > iframe'});
     let elements = {

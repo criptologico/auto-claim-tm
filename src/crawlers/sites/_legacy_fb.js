@@ -1,6 +1,6 @@
 function createFBProcessor() {
     let countdownMinutes;
-    let timeout = new Timeout(this.maxSeconds);
+    let timeout = new Timeout(); // this.maxSeconds);
     let captcha = new HCaptchaWidget();
 
     function run() {

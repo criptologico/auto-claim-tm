@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.22
+// @version      3.0.23
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -3634,7 +3634,7 @@
     class Faucet {
         constructor(elements, actions = {}) {
             this._url = window.location.href;
-            this._timeout = new Timeout(this.maxSeconds);
+            this._timeout = new Timeout(); // this.maxSeconds);
             this._elements = elements;
             this._actions = {
                 preRun: false,
@@ -5190,7 +5190,7 @@
     }
 
     function createFPProcessor() {
-        let timeout = new Timeout(this.maxSeconds);
+        let timeout = new Timeout(); //this.maxSeconds);
         let captcha = new HCaptchaWidget();
 
         function init() {
@@ -5294,7 +5294,7 @@
 
     function createFBProcessor() {
         let countdownMinutes;
-        let timeout = new Timeout(this.maxSeconds);
+        let timeout = new Timeout(); // this.maxSeconds);
         let captcha = new HCaptchaWidget();
 
         function run() {
@@ -5421,7 +5421,7 @@
     }
 
     function createBigBtcProcessor() {
-        let timeout = new Timeout(this.maxSeconds);
+        let timeout = new Timeout(); // this.maxSeconds);
         let countdownMinutes;
         let captcha = new HCaptchaWidget();
         let selectElement = {
@@ -5573,7 +5573,7 @@
     }
 
     function createBestChangeProcessor() {
-        let timeout = new Timeout(this.maxSeconds);
+        let timeout = new Timeout(); // this.maxSeconds);
         let countdownMinutes;
         let captcha = new HCaptchaWidget({selector: '.hcaptcha > iframe'});
         let elements = {

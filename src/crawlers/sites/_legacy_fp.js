@@ -53,7 +53,7 @@
 // }
 
 function createFPProcessor() {
-    let timeout = new Timeout(this.maxSeconds);
+    let timeout = new Timeout(); //this.maxSeconds);
     let captcha = new HCaptchaWidget();
 
     function init() {

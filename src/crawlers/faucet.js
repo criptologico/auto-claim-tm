@@ -1,7 +1,7 @@
 class Faucet {
     constructor(elements, actions = {}) {
         this._url = window.location.href;
-        this._timeout = new Timeout(this.maxSeconds);
+        this._timeout = new Timeout(); // this.maxSeconds);
         this._elements = elements;
         this._actions = {
             preRun: false,
