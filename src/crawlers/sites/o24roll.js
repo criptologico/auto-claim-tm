@@ -9,6 +9,7 @@ class O24Roll extends Faucet {
             readBalance: false
         };
         super(elements, actions);
+        this._isFMonster = location.host === 'faucet.monster';
     }
 
     init() {
@@ -45,8 +46,9 @@ class O24Roll extends Faucet {
     }
 
     async solve() {
-        let spots = this.getSpotsAvailable();
-        if(!spots) {
+        let spots;
+        spots = this.getSpotsAvailable();
+        if(!this._isFMonster && !spots) {
             // close with error
             shared.devlog(`Could not find spots available`);
             this.updateResult();
@@ -83,18 +85,40 @@ class O24Roll extends Faucet {
         }
         await wait(helpers.randomInt(1500, 3000));
 
-        // answer_1:
-        let answersList = [...document.querySelectorAll('select[name="tt"] option')].map(x => x.value);
-        if (answersList.includes(spots.sold)) {
-            document.querySelector('select[name="tt"]').value=spots.sold;
-        } else if (answersList.includes(spots.available)) {
-            document.querySelector('select[name="tt"]').value=spots.available;
+        // answer_1 (for o24):
+        if (this._isFMonster) {
+            let usdtQuestion = document.querySelector('form p:nth-child(2)');
+            if (!usdtQuestion || !usdtQuestion.innerText.toLowerCase().includes('faucet monitor lists tether faucets')) {
+                shared.devlog(`Could not find Tether question`);
+                this.updateResult();
+                return;
+            }
+            let usdtAnswersList = [...document.querySelectorAll('select[name="fm"] option')];
+            if (usdtAnswersList.length == 0) {
+                shared.devlog(`Tether question: error reading answers`);
+                this.updateResult();
+                return;
+            }
+            usdtAnswersList = usdtAnswersList.map(x => x.value);
+            let idxCorrect = usdtAnswersList.findIndex(x => x.toLowerCase() == 'yes' || x.toLowerCase() == 'y');
+            if (idxCorrect === -1) {
+                shared.devlog(`Tether question: could not find YES answer`);
+                this.updateResult();
+                return;
+            }
+            document.querySelector('select[name="fm"]').value = usdtAnswersList[idxCorrect];
         } else {
-            shared.devlog(`Could not find option for sold/available spots`);
-            this.updateResult();
-            return;
+            let answersList = [...document.querySelectorAll('select[name="tt"] option')].map(x => x.value);
+            if (answersList.includes(spots.sold)) {
+                document.querySelector('select[name="tt"]').value=spots.sold;
+            } else if (answersList.includes(spots.available)) {
+                document.querySelector('select[name="tt"]').value=spots.available;
+            } else {
+                shared.devlog(`Could not find option for sold/available spots`);
+                this.updateResult();
+                return;
+            }
         }
-
         await wait(helpers.randomInt(400, 5000));
 
         // answer_2:
