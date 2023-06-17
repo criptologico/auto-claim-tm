@@ -151,6 +151,13 @@ class YCoin extends Faucet {
                 return;
             }
         }
+        msgDiv = document.querySelector('p.info.fail');
+        if (msgDiv) {
+            if (msgDiv.innerText.toLowerCase().includes('run out of bitcoin')) {
+                shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
+                return;
+            }
+        }
 
         if (this._elements.captcha.isUserFriendly) {
             shared.devlog(`Captcha found`);

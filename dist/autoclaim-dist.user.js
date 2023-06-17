@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.23
+// @version      3.0.24
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -4111,6 +4111,13 @@
                         result.nextRoll = helpers.addMinutes(60);
                     }
                     shared.closeWindow(result);
+                    return;
+                }
+            }
+            msgDiv = document.querySelector('p.info.fail');
+            if (msgDiv) {
+                if (msgDiv.innerText.toLowerCase().includes('run out of bitcoin')) {
+                    shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
                     return;
                 }
             }
