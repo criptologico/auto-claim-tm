@@ -55,7 +55,7 @@ const K = Object.freeze({
             UNKNOWNERROR: 5,
             EXPIRED: 6
         },
-        ReusableCodeSuggestions: ['q5rlm6ot3r', '55khv20st4', 'ykxlvmg9ja', 'vmuph8j0c6', 'd8fmqxjlma', 'rjnmzjs673', 'ki2r0jq5r0', '4obq1i3idd']
+        // ReusableCodeSuggestions: ['q5rlm6ot3r', 'ykxlvmg9ja', 'ki2r0jq5r0', '4obq1i3idd']
     },
     RandomInteractionLevel: {
         NONE: 0,

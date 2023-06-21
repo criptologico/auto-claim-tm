@@ -966,7 +966,7 @@ function createUi() {
         html += '<div class="card-tools">';
 
         html += '<div class="input-group input-group-sm btn-tool">';
-        html += '<input id="promo-text-input" type="text" name="table_search" class="form-control float-right" list="promoCode_list" placeholder="CF Promo Code..." style="width:130px;">';
+        html += '<input id="promo-text-input" type="text" name="table_search" class="form-control float-right" placeholder="CF Promo Code..." style="width:130px;">';
         html += '<input type="checkbox" data-toggle="switch" title="Check if the code can be reused every 24hs" id="promo-daily" data-on-text="Daily" data-off-text="1 Time">';
         html += '<div class="input-group-append"><button type="submit" class="btn btn-default" id="promo-button""><i class="fas fa-plus"></i> Add</button></div>';
         html += '<div class="input-group-append"><button type="submit" class="btn btn-default btn-outline-danger mx-1" data-toggle="modal" data-target="#confirmable-modal" onclick="confirmable.open(\'removeAllPromos\', \'All promo codes will be removed.\')"><i class="fas fa-times-circle"></i> Remove All</button></div>';
@@ -974,9 +974,6 @@ function createUi() {
         html += '<div class="input-group-append"><button type="button" class="btn btn-tool btn-sm mx-1" data-card-widget="collapse" title="Collapse"><i class="fas fa-minus"></i></button></div>';
         html += '<div class="input-group-append"><button type="button" class="btn btn-tool btn-sm mx-1" data-card-widget="maximize" title="Maximize"><i class="fas fa-expand"></i></button></div>';
         html += '</div>';
-        html += '<datalist id="promoCode_list">';
-        K.CF.ReusableCodeSuggestions.forEach( function(x) { html += '<option>' + x + '</option>' });
-        html += '</datalist>';
         html += '</div>';
 
         html += '</div>';
