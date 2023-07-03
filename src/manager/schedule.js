@@ -403,12 +403,24 @@ class Schedule {
             return;
         }
 
+        console.log(`${(new Date()).toLocaleTimeString()} - Completed: ${shared.isIncompleted(this.currentSite.id)}`);
+        console.log(`${(new Date()).toLocaleTimeString()} - hasTimedOut: ${this.hasTimedOut()}`);
         // ui.log(`[${this.uuid}] @resultReader. Current Id: ${this.currentSite.id}`);
         if(shared.isCompleted(this.currentSite.id)) {
+            console.log(`${(new Date()).toLocaleTimeString()} - Going to analyzeResult`);
             this.analyzeResult(); // rename to something else...
-        } else {
-            this.waitOrMoveNext(); // this should just be the error and timeout check
+            return;
         }
+
+        this.timeWaiting += 15;
+        if(shared.isIncompleted(this.currentSite.id) && this.hasTimedOut()) {
+            console.log(`${(new Date()).toLocaleTimeString()} - Site has timed out but is WORKING/Incompleted`);
+            this.analyzeResult(); // rename to something else...
+            return;
+        }
+
+        console.log(`${(new Date()).toLocaleTimeString()} - Going to waitOrMoveNext`);
+        this.waitOrMoveNext(); // this should just be the error and timeout check
         return;
 
         // if ( ( (this.currentSite.type == K.WebType.FAUCETPAY && this.timeWaiting < shared.getConfig()['fp.maxTimeInMinutes'] * 60) )
@@ -472,7 +484,6 @@ class Schedule {
     waitOrMoveNext() {
         // ui.log(`[${this.uuid}] @waitOrMoveNext`);
         // No visited flag
-        this.timeWaiting += 15;
         if (!shared.hasErrors(this.currentSite.id) && !this.hasTimedOut()) {
             ui.log({ schedule: this.uuid, 
                 siteName: this.currentSite.name,

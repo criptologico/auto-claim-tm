@@ -427,6 +427,20 @@
                 }
                 return false;
             };
+            function isIncompleted(expectedId) {
+                // console.log(`@isIncompleted with expectedId=${expectedId}`);
+                loadFlowControl();
+                for(const sch in runningSites) {
+                    if (runningSites[sch].id == expectedId) {
+                        if (runningSites[sch].runStatus == 'WORKING') {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+                return false;
+            };
             function hasErrors(expectedId) {
                 for(const sch in runningSites) {
                     if (runningSites[sch].id == expectedId && runningSites[sch].error) {
@@ -561,6 +575,7 @@
                 getDevLog: getDevLog,
                 setFlowControl: setFlowControl,
                 isCompleted: isCompleted,
+                isIncompleted: isIncompleted,
                 isOpenedByManager: isOpenedByManager,
                 saveFlowControl: saveFlowControl,
                 getCurrent: getCurrent,
@@ -1289,10 +1304,10 @@
             //     setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(2000, 5000));
             //     break;
             case K.WebType.FAUCETPAY:
-                SiteProcessor = createFPProcessor();
-                setTimeout(SiteProcessor.init, helpers.randomMs(2000, 5000));
-                // SiteProcessor = new FPPtc();
-                // setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(2000, 5000));
+                // SiteProcessor = createFPProcessor();
+                // setTimeout(SiteProcessor.init, helpers.randomMs(2000, 5000));
+                SiteProcessor = new FPPtc();
+                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.BIGBTC:
                 SiteProcessor = createBigBtcProcessor();
@@ -1360,6 +1375,10 @@
                 break;
             case K.WebType.CTOP:
                 SiteProcessor = new CTop();
+                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
+                break;
+            case K.WebType.AUTOCML:
+                SiteProcessor = new AutoCMl();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
                 break;
             default:

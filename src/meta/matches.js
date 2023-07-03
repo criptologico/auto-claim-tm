@@ -56,3 +56,4 @@
 // @match        https://freebch.club/*
 // @match        https://zecfaucet.net/*
 // @match        https://faucet.monster/*
+// @match        https://auto-crypto.ml/*

@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.26
+// @version      3.0.27
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -82,6 +82,7 @@
 // @match        https://freebch.club/*
 // @match        https://zecfaucet.net/*
 // @match        https://faucet.monster/*
+// @match        https://auto-crypto.ml/*
 // ==/UserScript==
 
 (function() {
@@ -131,7 +132,8 @@
             YCOIN: 25,
             CDIVERSITY: 26,
             BSCADS: 27,
-            CTOP: 28
+            CTOP: 28,
+            AUTOCML: 29
         },
         CF: {
             UrlType: {
@@ -637,6 +639,19 @@
                 }
                 return false;
             };
+            function isIncompleted(expectedId) {
+                loadFlowControl();
+                for(const sch in runningSites) {
+                    if (runningSites[sch].id == expectedId) {
+                        if (runningSites[sch].runStatus == 'WORKING') {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+                return false;
+            };
             function hasErrors(expectedId) {
                 for(const sch in runningSites) {
                     if (runningSites[sch].id == expectedId && runningSites[sch].error) {
@@ -753,6 +768,7 @@
                 getDevLog: getDevLog,
                 setFlowControl: setFlowControl,
                 isCompleted: isCompleted,
+                isIncompleted: isIncompleted,
                 isOpenedByManager: isOpenedByManager,
                 saveFlowControl: saveFlowControl,
                 getCurrent: getCurrent,
@@ -1441,8 +1457,8 @@
                 setTimeout(SiteProcessor.run, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.FAUCETPAY:
-                SiteProcessor = createFPProcessor();
-                setTimeout(SiteProcessor.init, helpers.randomMs(2000, 5000));
+                SiteProcessor = new FPPtc();
+                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(2000, 5000));
                 break;
             case K.WebType.BIGBTC:
                 SiteProcessor = createBigBtcProcessor();
@@ -1494,6 +1510,10 @@
                 break;
             case K.WebType.CTOP:
                 SiteProcessor = new CTop();
+                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
+                break;
+            case K.WebType.AUTOCML:
+                SiteProcessor = new AutoCMl();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
                 break;
             default:
@@ -5087,14 +5107,150 @@
         }
     }
 
-    class FCryptoRoll extends Faucet {
+ class FCryptoRoll extends Faucet {
+     constructor() {
+         let elements = {
+             countdownMinutes: new CountdownWidget({selector: '.sidebar-links .cursor-not-allowed span.notranslate', parser: Parsers.splitAndIdxToInt, options: { splitter: ':', idx: 1} }), // '00:21:28'
+             rollButton: new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'}),
+             balance: new ReadableWidget({selector: 'div.flex.badge.text-bg-yellow', parser: Parsers.trimNaNs}), // '405.81 Coins'
+             claimed: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium', parser: Parsers.splitAndIdxTrimNaNs, options: { splitter: '(', idx: 0} }), // '25.05 Coins (12 + 13.05)'
+             captcha: new HCaptchaWidget({selector: '#hcap-script > iframe'}),
+             success: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium'})
+         };
+         let actions = {
+             isMultiClaim: true,
+             preRoll: true,
+             postRun: true,
+             readRolledNumber: false,
+         };
+         super(elements, actions);
+         this._paths = {
+             faucet: '/task/faucet-claim',
+             dashboard: '/dashboard'
+         };
+         this._linkSelectors = {
+             Faucet: 'a[href="https://faucetcrypto.com/task/faucet-claim"]'
+         }
+         this.useUrlListener();
+     }
+
+     init() {
+         this._elements.captcha = new HCaptchaWidget({selector: '#hcap-script > iframe'});
+         this._elements.rollButton = new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
+         if (this._url.endsWith(this._paths.dashboard)) {
+             return this.runDashboard();
+         } else if (this._url.includes(this._paths.faucet)) {
+             return wait().then( () => { this.run(); });
+         }
+
+         return;
+     }
+
+     readSections() {
+         let sections = {};
+         try {
+             for (var l in this._linkSelectors) {
+                 sections[l] = {};
+                 sections[l].elm = document.querySelector(this._linkSelectors[l]);
+                 if (sections[l].elm) {
+                     let qty = sections[l].elm.querySelector('span.ml-auto');
+                     sections[l].qty = (qty && !isNaN(qty.innerText)) ? qty.innerText : 0;
+                 }
+             }
+         } catch {}
+
+         this.sections = sections;
+     }
+
+     runDashboard() {
+         this.readSections();
+
+         if (this.sections['Faucet'].elm) {
+             this.sections['Faucet'].elm.click();
+             return;
+         } else {
+             return wait().then( () => { this.run(); });
+         }
+     }
+
+     scrollTo() {
+         let mainContainer = document.querySelector('main');
+         if (mainContainer) {
+             mainContainer.scrollTo(0, mainContainer.scrollHeight - mainContainer.offsetHeight);
+         }
+     }
+
+     preRoll() { // search for 'You don't need to solve any captcha! The system is telling me that you are a good person :)'
+         this.scrollTo();
+         let checkCircleSpan = document.querySelector('p.font-medium.flex.justify-center.leading-0 span.text-green-500.mr-3 svg');
+         if(checkCircleSpan) {
+             if (checkCircleSpan.parentElement.parentElement.innerText.toLowerCase().includes('the system is telling me that you are a good person')) {
+                 this._elements.captcha = new NoCaptchaWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
+                 return;
+             }
+         }
+     }
+
+     postRun() {
+
+         if (this._url.endsWith(this._paths.dashboard) || this._oldClaimed != this._result.claimed) {
+             try {
+                 this._elements.claimed.isUserFriendly.parentElement.parentElement.parentElement.querySelector('button');
+             } catch (err) {
+             }
+             this._oldClaimed = null;
+             this.readSections();
+             if (this.sections != {}) {
+                 if (this.sections['Faucet'].elm) {
+                     this.sections['Faucet'].elm.click();
+                     return;
+                 } else {
+                 }
+             } else {
+             }
+         } else {
+         }
+
+         this._result = shared.getProp('tempResults');
+         shared.closeWindow(this._result);
+         return;
+     }
+
+     async runPtcList() {
+         let listItems = [...document.querySelectorAll('.grid.grid-responsive-3 .feather.feather-eye')].map(x => x.parentElement.parentElement).filter(x => x.isUserFriendly());
+         if (listItems.length > 0) {
+             listItems[0].click();
+             return;
+         } else {
+             return wait().then( () => { this.runPtcList() } );
+         }
+     }
+
+     runPtcSingleStart() {
+         return this.run('doRoll');
+     }
+
+     runPtcSingleWait() {
+         this._elements.captcha = new NoCaptchaWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
+         this._elements.rollButton = new ButtonWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
+         return this.run('doRoll');
+     }
+ }
+
+    class FPPtc extends Faucet {
         constructor() {
             let elements = {
-                countdownMinutes: new CountdownWidget({selector: '.sidebar-links .cursor-not-allowed span.notranslate', parser: Parsers.splitAndIdxToInt, options: { splitter: ':', idx: 1} }), // '00:21:28'
-                rollButton: new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'}),
-                balance: new ReadableWidget({selector: 'div.flex.badge.text-bg-yellow', parser: Parsers.trimNaNs}), // '405.81 Coins'
-                claimed: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium', parser: Parsers.splitAndIdxTrimNaNs, options: { splitter: '(', idx: 0} }), // '25.05 Coins (12 + 13.05)'
-                captcha: new HCaptchaWidget({selector: '#hcap-script > iframe'}),
+                claimButton: new ButtonWidget({selector: '#pop-up button.purpleButton:not([disabled])'}),
+                claimButtonDisabled: new ButtonWidget({selector: '#pop-up button.purpleButton'}),
+                openPtcButton: new ButtonWidget({fnSelector: function() {
+                    let btn = [...document.querySelectorAll('button')].filter(x => x.innerText.toLowerCase().includes('view'));
+                    return (btn.length > 0) ? btn[0] : null;
+                }}),
+                claimed: new ReadableWidget({fnSelector: function() {
+                    let divSpanSuccessClaim = [...document.querySelectorAll('div span')].filter(x => x.innerText.toLowerCase().includes('successfully credited with'));
+                    return (divSpanSuccessClaim.length > 0) ? divSpanSuccessClaim[0] : null;
+                }, parser: Parsers.trimNaNs}),
+                captcha: new GeeTestCaptchaWidget(),
                 success: new ReadableWidget({selector: 'div.ml-3.w-0 p span.text-yellow-500.font-medium'})
             };
             let actions = {
@@ -5105,219 +5261,141 @@
             };
             super(elements, actions);
             this._paths = {
-                faucet: '/task/faucet-claim',
-                dashboard: '/dashboard'
+                ptcList: '/ptc',
+                ptcSingleView: '/ptc/view',
+                login: '/account/login',
+                dashboard: '/user-admin'
             };
-            this._linkSelectors = {
-                Faucet: 'a[href="https://faucetcrypto.com/task/faucet-claim"]'
-            }
             this.useUrlListener();
         }
 
         init() {
-            this._elements.captcha = new HCaptchaWidget({selector: '#hcap-script > iframe'});
-            this._elements.rollButton = new ButtonWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
-            if (this._url.endsWith(this._paths.dashboard)) {
-                return this.runDashboard();
-            } else if (this._url.includes(this._paths.faucet)) {
-                return wait().then( () => { this.run(); });
+            if (this._url.includes(this._paths.ptcSingleView)) {
+                this.doPtcList(true);
+                return;
+            } else if (this._url.includes(this._paths.ptcList)) {
+                this.doPtcList();
+                return;
+            } else if (this._url.includes(this._paths.login)) {
+                this.doLogin();
+                return;
+            } else if (this._url.includes(this._paths.dashboard)) {
+                return;
             }
 
             return;
         }
 
-        readSections() {
-            let sections = {};
+        hasExpired() {
+            return document.body.innerText.includes('The session has expired');
+        }
+
+        getETAWaitSeconds(btn) {
             try {
-                for (var l in this._linkSelectors) {
-                    sections[l] = {};
-                    sections[l].elm = document.querySelector(this._linkSelectors[l]);
-                    if (sections[l].elm) {
-                        let qty = sections[l].elm.querySelector('span.ml-auto');
-                        sections[l].qty = (qty && !isNaN(qty.innerText)) ? qty.innerText : 0;
-                    }
-                }
-            } catch {}
-
-            this.sections = sections;
+                let seconds = btn.nextSibling.firstChild.innerText.split('s')[0];
+                return +seconds;
+            } catch (err) {
+            }
+            return 15;
         }
 
-        runDashboard() {
-            this.readSections();
+        getPayout(btn) {
+            this.lastClaimed = 0;
+            try {
+                let payout = btn.nextSibling.lastChild.innerText.split(' ')[0];
+                this.lastClaimed = +payout;
+            } catch (err) {
+            }
+        }
 
-            if (this.sections['Faucet'].elm) {
-                this.sections['Faucet'].elm.click();
+        async validateClaim() {
+            await wait(300);
+            if (this.hasExpired()) {
+                await wait(2000);
+                return false;
+            }
+            if (this._elements.claimed.isUserFriendly) {
+                let claimed = this._elements.claimed.value;
+                if (claimed) {
+                    await this.storeClaim();
+                    await wait(2000);
+                    return claimed;
+                }
+            }
+            return this.validateClaim();
+        }
+
+        async storeClaim() {
+            let result = shared.getResult();
+            result.ptcsDone = (result.ptcsDone ?? 0) + 1;
+            result.claimed = +(result.claimed ?? 0) + +this.lastClaimed;
+            this.lastClaimed = 0;
+            shared.updateWithoutClosing(result, 'WORKING');
+        }
+
+        async confirmClaim() {
+            let captcha = new GeeTestCaptchaWidget();
+
+            await captcha.isSolved();
+            if (!this._elements.claimButton.isUserFriendly) {
                 return;
-            } else {
-                return wait().then( () => { this.run(); });
             }
+            this._elements.claimButton.click();
+            let validation = await this.validateClaim();
+            return this.doPtcList();
         }
 
-        scrollTo() {
-            let mainContainer = document.querySelector('main');
-            if (mainContainer) {
-                mainContainer.scrollTo(0, mainContainer.scrollHeight - mainContainer.offsetHeight);
-            }
+        async startPtc() {
+            this._elements.openPtcButton.click();
+            let minSeconds = this.getETAWaitSeconds(this._elements.openPtcButton.isUserFriendly);
+            this.getPayout(this._elements.openPtcButton.isUserFriendly);
+            await wait(4000);
+            return this.waitPtcSeconds();
         }
 
-        preRoll() { // search for 'You don't need to solve any captcha! The system is telling me that you are a good person :)'
-            this.scrollTo();
-            let checkCircleSpan = document.querySelector('p.font-medium.flex.justify-center.leading-0 span.text-green-500.mr-3 svg');
-            if(checkCircleSpan) {
-                if (checkCircleSpan.parentElement.parentElement.innerText.toLowerCase().includes('the system is telling me that you are a good person')) {
-                    this._elements.captcha = new NoCaptchaWidget({selector: '.flex.justify-center button.inline-flex.items-center:not(.hidden)'});
-                    return;
-                }
+        async waitPtcSeconds() {
+            if (this._elements.claimButtonDisabled.isUserFriendly) {
+                return this.confirmClaim();
             }
+            if (!document.title.includes('PTC Ads') && document.title.includes('s |')) {
+                await wait(5000);
+                return this.waitPtcSeconds();
+            }
+            let iframe = document.querySelector('iframe[title="ptc-view"]');
+            if (document.title.includes('PTC Ads') && iframe) {
+                await wait(5000);
+                return this.waitPtcSeconds();
+            }
+            return this.confirmClaim();
         }
 
-        postRun() {
-
-            if (this._url.endsWith(this._paths.dashboard) || this._oldClaimed != this._result.claimed) {
-                try {
-                    this._elements.claimed.isUserFriendly.parentElement.parentElement.parentElement.querySelector('button');
-                } catch (err) {
-                }
-                this._oldClaimed = null;
-                this.readSections();
-                if (this.sections != {}) {
-                    if (this.sections['Faucet'].elm) {
-                        this.sections['Faucet'].elm.click();
-                        return;
-                    } else {
-                    }
+        async doPtcList(isSingle = false) {
+            if (document.title.includes('PTC Ads') || document.title.includes('Complete Visit')) {
+                if (this._elements.claimButtonDisabled.isUserFriendly) {
+                    return this.confirmClaim();
                 } else {
+                    if (this._elements.openPtcButton.isUserFriendly) {
+                        return this.startPtc();
+                    } else {
+                        return;
+                    }
                 }
-            } else {
-            }
-
-            this._result = shared.getProp('tempResults');
-            shared.closeWindow(this._result);
-            return;
-        }
-
-        async runPtcList() {
-            let listItems = [...document.querySelectorAll('.grid.grid-responsive-3 .feather.feather-eye')].map(x => x.parentElement.parentElement).filter(x => x.isUserFriendly());
-            if (listItems.length > 0) {
-                listItems[0].click();
-                return;
-            } else {
-                return wait().then( () => { this.runPtcList() } );
             }
         }
 
-        runPtcSingleStart() {
-            return this.run('doRoll');
-        }
-
-        runPtcSingleWait() {
-            this._elements.captcha = new NoCaptchaWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
-            this._elements.rollButton = new ButtonWidget({selector: 'a.notranslate:not(.cursor-not-allowed)' });
-            return this.run('doRoll');
-        }
-    }
-
-    function createFPProcessor() {
-        let timeout = new Timeout(); //this.maxSeconds);
-        let captcha = new HCaptchaWidget();
-
-        function init() {
-            if(window.location.href.includes('ptc/view')) {
-                addDuration();
-                ptcSingle();
-            } else if (window.location.href.includes('ptc')) {
-                ptcList();
-            } else if (window.location.href.includes('account/login')) {
-                tryLogin();
-            } else if (window.location.href.includes('page/user-admin')) {
-                window.location.href = 'https://faucetpay.io/ptc';
-            }
-            return;
-        }
-
-        function tryLogin() {
-            let username = document.querySelector('input[name="user_name"');
-            let password = document.querySelector('input[name="password"');
-            let captcha = document.querySelector('.h-captcha > iframe');
+        async doLogin() {
+            let username = document.querySelector('input');
+            let password = document.querySelector('input[type="password"]');
+            let captcha = new GeeTestCaptchaWidget();
             let btn = document.querySelector('button[type="submit"');
             if (username && password && btn && username.value != '' && password.value != '') {
-                if ( captcha && captcha.getAttribute('data-hcaptcha-response').length > 0 ) {
-                    btn.click();
-                } else {
-                    setTimeout(tryLogin, helpers.randomMs(9000, 11000));
-                }
+                await captcha.isSolved();
+                btn.click();
+                return;
             } else {
                 shared.closeWithError(K.ErrorType.NEED_TO_LOGIN, '');
             }
         }
-
-        function addDuration() {
-            let duration = document.querySelector('#duration');
-            if(duration && !isNaN(duration.innerText)) {
-                timeout.restart(parseInt(duration.innerText));
-            } else {
-                setTimeout(addDuration, 10000);
-            }
-        }
-
-        function ptcList() {
-            let result;
-            let runMsgDiv = document.querySelector('.alert.alert-info');
-            if (runMsgDiv) {
-                let runMsg = runMsgDiv.innerHTML;
-                if (runMsg.includes('invalid captcha')) {
-                } else if (runMsg.includes('Good job')) {
-                    try {
-                        let idx = runMsg.search(/\d/);
-                        let claimed = parseFloat(runMsg.slice(idx, idx + 10));
-                        result = shared.getResult();
-                        result.claimed = (result.claimed ?? 0) + claimed;
-                        shared.updateWithoutClosing(result, 'WORKING');
-                    } catch { }
-                }
-            }
-
-            if ([...document.querySelectorAll('b')].filter(x => x.innerText.includes('Whoops!')).length > 0) {
-                result = shared.getResult();
-                shared.closeWindow(result);
-                return;
-            }
-
-            let adButtons = [...document.querySelectorAll('button')].filter(x => x .innerHTML.includes('VISIT AD FOR'));
-
-            if (adButtons.length > 0) {
-                if (shared.getConfig()['fp.randomPtcOrder']) {
-                adButtons[helpers.randomInt(0, adButtons.length-1)].click();
-                } else {
-                    adButtons[0].click();
-                }
-                return;
-            }
-
-            setTimeout(ptcList, helpers.randomMs(10000, 12000));
-        }
-
-        function ptcSingle() {
-            if(document.querySelector('input[name="complete"]').isVisible()) {
-                captcha.isSolved().then(() => { clickClaim(); });
-            } else if (document.querySelector('body').innerText.toLowerCase().includes('ad does not exist')) {
-                window.location.href = 'https://faucetpay.io/ptc';
-            } else {
-                setTimeout(ptcSingle, helpers.randomMs(5000, 6000));
-            }
-        }
-
-        function clickClaim() {
-            let input = document.querySelector('input[name="complete"]');
-            input.focus();
-            input.onclick = '';
-            input.click();
-            setTimeout(shared.closeWithError.bind(null, 'TIMEOUT', 'Timed out after clicking a CLAIM button.'), helpers.minToMs(shared.getConfig()['defaults.timeout']));
-        }
-
-        return {
-            init: init
-        };
     }
 
     function createFBProcessor() {
@@ -5815,6 +5893,78 @@
             run: run,
             processRunDetails: processRunDetails
         };
+    }
+
+    class AutoCMl extends Faucet {
+        constructor() {
+            let elements = {
+                claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.splitAndIdxTrimNaNs, options: { splitter: ' ', idx: 0} }),
+                captcha: new HCaptchaWidget(),
+                rollButton: new ButtonWidget({selector: 'input[type="submit"].claim-button'}),
+                addressInput: new TextboxWidget({ selector: 'form[role="form"] input[type="text"]'})
+            };
+            let actions = {
+                readTimeLeft: false,
+                readRolledNumber: false,
+                readBalance: false
+            };
+            super(elements, actions);
+        }
+
+        init() {
+            if (location.href.includes('r=') && !location.href.includes('hCaptcha')) {
+                location.href = (location.href + '&cc=hCaptcha');
+                return;
+            }
+
+            if(this.hasErrorMessage('suspicious activity')) {
+                shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
+                return;
+            }
+            if(this.hasErrorMessage('no funds left') || this.hasErrorMessage('not have sufficient funds')) {
+                shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
+                return;
+            }
+
+            let claimed = this.readClaimed();
+            if (claimed != 0) {
+                if (!location.href.includes('doge')) {
+                    claimed = claimed/100000000;
+                }
+                let result = {
+                    claimed: claimed,
+                    nextRoll: this.readNextRoll()
+                };
+                shared.closeWindow(result);
+                return;
+            }
+
+            if (this._elements.addressInput.isUserFriendly) {
+                if (this._elements.addressInput.value != this._params.address) {
+                    this._elements.addressInput.value = this._params.address;
+                }
+            }
+            this.run();
+        }
+
+        hasErrorMessage(searchTerm) {
+            return document.body.innerText.toLowerCase().includes(searchTerm);
+        }
+
+        readNextRoll() {
+            try {
+                let spans = [...document.querySelectorAll('div.row div.col-md-5ths span:not(.glyphicon)')];
+                let idxClaimsLeft = spans.findIndex(x => x.innerText.includes('daily claims left'));
+                if (idxClaimsLeft > -1) {
+                    if (spans[idxClaimsLeft].innerText.includes('0')) {
+                        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+                    } else {
+                        return helpers.addMinutes(helpers.randomInt(5, 12));
+                    }
+                }
+            } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
+            return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+        }
     }
 
     let landing, instance, siteTimer;
@@ -6436,9 +6586,16 @@
 
             if(shared.isCompleted(this.currentSite.id)) {
                 this.analyzeResult(); // rename to something else...
-            } else {
-                this.waitOrMoveNext(); // this should just be the error and timeout check
+                return;
             }
+
+            this.timeWaiting += 15;
+            if(shared.isIncompleted(this.currentSite.id) && this.hasTimedOut()) {
+                this.analyzeResult(); // rename to something else...
+                return;
+            }
+
+            this.waitOrMoveNext(); // this should just be the error and timeout check
             return;
 
         };
@@ -6478,7 +6635,6 @@
         }
 
         waitOrMoveNext() {
-            this.timeWaiting += 15;
             if (!shared.hasErrors(this.currentSite.id) && !this.hasTimedOut()) {
                 ui.log({ schedule: this.uuid, 
                     siteName: this.currentSite.name,
@@ -6708,22 +6864,19 @@
             { id: '15', name: 'StormGain', cmc: '1', url: new URL('https://app.stormgain.com/crypto-miner/'), rf: 'friend/BNS27140552', type: K.WebType.STORMGAIN, clId: 35 },
             { id: '16', name: 'CF DOGE', cmc: '74', coinRef: 'DOGE', url: new URL('https://free-doge.com/free'), rf: '?ref=97166', type: K.WebType.CRYPTOSFAUCETS, clId: 50 },
             { id: '17', name: 'FreeBitco.in', cmc: '1', url: new URL('https://freebitco.in/'), rf: '?r=41092365', type: K.WebType.FREEBITCOIN, clId: 36 },
-            { id: '18', name: 'FaucetPay PTC', cmc: '1', url: new URL('https://faucetpay.io/ptc'), rf: '?r=41092365', type: K.WebType.FAUCETPAY, clId: 159 },
+            { id: '18', name: 'FaucetPay PTC', cmc: '825', url: new URL('https://faucetpay.io/ptc'), rf: '?r=41092365', type: K.WebType.FAUCETPAY, clId: 159 },
             { id: '52', name: 'BigBtc', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://bigbtc.win/'), rf: '?id=39255652', type: K.WebType.BIGBTC, clId: 200 },
             { id: '53', name: 'BestChange', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.bestchange.com/'), rf: ['index.php?nt=bonus&p=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.BESTCHANGE, clId: 163 },
             { id: '58', name: 'BF BTC', cmc: '1', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
             { id: '61', name: 'Dutchy', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
             { id: '62', name: 'Dutchy Monthly Coin', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/coin_roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
-            { id: '65', name: 'FCrypto Roll', cmc: '-1', url: new URL('https://faucetcrypto.com/dashboard'), rf: 'ref/704060', type: K.WebType.FCRYPTO, clId: 27 },
             { id: '68', name: 'CF SHIBA', cmc: '5994', coinRef: 'SHIBA', url: new URL('https://freeshibainu.com/free'), rf: '?ref=18226', type: K.WebType.CRYPTOSFAUCETS, clId: 167 },
-            { id: '77', name: 'FPig', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('https://faupig-bit.online/page/dashboard'), rf: [''], type: K.WebType.FPB, clId: 154 },
             { id: '78', name: 'CF Cake', cmc: '7186', coinRef: 'CAKE', url: new URL('https://freepancake.com/free'), rf: '?ref=699', type: K.WebType.CRYPTOSFAUCETS, clId: 197 },
             { id: '80', name: 'FreeGRC', cmc: '833', url: new URL('https://freegridco.in/#free_roll'), rf: '', type: K.WebType.FREEGRC, clId: 207 },
             { id: '81', name: 'CF Matic', cmc: '3890', coinRef: 'MATIC', url: new URL('https://freematic.com/free'), rf: '?ref=6435', type: K.WebType.CRYPTOSFAUCETS, clId: 210 },
             { id: '84', name: 'JTFey', cmc: '-1', url: new URL('https://james-trussy.com/faucet'), rf: ['?r=corecrafting'], type: K.WebType.VIE, clId: 213 },
             { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
             { id: '87', name: 'CF BTT', cmc: '16086', coinRef: 'BTT', url: new URL('https://freebittorrent.com/free'), rf: '?ref=2050', type: K.WebType.CRYPTOSFAUCETS, clId: 218 },
-            { id: '88', name: 'BF BSW', cmc: '10746', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BETFURYBOX, clId: 1 },
             { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
             { id: '93', name: 'YCoin', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
             { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
@@ -6736,6 +6889,8 @@
             { id: '101', name: 'Top Bch', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://freebch.club/'), rf: ['?r=qq2qlpzs4rsn30utrumezpkzezpteqj92ykdgfeq5u'], type: K.WebType.CTOP, clId: 244 },
             { id: '102', name: 'Top Zec', cmc: '1437', wallet: K.WalletType.FP_ZEC, url: new URL('https://zecfaucet.net/'), rf: ['?r=t1erPs9qw3SgnX7kJPmR4uKFnLaoVww2jCy'], type: K.WebType.CTOP, clId: 245 },
             { id: '103', name: 'FMonster', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('https://faucet.monster/'), rf: '', type: K.WebType.O24, clId: 246 },
+            { id: '104', name: 'Auto-C BNB', cmc: '1839', wallet: K.WalletType.FP_BNB, url: new URL('https://auto-crypto.ml/'), rf: ['?r=0x1e8CB8A79E347C54aaF21C0502892B58F97CC07A'], type: K.WebType.AUTOCML, clId: 247 },
+            { id: '105', name: 'Auto-C DOGE', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://auto-crypto.ml/doge/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.AUTOCML, clId: 248 },
         ];
 
         const wallet = [

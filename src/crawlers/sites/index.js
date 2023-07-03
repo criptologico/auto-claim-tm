@@ -435,7 +435,7 @@ class CDiversity extends Faucet {
 
 {{crawlers/sites/o24roll.js}}
 
-{{crawlers/sites/fcryptoroll.js}}
+// {{crawlers/sites/fcryptoroll.js}}
 
 {{crawlers/sites/_legacy_fp.js}}
 
@@ -446,3 +446,5 @@ class CDiversity extends Faucet {
 {{crawlers/sites/_legacy_bexchange.js}}
 
 {{crawlers/sites/_legacy_sg.js}}
+
+{{crawlers/sites/autocml.js}}

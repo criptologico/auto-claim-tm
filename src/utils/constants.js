@@ -33,7 +33,8 @@ const K = Object.freeze({
         YCOIN: 25,
         CDIVERSITY: 26,
         BSCADS: 27,
-        CTOP: 28
+        CTOP: 28,
+        AUTOCML: 29
     },
     CF: {
         UrlType: {
