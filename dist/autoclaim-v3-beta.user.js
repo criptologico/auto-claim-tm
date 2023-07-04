@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.27
+// @version      3.0.28
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -3528,7 +3528,7 @@
     class GeeTestCaptchaWidget extends CaptchaWidget {
         constructor(params) {
             let defaultParams = {
-                selector: '.geetest_captcha.geetest_lock_success',
+                selector: '.geetest_captcha.geetest_lock_success,.geetest_ghost_success.geetest_success_animate', 
                 waitMs: 2000
             };
             for (let p in params) {
@@ -5377,6 +5377,7 @@
                     if (this._elements.openPtcButton.isUserFriendly) {
                         return this.startPtc();
                     } else {
+                        shared.closeWindow();
                         return;
                     }
                 }

@@ -171,6 +171,7 @@ class FPPtc extends Faucet {
                     return this.startPtc();
                 } else {
                     shared.devlog('No more PTCs left...');
+                    shared.closeWindow();
                     return;
                 }
             }

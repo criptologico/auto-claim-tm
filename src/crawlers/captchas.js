@@ -375,7 +375,8 @@ class NoCaptchaWidget extends CaptchaWidget {
 class GeeTestCaptchaWidget extends CaptchaWidget {
     constructor(params) {
         let defaultParams = {
-            selector: '.geetest_captcha.geetest_lock_success',
+            selector: '.geetest_captcha.geetest_lock_success,.geetest_ghost_success.geetest_success_animate', 
+            // '.geetest_captcha.geetest_lock_success',
             waitMs: 2000
         };
         for (let p in params) {
