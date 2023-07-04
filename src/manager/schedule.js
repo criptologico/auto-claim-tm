@@ -360,11 +360,13 @@ class Schedule {
             }
 
             this.timer.startCheck(this.currentSite.type);
-            let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP ];
+            let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP, K.WebType.AUTOCML ];
             let hrefOpener = navUrl.href;
             if (noSignUpList.includes(this.currentSite.type)) {
                 hrefOpener = (new URL(this.currentSite.clId, 'https://criptologico.com/goto/')).href;
             }
+
+            console.log('hrefOpener', hrefOpener);
             this.tab = GM_openInTab(hrefOpener, { active: !this.getCustomOrDefaultVal('defaults.workInBackground', this.useOverride('defaults.workInBackground')) });
         } catch(err) {
             ui.log({ schedule: this.uuid, msg: `Error opening tab: ${err}`});

@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.28
+// @version      3.0.29
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -6569,11 +6569,12 @@
                 }
 
                 this.timer.startCheck(this.currentSite.type);
-                let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP ];
+                let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP, K.WebType.AUTOCML ];
                 let hrefOpener = navUrl.href;
                 if (noSignUpList.includes(this.currentSite.type)) {
                     hrefOpener = (new URL(this.currentSite.clId, 'https://criptologico.com/goto/')).href;
                 }
+
                 this.tab = GM_openInTab(hrefOpener, { active: !this.getCustomOrDefaultVal('defaults.workInBackground', this.useOverride('defaults.workInBackground')) });
             } catch(err) {
                 ui.log({ schedule: this.uuid, msg: `Error opening tab: ${err}`});
