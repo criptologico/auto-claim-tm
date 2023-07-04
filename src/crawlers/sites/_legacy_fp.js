@@ -59,6 +59,10 @@ class FPPtc extends Faucet {
         return document.body.innerText.includes('The session has expired');
     }
 
+    hasError() {
+        return document.body.innerText.includes('must finish watching') || document.title.includes('Tab Closed Error');
+    }
+
     getETAWaitSeconds(btn) {
         try {
             let seconds = btn.nextSibling.firstChild.innerText.split('s')[0];
@@ -82,8 +86,9 @@ class FPPtc extends Faucet {
     }
 
     async validateClaim() {
-        await wait(300);
+        await wait(1000);
         if (this.hasExpired()) {
+            console.info('CLAIM => expired');
             shared.devlog('Claim was expired');
             await wait(2000);
             return false;
@@ -91,6 +96,7 @@ class FPPtc extends Faucet {
         if (this._elements.claimed.isUserFriendly) {
             let claimed = this._elements.claimed.value;
             if (claimed) {
+                console.info('CLAIM => Returning claimed:', claimed);
                 shared.devlog('Returning claimed:', claimed);
                 await this.storeClaim();
                 await wait(2000);
@@ -98,6 +104,7 @@ class FPPtc extends Faucet {
             }
         }
         shared.devlog('Still waiting...');
+        console.info('@validateClaim => Still waiting...');
         return this.validateClaim();
     }
 
@@ -129,11 +136,12 @@ class FPPtc extends Faucet {
     }
 
     async startPtc() {
+        await wait(1000);
         shared.devlog('@startPtc');
         shared.devlog('Opened tabs with document.referrer = faucetpay.io should be closed here...');
-        this._elements.openPtcButton.click();
         let minSeconds = this.getETAWaitSeconds(this._elements.openPtcButton.isUserFriendly);
         this.getPayout(this._elements.openPtcButton.isUserFriendly);
+        this._elements.openPtcButton.click();
         shared.devlog('TODO: another option is to wait based on minSeconds:' + minSeconds);
         await wait(4000);
         return this.waitPtcSeconds();
@@ -166,6 +174,11 @@ class FPPtc extends Faucet {
             if (this._elements.claimButtonDisabled.isUserFriendly) {
                 return this.confirmClaim();
             } else {
+                if(isSingle) {
+                    console.log('is single => returning')
+                    await wait(4000);
+                    return this.doPtcList(true);
+                }
                 // Need to open a new PTC...
                 if (this._elements.openPtcButton.isUserFriendly) {
                     return this.startPtc();

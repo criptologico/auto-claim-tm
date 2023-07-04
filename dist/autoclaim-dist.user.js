@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.29
+// @version      3.0.30
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -5290,6 +5290,10 @@
             return document.body.innerText.includes('The session has expired');
         }
 
+        hasError() {
+            return document.body.innerText.includes('must finish watching') || document.title.includes('Tab Closed Error');
+        }
+
         getETAWaitSeconds(btn) {
             try {
                 let seconds = btn.nextSibling.firstChild.innerText.split('s')[0];
@@ -5309,19 +5313,22 @@
         }
 
         async validateClaim() {
-            await wait(300);
+            await wait(1000);
             if (this.hasExpired()) {
+                console.info('CLAIM => expired');
                 await wait(2000);
                 return false;
             }
             if (this._elements.claimed.isUserFriendly) {
                 let claimed = this._elements.claimed.value;
                 if (claimed) {
+                    console.info('CLAIM => Returning claimed:', claimed);
                     await this.storeClaim();
                     await wait(2000);
                     return claimed;
                 }
             }
+            console.info('@validateClaim => Still waiting...');
             return this.validateClaim();
         }
 
@@ -5346,9 +5353,10 @@
         }
 
         async startPtc() {
-            this._elements.openPtcButton.click();
+            await wait(1000);
             let minSeconds = this.getETAWaitSeconds(this._elements.openPtcButton.isUserFriendly);
             this.getPayout(this._elements.openPtcButton.isUserFriendly);
+            this._elements.openPtcButton.click();
             await wait(4000);
             return this.waitPtcSeconds();
         }
@@ -5374,6 +5382,11 @@
                 if (this._elements.claimButtonDisabled.isUserFriendly) {
                     return this.confirmClaim();
                 } else {
+                    if(isSingle) {
+                        console.log('is single => returning')
+                        await wait(4000);
+                        return this.doPtcList(true);
+                    }
                     if (this._elements.openPtcButton.isUserFriendly) {
                         return this.startPtc();
                     } else {
