@@ -120,6 +120,13 @@ class FPPtc extends Faucet {
 
     async confirmClaim() {
         shared.devlog('@confirmClaim');
+        // Send close PTCs signal
+        console.log(`Sending for ptc-close-signal-faucetpay.io`);
+        GM_setValue(`ptc-close-signal-faucetpay.io`, Date.now());
+        console.log(`Waiting...`);
+        await wait(5000);
+        console.log(`Deleting signal`);
+        GM_deleteValue(`ptc-close-signal-faucetpay.io`);
         // Confirming claim... wait for completion (geetest popup)
         let captcha = new GeeTestCaptchaWidget();
 
@@ -175,7 +182,6 @@ class FPPtc extends Faucet {
                 return this.confirmClaim();
             } else {
                 if(isSingle) {
-                    console.log('is single => returning')
                     await wait(4000);
                     return this.doPtcList(true);
                 }

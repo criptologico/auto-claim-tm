@@ -330,14 +330,14 @@ function createUi() {
                 var promoCode = document.getElementById("promo-code-new");
                 var promoObject = { action: "REMOVEALLPROMOS" };
                 promoCode.innerHTML =JSON.stringify(promoObject);
-                uiRenderer.toast("This could take around a minute", "Removing all promo codes");
+                toastr["info"]("Removing all promo codes... please wait");
             };
 
-            window.forceStopFaucet = function removeAllPromos() {
+            window.forceStopFaucet = function forceStopFaucet() {
                 var promoCode = document.getElementById("promo-code-new");
                 var promoObject = { action: "FORCESTOPFAUCET" };
                 promoCode.innerHTML =JSON.stringify(promoObject);
-                uiRenderer.toast("Please wait for reload...", "Trying to stop");
+                toastr["info"]("Trying to stop... Please wait for reload");
             };
 
             window.openStatsChart = function openStatsChart() {

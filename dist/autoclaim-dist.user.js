@@ -2,14 +2,16 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.30
+// @version      3.0.31
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
+// @noframes
 
 // @grant        GM_info
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @grant        window.close
 // @grant        GM_openInTab
@@ -83,6 +85,8 @@
 // @match        https://zecfaucet.net/*
 // @match        https://faucet.monster/*
 // @match        https://auto-crypto.ml/*
+// @match        http://*/*
+// @match        https://*/*
 // ==/UserScript==
 
 (function() {
@@ -577,6 +581,20 @@
                 }
             };
 
+            function getRunningSites() {
+                let ret = [];
+                loadFlowControl();
+                if(!runningSites || runningSites == {}) {
+                    return ret;
+                }
+                for (const sch in runningSites) {
+                    if (runningSites[sch].host) {
+                        ret.push(runningSites[sch].host);
+                    }
+                }
+                return ret;
+            }
+
             let runningSites = {}
             let scheduleUuid = null;
             function isOpenedByManager() {
@@ -731,9 +749,12 @@
                 window.close();
             };
             function clearFlowControl(schedule) {
-                if (schedule) {
+                if (schedule && schedule != 'all') {
                     runningSites[schedule] = {};
                     saveFlowControl(schedule);
+                } else if (schedule == 'all') {
+                    runningSites = {};
+                    persistence.save('runningSites', {}, true);
                 }
             };
             function clearRetries() {
@@ -787,7 +808,8 @@
                 getProp: getProp,
                 getParam: getParam,
                 migrationApplied: migrationApplied,
-                purgeFlowControlSchedules: purgeFlowControlSchedules
+                purgeFlowControlSchedules: purgeFlowControlSchedules,
+                getRunningSites: getRunningSites
             };
         },
         createCFPromotions: function() {
@@ -1434,7 +1456,32 @@
         element.appendChild (scriptNode);
     }
 
+    function isExpectedPtc() {
+        let runningList = shared.getRunningSites();
+        let ptcHosts = ['faucetpay.io'];
+
+        for (let i = 0; i < ptcHosts.length; i++) {
+            if (document.referrer.includes(`//${ptcHosts[i]}`) && runningList.includes(ptcHosts[i])) {
+                waitForCloseSignal(ptcHosts[i]);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async function waitForCloseSignal(host) {
+        await wait(3000);
+        const signal = GM_getValue(`ptc-close-signal-${host}`) || null;
+        if (signal) {
+            window.close();
+        }
+        return waitForCloseSignal(host);
+    }
+
     function detectWeb() {
+        if (isExpectedPtc()) {
+            return;
+        }
         if(!shared.isOpenedByManager()) {
             return;
         }
@@ -5341,6 +5388,9 @@
         }
 
         async confirmClaim() {
+            GM_setValue(`ptc-close-signal-faucetpay.io`, Date.now());
+            await wait(5000);
+            GM_deleteValue(`ptc-close-signal-faucetpay.io`);
             let captcha = new GeeTestCaptchaWidget();
 
             await captcha.isSolved();
@@ -5383,7 +5433,6 @@
                     return this.confirmClaim();
                 } else {
                     if(isSingle) {
-                        console.log('is single => returning')
                         await wait(4000);
                         return this.doPtcList(true);
                     }
@@ -7284,11 +7333,16 @@
                     case 'FORCESTOPFAUCET':
                         Schedule.getAll().forEach(s => {
                             if (s.status != STATUS.IDLE) {
-                                s.currentSite.enabled = false
+                                s.currentSite.enabled = false;
+                                s.closeTab();
                             }
                         });
+
                         update(true);
-                        window.location.reload();
+                        shared.clearFlowControl('all');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 3000);
 
                         promoCodeElement.innerText = '';
                         break;
@@ -7642,14 +7696,14 @@
                     var promoCode = document.getElementById("promo-code-new");
                     var promoObject = { action: "REMOVEALLPROMOS" };
                     promoCode.innerHTML =JSON.stringify(promoObject);
-                    uiRenderer.toast("This could take around a minute", "Removing all promo codes");
+                    toastr["info"]("Removing all promo codes... please wait");
                 };
 
-                window.forceStopFaucet = function removeAllPromos() {
+                window.forceStopFaucet = function forceStopFaucet() {
                     var promoCode = document.getElementById("promo-code-new");
                     var promoObject = { action: "FORCESTOPFAUCET" };
                     promoCode.innerHTML =JSON.stringify(promoObject);
-                    uiRenderer.toast("Please wait for reload...", "Trying to stop");
+                    toastr["info"]("Trying to stop... Please wait for reload");
                 };
 
                 window.openStatsChart = function openStatsChart() {
@@ -8416,7 +8470,7 @@
         persistence = new Persistence();
         shared = objectGenerator.createShared();
         useTimer = shared.getConfig()['defaults.extraInterval'];
-        if (window.location.host === 'criptologico.com') {
+        if (location.href.startsWith('https://criptologico.com/tools/cc')) {
             landing = window.location.host;
             instance = K.LOCATION.MANAGER;
             manager = createManager();

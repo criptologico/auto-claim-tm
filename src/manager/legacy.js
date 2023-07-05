@@ -452,11 +452,17 @@ function createManager() {
                 case 'FORCESTOPFAUCET':
                     Schedule.getAll().forEach(s => {
                         if (s.status != STATUS.IDLE) {
-                            s.currentSite.enabled = false
+                            s.currentSite.enabled = false;
+                            s.closeTab();
+                            // TODO: remove from runningSites...
                         }
                     });
+
                     update(true);
-                    window.location.reload();
+                    shared.clearFlowControl('all');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
 
                     promoCodeElement.innerText = '';
                     //ui.refresh with reload

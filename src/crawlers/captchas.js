@@ -386,13 +386,13 @@ class GeeTestCaptchaWidget extends CaptchaWidget {
     }
 
     async isSolved() {
-        shared.devlog(`@gt.isSolved`);
+        // shared.devlog(`@gt.isSolved`);
         return wait().then( () => {
             if (this.isUserFriendly) {
                 shared.devlog(`gt solved`);
                 return Promise.resolve(true);
             }
-            shared.devlog(`gt waiting`);
+            // shared.devlog(`gt waiting`);
             return this.isSolved();
         });
     }

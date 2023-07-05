@@ -343,6 +343,22 @@
                 }
             };
 
+            function getRunningSites() {
+                let ret = [];
+                loadFlowControl();
+                console.log('@getRunningSites');
+                console.log(runningSites);
+                if(!runningSites || runningSites == {}) {
+                    return ret;
+                }
+                for (const sch in runningSites) {
+                    if (runningSites[sch].host) {
+                        ret.push(runningSites[sch].host);
+                    }
+                }
+                return ret;
+            }
+
             let runningSites = {}
             let scheduleUuid = null;
             function isOpenedByManager() {
@@ -350,6 +366,7 @@
                 if(!runningSites || runningSites == {}) {
                     return false;
                 }
+                console.log('Running sites', runningSites);
                 let uuid = null;
                 for (const sch in runningSites) {
                     if ( (runningSites[sch].host && runningSites[sch].host == window.location.host) ||
@@ -534,9 +551,12 @@
             };
             function clearFlowControl(schedule) {
                 shared.devlog(`[${schedule}] clearFlowControl for ${schedule}`);
-                if (schedule) {
+                if (schedule && schedule != 'all') {
                     runningSites[schedule] = {};
                     saveFlowControl(schedule);
+                } else if (schedule == 'all') {
+                    runningSites = {};
+                    persistence.save('runningSites', {}, true);
                 }
             };
             function clearRetries() {
@@ -594,7 +614,8 @@
                 getProp: getProp,
                 getParam: getParam,
                 migrationApplied: migrationApplied,
-                purgeFlowControlSchedules: purgeFlowControlSchedules
+                purgeFlowControlSchedules: purgeFlowControlSchedules,
+                getRunningSites: getRunningSites
             };
         },
         createCFPromotions: function() {
@@ -1271,8 +1292,39 @@
         element.appendChild (scriptNode);
     }
 
+    function isExpectedPtc() {
+        let runningList = shared.getRunningSites();
+        let ptcHosts = ['faucetpay.io'];
+
+        for (let i = 0; i < ptcHosts.length; i++) {
+            if (document.referrer.includes(`//${ptcHosts[i]}`) && runningList.includes(ptcHosts[i])) {
+                // is a ptc and a schedule is running it
+                // Triggering waitForClose for the page
+                waitForCloseSignal(ptcHosts[i]);
+                return true;
+            }
+        }
+        console.log('NOT EXPECTED PTC');
+        return false;
+    }
+
+    async function waitForCloseSignal(host) {
+        await wait(3000);
+        console.log(`Waiting for ptc-close-signal-${host}`);
+        const signal = GM_getValue(`ptc-close-signal-${host}`) || null;
+        if (signal) {
+            window.close();
+        }
+        return waitForCloseSignal(host);
+    }
+
     function detectWeb() {
+        console.log('@detectWeb');
+        if (isExpectedPtc()) {
+            return;
+        }
         if(!shared.isOpenedByManager()) {
+            console.log('@dismissed');
             shared.devlog(`${window.location.href} dismissed`);
             return;
         }
@@ -1409,7 +1461,7 @@
         persistence = new Persistence();
         shared = objectGenerator.createShared();
         useTimer = shared.getConfig()['defaults.extraInterval'];
-        if (window.location.host === 'criptologico.com') {
+        if (location.href.startsWith('https://criptologico.com/tools/cc')) {
             landing = window.location.host;
             instance = K.LOCATION.MANAGER;
             shared.devlog('Manager Reloaded');

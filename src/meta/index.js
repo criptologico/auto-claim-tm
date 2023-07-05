@@ -5,6 +5,7 @@
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
+// @noframes
 
 {{meta/grants.js}}
 // @connect      criptologico.com
