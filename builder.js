@@ -143,4 +143,4 @@ const modifiedContents =filteredLines.join('\n');
 
 // Write the modified contents to /dist
 fs.writeFileSync('dist/autoclaim-dist.user.js', modifiedContents);
-fs.writeFileSync('dist/autoclaim-v3-beta.user.js', modifiedContents);
+// fs.writeFileSync('dist/autoclaim-v3-beta.user.js', modifiedContents);
