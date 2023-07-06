@@ -291,6 +291,8 @@ class Schedule {
         let navUrl = this.currentSite.url;
         try {
             let params = this.currentSite.params || {};
+            console.log('@open => this.currentSite.params:');
+            console.log(params);
             if(promoCodes) {
                 navUrl = new URL('promotion/' + promoCodes[0], this.currentSite.url.origin);
                 ui.log({ schedule: this.uuid, siteName: this.currentSite.name, msg: `Opening ${this.currentSite.name} with ${promoCodes.length} Promo Codes [${promoCodes.join(',')}]`});
@@ -367,6 +369,8 @@ class Schedule {
             }
 
             console.log('hrefOpener', hrefOpener);
+            console.log('@open => opening params:');
+            console.log(params);
             this.tab = GM_openInTab(hrefOpener, { active: !this.getCustomOrDefaultVal('defaults.workInBackground', this.useOverride('defaults.workInBackground')) });
         } catch(err) {
             ui.log({ schedule: this.uuid, msg: `Error opening tab: ${err}`});
@@ -445,13 +449,17 @@ class Schedule {
     analyzeResult() {
         // ui.log(`[${this.uuid}] @analyzeResult`);
         console.log(`[${this.uuid}] @analyzeResult`);
+
         // if it was visited:
-        let result = shared.getResult(this.uuid);
+        // let result = shared.getResult(this.uuid);
+        let currentSchedule = shared.getCurrent(this.uuid);
+        currentSchedule.result = currentSchedule.result || {};
+        currentSchedule.runStatus = currentSchedule.runStatus || false;
 
-        if (result) {
-            this.updateWebListItem(result);
+        if (currentSchedule.result) {
+            this.updateWebListItem(currentSchedule);
 
-            if (result.closeParentWindow) {
+            if (currentSchedule.result.closeParentWindow) {
                 ui.log({ schedule: this.uuid, msg: `Closing working tab per process request` });
                 this.closeTab();
             }
@@ -498,7 +506,11 @@ class Schedule {
         }
 
         if (shared.hasErrors(this.currentSite.id)) {
-            this.currentSite.stats.errors = shared.getResult(this.uuid);
+            this.currentSite.stats.errors = shared.getResult(this.uuid); // shared.getResult(this.uuid);
+            console.log('@shared.hasErrors(this.currentSite.id)');
+            console.log(this.currentSite.stats.errors);
+            console.log(`${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`);
+
             ui.log({ schedule: this.uuid, siteName: this.currentSite.name, 
                 msg: `${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`});
             // if(this.currentSite.type == K.WebType.CBG) {
@@ -573,7 +585,10 @@ class Schedule {
         return false;
     }
 
-    updateWebListItem(result) {
+    updateWebListItem(currentSchedule) {
+        // TODO: store on a site level history all result data
+        let result = currentSchedule.result;
+
         ui.log({ schedule: this.uuid, 
             msg: `Updating data: ${JSON.stringify(result)}` });
         this.currentSite.stats.countTimeouts = 0;

@@ -21,20 +21,17 @@ class EventEmitter {
 }
 
 class Timeout {
-    constructor(seconds) {
+    constructor() {
         this.startedAt;
         this.interval;
         this.cb = (() => { shared.closeWithError(K.ErrorType.TIMEOUT, '') });
-        if (seconds) {
-            this.wait = seconds;
+        let paramTimeout =  shared.getParam('timeout');
+        if (paramTimeout) {
+            this.wait = paramTimeout * 60;
         } else {
-            let paramTimeout =  shared.getParam('timeout');
-            if (paramTimeout) {
-                this.wait = paramTimeout * 60;
-            } else {
-                this.wait = shared.getConfig()['defaults.timeout'] * 60
-            }
+            this.wait = shared.getConfig()['defaults.timeout'] * 60
         }
+        this.wait += 30; // add a threshold
         this.restart();
     }
 

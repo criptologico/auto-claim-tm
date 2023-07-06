@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.31
+// @version      3.0.32
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -2810,20 +2810,17 @@
     }
 
     class Timeout {
-        constructor(seconds) {
+        constructor() {
             this.startedAt;
             this.interval;
             this.cb = (() => { shared.closeWithError(K.ErrorType.TIMEOUT, '') });
-            if (seconds) {
-                this.wait = seconds;
+            let paramTimeout =  shared.getParam('timeout');
+            if (paramTimeout) {
+                this.wait = paramTimeout * 60;
             } else {
-                let paramTimeout =  shared.getParam('timeout');
-                if (paramTimeout) {
-                    this.wait = paramTimeout * 60;
-                } else {
-                    this.wait = shared.getConfig()['defaults.timeout'] * 60
-                }
+                this.wait = shared.getConfig()['defaults.timeout'] * 60
             }
+            this.wait += 30; // add a threshold
             this.restart();
         }
 
@@ -6665,12 +6662,15 @@
         };
 
         analyzeResult() {
-            let result = shared.getResult(this.uuid);
 
-            if (result) {
-                this.updateWebListItem(result);
+            let currentSchedule = shared.getCurrent(this.uuid);
+            currentSchedule.result = currentSchedule.result || {};
+            currentSchedule.runStatus = currentSchedule.runStatus || false;
 
-                if (result.closeParentWindow) {
+            if (currentSchedule.result) {
+                this.updateWebListItem(currentSchedule);
+
+                if (currentSchedule.result.closeParentWindow) {
                     ui.log({ schedule: this.uuid, msg: `Closing working tab per process request` });
                     this.closeTab();
                 }
@@ -6711,7 +6711,8 @@
             }
 
             if (shared.hasErrors(this.currentSite.id)) {
-                this.currentSite.stats.errors = shared.getResult(this.uuid);
+                this.currentSite.stats.errors = shared.getResult(this.uuid); // shared.getResult(this.uuid);
+
                 ui.log({ schedule: this.uuid, siteName: this.currentSite.name, 
                     msg: `${this.currentSite.name} closed with error: ${helpers.getEnumText(K.ErrorType,this.currentSite.stats.errors.errorType)} ${this.currentSite.stats.errors.errorMessage}`});
 
@@ -6773,7 +6774,9 @@
             return false;
         }
 
-        updateWebListItem(result) {
+        updateWebListItem(currentSchedule) {
+            let result = currentSchedule.result;
+
             ui.log({ schedule: this.uuid, 
                 msg: `Updating data: ${JSON.stringify(result)}` });
             this.currentSite.stats.countTimeouts = 0;
