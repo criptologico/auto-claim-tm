@@ -1076,6 +1076,7 @@
             };
             function roll() {
                 document.getElementById('process-status').innerHTML = 'Roll triggered';
+                rollButton[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
                 rollButton[0].click();
                 tempRollNumber = -1;
                 setTimeout(waitForRollNumber, helpers.randomMs(4000, 7000));

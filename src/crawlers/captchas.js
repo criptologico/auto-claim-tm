@@ -10,33 +10,30 @@ class CaptchaWidget extends CrawlerWidget {
 
 class RecaptchaWidget extends CaptchaWidget {
     constructor(params) {
-        // if (!params || !params.selector) {
-        //     throw new Error('CrawlerWidget requires a selector parameter');
-        // }
-        this.context = this.context || document;
         let defaultParams = {
-            // selector: '.h-captcha > iframe',
+            selector: function() { return grecaptcha },
             waitMs: [1000, 5000],
             timeoutMs: 4 * 60 * 1000
         };
         for (let p in params) {
             defaultParams[p] = params[p];
         }
-        Object.assign(this, defaultParams);
+        super(defaultParams);
     }
 
     get isUserFriendly() {
-        // Custom for recaptcha
         this.element = grecaptcha;
         return this.element;
     }
 
     async isSolved() {
         return wait().then( () => {
-            if (this.isUserFriendly && this.element.hasOwnProperty('getResponse') && (typeof(this.element.getResponse) == 'function')
-                && this.element.getResponse().length > 0) {
-                return Promise.resolve(true);
-            }
+            try {
+                if (this.isUserFriendly && this.element.hasOwnProperty('getPageId') && this.element.getPageId() && this.element.hasOwnProperty('getResponse') && (typeof(this.element.getResponse) == 'function')
+                    && this.element.getResponse().length > 0) {
+                    return Promise.resolve(true);
+                }
+            } catch (err) {}
             return this.isSolved();
         });
     }

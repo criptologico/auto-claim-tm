@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.32
+// @version      3.0.33
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -85,8 +85,6 @@
 // @match        https://zecfaucet.net/*
 // @match        https://faucet.monster/*
 // @match        https://auto-crypto.ml/*
-// @match        http://*/*
-// @match        https://*/*
 // ==/UserScript==
 
 (function() {
@@ -1245,6 +1243,7 @@
             };
             function roll() {
                 document.getElementById('process-status').innerHTML = 'Roll triggered';
+                rollButton[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
                 rollButton[0].click();
                 tempRollNumber = -1;
                 setTimeout(waitForRollNumber, helpers.randomMs(4000, 7000));
@@ -3225,15 +3224,15 @@
 
     class RecaptchaWidget extends CaptchaWidget {
         constructor(params) {
-            this.context = this.context || document;
             let defaultParams = {
+                selector: function() { return grecaptcha },
                 waitMs: [1000, 5000],
                 timeoutMs: 4 * 60 * 1000
             };
             for (let p in params) {
                 defaultParams[p] = params[p];
             }
-            Object.assign(this, defaultParams);
+            super(defaultParams);
         }
 
         get isUserFriendly() {
@@ -3243,10 +3242,12 @@
 
         async isSolved() {
             return wait().then( () => {
-                if (this.isUserFriendly && this.element.hasOwnProperty('getResponse') && (typeof(this.element.getResponse) == 'function')
-                    && this.element.getResponse().length > 0) {
-                    return Promise.resolve(true);
-                }
+                try {
+                    if (this.isUserFriendly && this.element.hasOwnProperty('getPageId') && this.element.getPageId() && this.element.hasOwnProperty('getResponse') && (typeof(this.element.getResponse) == 'function')
+                        && this.element.getResponse().length > 0) {
+                        return Promise.resolve(true);
+                    }
+                } catch (err) {}
                 return this.isSolved();
             });
         }
@@ -5287,7 +5288,11 @@
                 claimButton: new ButtonWidget({selector: '#pop-up button.purpleButton:not([disabled])'}),
                 claimButtonDisabled: new ButtonWidget({selector: '#pop-up button.purpleButton'}),
                 openPtcButton: new ButtonWidget({fnSelector: function() {
+                    let blacklistTitles = ['JOIN US ON WINTOMATO.COM'];
                     let btn = [...document.querySelectorAll('button')].filter(x => x.innerText.toLowerCase().includes('view'));
+                    try {
+                        btn = btn.filter(x => !blacklistTitles.includes(x.parentElement.parentElement.querySelector('h2').innerText.toUpperCase()));
+                    } catch (err) {}
                     return (btn.length > 0) ? btn[0] : null;
                 }}),
                 claimed: new ReadableWidget({fnSelector: function() {

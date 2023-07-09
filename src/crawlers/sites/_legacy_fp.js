@@ -4,7 +4,12 @@ class FPPtc extends Faucet {
             claimButton: new ButtonWidget({selector: '#pop-up button.purpleButton:not([disabled])'}),
             claimButtonDisabled: new ButtonWidget({selector: '#pop-up button.purpleButton'}),
             openPtcButton: new ButtonWidget({fnSelector: function() {
+                let blacklistTitles = ['JOIN US ON WINTOMATO.COM'];
                 let btn = [...document.querySelectorAll('button')].filter(x => x.innerText.toLowerCase().includes('view'));
+                // Elimina los botones q estan en blacklist (x el titulo, match exacto en uppercase)
+                try {
+                    btn = btn.filter(x => !blacklistTitles.includes(x.parentElement.parentElement.querySelector('h2').innerText.toUpperCase()));
+                } catch (err) {}
                 return (btn.length > 0) ? btn[0] : null;
             }}),
             claimed: new ReadableWidget({fnSelector: function() {

@@ -57,5 +57,3 @@
 // @match        https://zecfaucet.net/*
 // @match        https://faucet.monster/*
 // @match        https://auto-crypto.ml/*
-// @match        http://*/*
-// @match        https://*/*
