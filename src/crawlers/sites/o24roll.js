@@ -13,12 +13,21 @@ class O24Roll extends Faucet {
     }
 
     init() {
+        if(this.hasErrorMessage('no funds left')) {
+            shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
+            return;
+        }
+
         if (this.isCountdownVisible() || this.readClaimed() != 0) {
             this.updateResult();
             return;
         }
 
         this.solve();
+    }
+
+    hasErrorMessage(searchTerm) {
+        return document.body.innerText.toLowerCase().includes(searchTerm);
     }
 
     getSpotsAvailable() {
