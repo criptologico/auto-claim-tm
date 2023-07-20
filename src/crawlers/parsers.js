@@ -139,7 +139,7 @@ class Parsers {
             return sats / 100000000;
         } catch (err) { shared.devlog(`@Parsers.dutchysClaimedToFloat, with element [${elm}] Error: ${err}`); }
     }
-    static splitAndIdxToInt(elm, options) { // '26 Minutes 23' w/spliiter='Minutes' => 26
+    static splitAndIdxToInt(elm, options) { // options: { splitter: ':', idx: 1} // '26 Minutes 23' w/spliiter='Minutes' => 26
         try {
             return parseInt(elm.innerText.split(options.splitter)[options.idx].trim());
             // return parseInt(elm.innerText.split('Minutes')[0].trim());

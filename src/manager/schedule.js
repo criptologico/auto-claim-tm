@@ -291,6 +291,8 @@ class Schedule {
         let navUrl = this.currentSite.url;
         try {
             let params = this.currentSite.params || {};
+            params.siteParams = this.currentSite.siteParams || { "test": "test_value" };
+
             console.log('@open => this.currentSite.params:');
             console.log(params);
             if(promoCodes) {
@@ -362,7 +364,7 @@ class Schedule {
             }
 
             this.timer.startCheck(this.currentSite.type);
-            let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP, K.WebType.AUTOCML ];
+            let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP, K.WebType.AUTOCML, K.WebType.CCLICKS ];
             let hrefOpener = navUrl.href;
             if (noSignUpList.includes(this.currentSite.type)) {
                 hrefOpener = (new URL(this.currentSite.clId, 'https://criptologico.com/goto/')).href;

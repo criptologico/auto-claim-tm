@@ -132,7 +132,7 @@ class UiSitesRenderer extends UiBaseRenderer {
                 <button type="button" class="btn btn-default dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-expanded="false">
                 </button>
                 <div class="dropdown-menu dropdown-menu-right text-sm" style="">
-                    <!-- <a class="dropdown-item action-site-edit-parameters"><i class="fa fa-edit"></i> Site parameters...</a> -->
+                    <a class="dropdown-item action-site-edit-parameters"><i class="fa fa-edit"></i> Site arguments...</a>
                     <a class="dropdown-item action-site-assign-schedule"><i class="fa fa-exchange-alt"></i> Move to...</a>`;
         if (site.isExternal) {
             tds += `<a class="dropdown-item action-site-remove-external"><i class="fa fa-trash"></i> Remove site</a>`;

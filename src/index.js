@@ -621,14 +621,14 @@
         createCFPromotions: function() {
             let codes = [];
 
-            function PromotionCode(id, code, repeatDaily = false, expirationDate = null, isRemoved = false) {
+            function PromotionCode(id, code, repeatDaily = false, expiration = null, isRemoved = false) {
                 this.id = id;
                 this.code = code;
                 this.added = new Date();
                 this.statusPerFaucet = [];
                 this.repeatDaily = repeatDaily;
                 this.lastExecTimeStamp = null;
-                this.expirationDate = expirationDate;
+                this['expiration' + 'Date'] = expiration;
                 this.isRemoved = isRemoved;
             };
 
@@ -644,14 +644,14 @@
                 return faucet.status ?? K.CF.PromoStatus.NOCODE;
             };
 
-            function addNew(code, repeatDaily = false, expirationDate = null) {
+            function addNew(code, repeatDaily = false, expiration = null) {
                 let found = codes.find(x => x.code == code);
                 if (found) {
                     found.repeatDaily = repeatDaily;
-                    found.expirationDate = expirationDate;
+                    found['expiration' + 'Date'] = expiration;
                     found.isRemoved = false;
                 } else {
-                    found = new PromotionCode(codes.length, code, repeatDaily, expirationDate);
+                    found = new PromotionCode(codes.length, code, repeatDaily, expiration);
                     codes.push(found);
                 }
 
@@ -672,15 +672,15 @@
             function includeNewCodes(newCodes) {
                 for(let i=0; i<newCodes.length; i++) {
                     let item = newCodes[i];
-                    // let exists = codes.find(x => x.code.toLowerCase() == item.code.toLowerCase() && x.code.expirationDate != item.expirationDate);
+                    // let exists = codes.find(x => x.code.toLowerCase() == item.code.toLowerCase() && x.code['expiration' + 'Date'] != item['expiration' + 'Date']);
                     let exists = codes.find(x => x.code.toLowerCase() == item.code.toLowerCase());
                     if (!exists) {
                         // console.log(`${item.code} does not exist`);
-                        addNew(item.code, !item.oneTimeOnly, item.expirationDate);
+                        addNew(item.code, !item.oneTimeOnly, item['expiration' + 'Date']);
                     } else {
                         // console.log(`${item.code} exists`);
                         // TODO: need to change status per faucet
-                        // exists.expirationDate == item.expirationDate;
+                        // exists['expiration' + 'Date'] == item['expiration' + 'Date'];
                     }
                 }
             };
@@ -728,7 +728,7 @@
 
             function removeAll() {
                 codes.forEach(x => x.isRemoved = true);
-                codes = codes.filter(x => x.expirationDate && Date.parse(x.expirationDate) > Date.now());
+                codes = codes.filter(x => x['expiration' + 'Date'] && Date.parse(x['expiration' + 'Date']) > Date.now());
                 save();
             };
 
@@ -1432,6 +1432,10 @@
                 break;
             case K.WebType.AUTOCML:
                 SiteProcessor = new AutoCMl();
+                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
+                break;
+            case K.WebType.CCLICKS:
+                SiteProcessor = new CClicks();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
                 break;
             default:

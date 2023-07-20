@@ -18,10 +18,21 @@ class Faucet {
         this._actions = { ...this._actions, ...actions };
         this._params = shared.getCurrent().params || {};
         this._result = this._actions.isMultiClaim ? (shared.getProp('tempResults') || {}) : (shared.getResult() || {});
+        // Sample this._params:
+        // {
+        //     "address": "TK3ofbD3AyXotN2111UvnwCzr2YaW8Qmx7",
+        //     "timeout": "7",
+        //     "cmc": "825"
+        // }
     }
 
-    checkCloudflareError() {
-        //TODO
+    hasCloudflare() {
+        let h2 = document.querySelector('h2#challenge-running');
+        let stage = document.querySelector('#challenge-stage');
+        if (h2 || stage) {
+            return true;
+        }
+        return false;
     }
 
     useUrlListener() {

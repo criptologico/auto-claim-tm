@@ -136,5 +136,12 @@ let helpers = {
         helpers.triggerMouseEvent (elm, "mousedown");
         helpers.triggerMouseEvent (elm, "mouseup");
         helpers.triggerMouseEvent (elm, "click");
+    },
+    textQuerySelector: function (selector, text) {
+        let all = [...document.querySelectorAll(selector)].filter(x => x.innerText.toLowerCase() == text.toLowerCase())
+        if (all.length == 1) {
+            return all[0];
+        }
+        return undefined;
     }
 }

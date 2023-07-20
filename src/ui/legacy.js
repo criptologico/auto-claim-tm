@@ -104,7 +104,7 @@ function createUi() {
                     });
                     if(updateObject.wallet.changed) {
                         document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
-                        uiRenderer.toast("Wallet will be updated as soon as possible");
+                        toastr["info"]("Wallet will be updated as soon as possible");
                     }
                 },
                 toggleJson: function(val) {
@@ -160,7 +160,7 @@ function createUi() {
                     });
                     if(updateObject.config.changed) {
                         document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
-                        uiRenderer.toast("Config will be updated as soon as possible");
+                        toastr["info"]("Config will be updated as soon as possible");
                     }
                 },
                 cancel: function() {
@@ -568,18 +568,55 @@ function createUi() {
         html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'wallet\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div></div>';
         html += '   </div>';
 
+        //Requirements
+        const tempRequirementsList = [
+            { id: '1', name: 'HCaptcha Solver', description: 'A solver for HCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+            { id: '2', name: 'Recaptcha Solver', description: 'A solver for ReCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+            { id: '3', name: 'Cloudflare Challenge Bypass', description: 'A solver for Cloudflare/Turnstile challenges', suggestion: `Auto clicker user script (free)<br><a  href="https://sharetext.me/knpmyolewq" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+            // { id: '4', name: 'Antibot Solver', description: 'A solver for Antibot/AB word challenges', suggestion: 'Latest AB Links Solver user script (free)' },
+            // { id: '5', name: 'GPCaptcha Solver', description: 'A solver for GP Captcha challenges', suggestion: 'Latest GP Captcha solver user script (free)' },
+            { id: '6', name: 'Active Tab/Window', description: 'The site requires the tab to be active.', suggestion: `<a  href="https://bit.ly/3Y28lpA" target="_blank"><i class="fa fa-external-link-alt"></i> User Script</a> or <a href="https://bit.ly/3q0H4Ht" target="_blank"><i class="fa fa-external-link-alt"></i> Extension</a>` },
+            // { id: '7', name: 'GeeTest Solver', description: 'A solver for GeeTest challenges.', suggestion: 'MB Solver (paid service), GeeTest User Script (free, solves only the puzzles, requires the tab to be active)' },
+        ];
+        html += '  <div class="modal-content bg-beige d-none" id="modal-requirements">';
+        html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-exclamation-circle"></i> Other requirements</h5></div>';
+        html += '    <div class="modal-body">';
+        html += `<div class="callout callout-warning m-3"><p class="text-justify">Some sites might require specific tools like captcha solvers that are not including in the script.</p></div>`;
+        html += '     <div><table class="table custom-table-striped" id="requirements-table">';
+        for(let r=0; r< tempRequirementsList.length; r++) {
+            let req = tempRequirementsList[r];
+            html += `<tr><td>${req.name}</td><td>${req.description}</td><td>${req.suggestion}</td></tr>`;
+        }
+        html += '          <thead><tr><th class="">Name</th><th class="">Description</th><th class="">Suggestion</th></tr></thead>';
+        html += '          <tbody class="overflow-auto" id="requirements-table-body">';
+    
+        html += '</tbody></table>';
+        html += '     </div>';
+        html += '    </div>';
+        html += '    <div class="modal-footer">';
+        html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
+        html += '    </div>';
+        html += '   </div>';
+
         //Info
         html += '  <div class="modal-content bg-beige d-none" id="modal-info">';
         html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-info"></i> Info</h5></div>';
         html += '    <div class="modal-body">';
         html += '<ul>';
-        html += '<li>Almost all sites in the list require an external hCaptcha solver, you can find one in our <a href="https://discord.gg/23s9fDgHqe" target="_blank">discord</a>.</li>';
+        html += '<li>First of all, make sure you visit our <a href="https://discord.gg/23s9fDgHqe" target="_blank">discord</a> server for specific issues with the script.</li>';
+        html += `<li>The script comes with <b>2 schedules</b> (Default and CF). You can add more from <i>Settings > Schedules...</i><br>About the <i>Schedules</i>:`;
+        html += `<ul><li>Each schedule will open a new tab, so:<br>N schedules = N simultaneous tabs.</li>`;
+        html += `<li>Each schedule has it's own list of sites.<br>You can have N sites per schedule, but each site can be in just 1 schedule to avoid overlapping.</li>`;
+        html += `<li>We suggest you to test how many tabs you can run simultaneously before creating too many schedules.<br>Usually, with 4 or 5 it will run smoothly.</li></ul>`;
+        html += `</li>`;
+        html += '<li>Almost all sites in the list require an external hCaptcha solver or similar scripts/extensions. You can find our free suggestions in Settings > Other requirements...</li>';
         html += '<li>Stormgain requires a GeeTest solver. You can use <a href="https://greasyfork.org/en/scripts/444560" target="_blank">this script</a> to solve the captchas through 2Captcha API service.</li>';
-        html += '<li>You can set default configurations at Settings</li>';
-        html += '<li>You can override configurations for a specific site using the edit (<i class="fa fa-edit"></i>) buttons</li>';
-        html += '<li>Some sites might only work if the tab running it is on focus</li>';
+        html += `<li>Some sites pay directly to <a href="https://faucetpay.io/?r=freebtc" target="_blank"><i class="fa fa-external-link-alt"></i> FaucetPay</a>. You need to add your FP addresses at <i>Settings > Wallet...</i> to claim from those sites.</li>`;
+        html += `<li>You can set default configurations at <i>Settings > Defaults...</i></li>`;
+        html += `<li>At <i>Settings > Defaults</i>, you will also find <i>Site Specific</i> settings like credentials for auto login.</li>`;
+        html += '<li>You can override configurations for a specific site using the edit (<i class="fa fa-clock"></i>) buttons</li>';
         html += '<li>When enabling a new site, try it first with the tab on focus, to detect potential issues</li>';
-        html += '<li>You can enable the log in Settings to detect processing problems</li>';
+        // html += '<li>You can enable the log in Settings to detect processing problems</li>';
         html += '</ul>';
         html += '    </div>';
         html += '<div class="modal-footer">';
@@ -649,15 +686,19 @@ function createUi() {
 
         // Modal Site Parameters
         html += '<div class="modal-content bg-beige" id="modal-site-parameters">';
-        html += '    <div class="modal-header py-2"><h5 class="modal-title"><i class="fa fa-edit"></i> Edit Site Parameters...</h5>';
+        html += '    <div class="modal-header py-2"><h5 class="modal-title"><i class="fa fa-edit"></i> Edit Site Arguments...</h5>';
         html += '    </div>';
         html += '    <div class="modal-body">';
         html += '      <div class="form-container"><form action="">';
+        html += `      <div>Soon you'll be able to edit the site's specific settings here (credentials, withdrawal configuration, etc.)<br>`;
+        html += `You'll also see the site specific requirements, like required captcha solvers.<br>Meanwhile, go to Settings > Defaults > Site Specifics.<br>If there's something to configurate for this site, it'll be listed there.`;
+        html += `<br>You can find a general requirements list in Settings > Other requirements...</div>`;
         html += '      </form></div>';
         html += '    </div>';
         html += '    <div class="modal-footer">';
-        html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
-        html += '    <a class="btn m-2 anchor btn-outline-success align-middle modal-save"><i class="fa fa-check-circle"></i> Save</a>';
+        html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
+        // html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
+        // html += '    <a class="btn m-2 anchor btn-outline-success align-middle modal-save"><i class="fa fa-check-circle"></i> Save</a>';
         html += '    </div>';
         html += '</div>';
 
@@ -933,13 +974,14 @@ function createUi() {
         <div class="dropdown-divider"></div>
         <a class="dropdown-item btn-open-dialog" data-target="modal-schedules"><i class="fa fa-stopwatch"></i>&nbsp;Schedules...</a>
         <a class="dropdown-item btn-open-dialog" data-target="modal-wallet"><i class="fa fa-wallet"></i>&nbsp;Wallets...</a>
+        <a class="dropdown-item btn-open-dialog" data-target="modal-requirements"><i class="fa fa-exclamation-circle"></i>&nbsp;Other requirements...</a>
         <!-- <a class="dropdown-item btn-open-dialog" data-target="modal-sites"><i class="fa fa-window-restore"></i>&nbsp;Sites...</a> -->
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item btn-open-dialog" data-target="modal-ereport"><i class="fa fa-history"></i>&nbsp;Log...</a>
         <div class="dropdown-divider"></div>
         <a class="dropdown-item btn-open-dialog" data-target="modal-info"><i class="fa fa-info"></i>&nbsp;Help/Info...</a>
         </div>`;
 
+        // <div class="dropdown-divider"></div>
+        // <a class="dropdown-item btn-open-dialog" data-target="modal-ereport"><i class="fa fa-history"></i>&nbsp;Log...</a>
         // <a class="dropdown-item btn-open-dialog" data-target="modal-backup"><i class="fa fa-save"></i>&nbsp;Back up...</a>
         // <div class="dropdown-divider"></div>
 

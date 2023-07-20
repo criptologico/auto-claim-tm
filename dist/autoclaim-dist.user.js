@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.34
+// @version      3.0.35
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -85,6 +85,8 @@
 // @match        https://zecfaucet.net/*
 // @match        https://faucet.monster/*
 // @match        https://auto-crypto.ml/*
+// @match        https://claimclicks.com/*
+// @match        https://cryptoclicks.net/*
 // ==/UserScript==
 
 (function() {
@@ -135,7 +137,8 @@
             CDIVERSITY: 26,
             BSCADS: 27,
             CTOP: 28,
-            AUTOCML: 29
+            AUTOCML: 29,
+            CCLICKS: 30
         },
         CF: {
             UrlType: {
@@ -169,6 +172,7 @@
             HS_2_IN_MILLISECONDS: 7200000 //and 2hs gap retry when code is flagged as USEDBEFORE
         },
         WalletType: {
+            FP_USERNAME: 99,
             FP_MAIL: 100,
             FP_BTC: 101,
             FP_BNB: 102,
@@ -183,6 +187,8 @@
             FP_USDT: 111,
             FP_ZEC: 112,
             FP_SOL: 113,
+            FP_MATIC: 114,
+            FP_XRP: 115,
             EC: 200,
             BTC: 1,
             LTC: 2
@@ -428,6 +434,13 @@
             helpers.triggerMouseEvent (elm, "mousedown");
             helpers.triggerMouseEvent (elm, "mouseup");
             helpers.triggerMouseEvent (elm, "click");
+        },
+        textQuerySelector: function (selector, text) {
+            let all = [...document.querySelectorAll(selector)].filter(x => x.innerText.toLowerCase() == text.toLowerCase())
+            if (all.length == 1) {
+                return all[0];
+            }
+            return undefined;
         }
     }
 
@@ -813,14 +826,14 @@
         createCFPromotions: function() {
             let codes = [];
 
-            function PromotionCode(id, code, repeatDaily = false, expirationDate = null, isRemoved = false) {
+            function PromotionCode(id, code, repeatDaily = false, expiration = null, isRemoved = false) {
                 this.id = id;
                 this.code = code;
                 this.added = new Date();
                 this.statusPerFaucet = [];
                 this.repeatDaily = repeatDaily;
                 this.lastExecTimeStamp = null;
-                this.expirationDate = expirationDate;
+                this['expiration' + 'Date'] = expiration;
                 this.isRemoved = isRemoved;
             };
 
@@ -835,14 +848,14 @@
                 return faucet.status ?? K.CF.PromoStatus.NOCODE;
             };
 
-            function addNew(code, repeatDaily = false, expirationDate = null) {
+            function addNew(code, repeatDaily = false, expiration = null) {
                 let found = codes.find(x => x.code == code);
                 if (found) {
                     found.repeatDaily = repeatDaily;
-                    found.expirationDate = expirationDate;
+                    found['expiration' + 'Date'] = expiration;
                     found.isRemoved = false;
                 } else {
-                    found = new PromotionCode(codes.length, code, repeatDaily, expirationDate);
+                    found = new PromotionCode(codes.length, code, repeatDaily, expiration);
                     codes.push(found);
                 }
 
@@ -863,7 +876,7 @@
                     let item = newCodes[i];
                     let exists = codes.find(x => x.code.toLowerCase() == item.code.toLowerCase());
                     if (!exists) {
-                        addNew(item.code, !item.oneTimeOnly, item.expirationDate);
+                        addNew(item.code, !item.oneTimeOnly, item['expiration' + 'Date']);
                     } else {
                     }
                 }
@@ -910,7 +923,7 @@
 
             function removeAll() {
                 codes.forEach(x => x.isRemoved = true);
-                codes = codes.filter(x => x.expirationDate && Date.parse(x.expirationDate) > Date.now());
+                codes = codes.filter(x => x['expiration' + 'Date'] && Date.parse(x['expiration' + 'Date']) > Date.now());
                 save();
             };
 
@@ -1562,6 +1575,10 @@
                 SiteProcessor = new AutoCMl();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
                 break;
+            case K.WebType.CCLICKS:
+                SiteProcessor = new CClicks();
+                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
+                break;
             default:
                 break;
         }
@@ -1694,7 +1711,7 @@
                     <button type="button" class="btn btn-default dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-expanded="false">
                     </button>
                     <div class="dropdown-menu dropdown-menu-right text-sm" style="">
-                        <!-- <a class="dropdown-item action-site-edit-parameters"><i class="fa fa-edit"></i> Site parameters...</a> -->
+                        <a class="dropdown-item action-site-edit-parameters"><i class="fa fa-edit"></i> Site arguments...</a>
                         <a class="dropdown-item action-site-assign-schedule"><i class="fa fa-exchange-alt"></i> Move to...</a>`;
             if (site.isExternal) {
                 tds += `<a class="dropdown-item action-site-remove-external"><i class="fa fa-trash"></i> Remove site</a>`;
@@ -2483,65 +2500,7 @@
         }
 
     }
-    class UiCfSiteParametersHandler extends UiSiteParameterRenderer {
-        constructor(values) {
-            this.values = {
-                rollsPerVisit: 1,
-                tryGetCodes: true,
-                autologin: false,
-                credentialsMode: '2',
-                email: null,
-                password: null,
-            }
-            Object.assign(this.values, values);
-        }
 
-        render() {
-            fieldValues = this.values;
-            let disableModeSelect = (fieldValues['autologin'].value !== true);
-            let disableEmailAndPassword = (fieldValues['autologin'].value !== true || fieldValues['credentialsMode'].value == '2');
-            let html = '';
-            html += '         <div class="card m-1 collapsed-card"><div class="card-header">CryptosFaucets<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-            html += '           <div class="card-body px-4" style="display: none;">';
-            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
-            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.rollOnce" ><span class="slider round"></span></label> Roll once per round </div>';
-            html += `          <div><label class="switch"><input type="checkbox" data-prop="cf.autologin"><span class="slider round"></span></label> Autologin when necessary</div>`;
-            html += `           <select class="form-control" data-prop="cf.credentials.mode" ${disableModeSelect ? 'disabled' : ''}>`;
-            html += '            <option value="1">Use Email and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-            html += '           </select>';
-            html += '           <label class="control-label">E-Mail</label>';
-            html += `           <input maxlength="200" type="text" data-prop="cf.credentials.email" required="required" ${disableEmailAndPassword ? 'disabled=' : ''} class="form-control" placeholder="Email address..."/>`;
-            html += '           <label class="control-label">Password</label>';
-            html += `           <input maxlength="200" type="password" data-prop="cf.credentials.password" required="required" ${disableEmailAndPassword ? 'disabled=' : ''} class="form-control" placeholder="Password..."/>`;
-            html += '           <label class="control-label">Hours to wait If IP is banned:</label>';
-            html += '           <select class="form-control" data-prop="cf.sleepHoursIfIpBan">';
-            html += '            <option value="0">Disabled</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="24">24</option><option value="26">26</option>';
-            html += '           </select>';
-            html += '       </div></div>';
-        }
-
-        preRender() {
-
-        }
-
-        postRender() {
-            let elCredentialsAutologin = document.querySelector('[name="autologin"]');
-            let elCredentialsMode = document.querySelector('[name="credentialsMode"]');
-
-            elCredentialsAutologin.addEventListener('change', function (e) {
-                let form = e.target.closest('form');
-                form.querySelector('[name="credentialsMode"]').disabled = !e.target.checked;
-                form.querySelector('[name="email"]').disabled = !e.target.checked;
-                form.querySelector('[name="password"]').disabled = !e.target.checked;
-            });
-
-            elCredentialsMode.addEventListener('change', function (e) {
-                let form = e.target.closest('form');
-                form.querySelector('[name="email"]').disabled = (e.target.value == '2');
-                form.querySelector('[name="password"]').disabled = (e.target.value == '2');
-            });
-        }
-    }
     class UiRenderer {
         constructor () {
             this.sites = new UiSitesRenderer(this);
@@ -3116,7 +3075,7 @@
                 return sats / 100000000;
             } catch (err) { shared.devlog(`@Parsers.dutchysClaimedToFloat, with element [${elm}] Error: ${err}`); }
         }
-        static splitAndIdxToInt(elm, options) { // '26 Minutes 23' w/spliiter='Minutes' => 26
+        static splitAndIdxToInt(elm, options) { // options: { splitter: ':', idx: 1} // '26 Minutes 23' w/spliiter='Minutes' => 26
             try {
                 return parseInt(elm.innerText.split(options.splitter)[options.idx].trim());
             } catch (err) { shared.devlog(`Error @Parsers.splitAndIdxToInt: ${err}`); }
@@ -3718,7 +3677,13 @@
             this._result = this._actions.isMultiClaim ? (shared.getProp('tempResults') || {}) : (shared.getResult() || {});
         }
 
-        checkCloudflareError() {
+        hasCloudflare() {
+            let h2 = document.querySelector('h2#challenge-running');
+            let stage = document.querySelector('#challenge-stage');
+            if (h2 || stage) {
+                return true;
+            }
+            return false;
         }
 
         useUrlListener() {
@@ -4596,7 +4561,7 @@
                     inputUser: new TextboxWidget({ selector: 'input[name="username"]' }),
                     inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
                     inputSubmit: new ButtonWidget({ selector: 'button.btn' }),
-                    setCredantials: false
+                    setCredentials: false
                 }
             }
 
@@ -5986,17 +5951,20 @@
         }
 
         init() {
-            if (location.href.includes('r=') && !location.href.includes('hCaptcha')) {
-                location.href = (location.href + '&cc=hCaptcha');
-                return;
-            }
-
             if(this.hasErrorMessage('suspicious activity')) {
                 shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
                 return;
             }
             if(this.hasErrorMessage('no funds left') || this.hasErrorMessage('not have sufficient funds')) {
                 shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
+                return;
+            }
+
+            if(this.hasErrorMessage('reached the daily claim limit')) {
+                let result = {
+                    nextRoll: this.readNextRoll()
+                };
+                shared.closeWindow(result);
                 return;
             }
 
@@ -6013,6 +5981,19 @@
                 return;
             }
 
+            let waitTime = this.hasWaitTime();
+            if (waitTime) {
+                let result = {
+                    nextRoll: helpers.addMinutes(waitTime + 1)
+                };
+                shared.closeWindow(result);
+                return;
+            }
+
+            if (this.changeCaptcha()) {
+                return;
+            }
+
             if (this._elements.addressInput.isUserFriendly) {
                 if (this._elements.addressInput.value != this._params.address) {
                     this._elements.addressInput.value = this._params.address;
@@ -6021,8 +6002,31 @@
             this.run();
         }
 
+        changeCaptcha() {
+            let selections = [...document.querySelectorAll('div.text-center b')];
+            if (selections.length == 0) {
+                return false;
+            }
+            if (selections.filter(x => x.innerText.toLowerCase().includes('hcaptcha')).length != 1) {
+                location.href = location.href.includes('?') ? (location.href + '&cc=hCaptcha') : (location.href + '?cc=hCaptcha');
+                return true;
+            }
+            return false;
+        }
+
         hasErrorMessage(searchTerm) {
             return document.body.innerText.toLowerCase().includes(searchTerm);
+        }
+
+        hasWaitTime() {
+            try {
+                let pInfos = [...document.querySelectorAll('p.alert.alert-info')].filter(x => x.innerText.toLowerCase().includes('you have to wait'));
+                if (pInfos.length == 1) {
+                    let time = +pInfos[0].innerText.toLowerCase().replace('you have to wait ', '').split(' ')[0];
+                    return time;
+                }
+            } catch (err) {}
+            return false;
         }
 
         readNextRoll() {
@@ -6038,6 +6042,106 @@
                 }
             } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
             return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+        }
+    }
+
+    class CClicks extends Faucet {
+        constructor() {
+            let elements = {
+                claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.cbgClaimed}),
+                captcha: new HCaptchaWidget(),
+                rollButton: new ButtonWidget({selector: '#myModal input[type="submit"].btnclaim'}),
+                addressInput: new TextboxWidget({ selector: '#myModal input[type="text"]'}),
+                openModalButton: new ButtonWidget({selector: 'button[data-target="#myModal"]'})
+            };
+            let actions = {
+                readTimeLeft: false,
+                readRolledNumber: false,
+                readBalance: false
+            };
+            super(elements, actions);
+        }
+
+        async init() {
+            if (this.hasCloudflare()) {
+                return;
+            }
+
+            if(this.hasErrorMessage('suspicious activity')) {
+                shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
+                return;
+            }
+            if(this.hasErrorMessage('no funds left') || this.hasErrorMessage('not have sufficient funds')) {
+                shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
+                return;
+            }
+            if(this.hasErrorMessage('reached the daily claim limit') || this.hasErrorMessage('reached the daily limit')) {
+                let result = {
+                    nextRoll: helpers.addMinutes(60 * 8 + helpers.randomInt(15, 40))
+                };
+                shared.closeWindow(result);
+                return;
+            }
+
+            let claimed = this.readClaimed();
+            if (claimed != 0) {
+                let result = {
+                    claimed: claimed,
+                    nextRoll: this.readNextRoll()
+                };
+                shared.closeWindow(result);
+                return;
+            }
+
+            if (this.changeCaptcha()) {
+                return;
+            }
+
+            if (this._elements.openModalButton.isUserFriendly) {
+                this._elements.openModalButton.click();
+                await wait(helpers.randomInt(1000, 2000));
+            }
+
+            if (this._elements.addressInput.isUserFriendly) {
+                if (this._elements.addressInput.value != this._params.address) {
+                    this._elements.addressInput.value = this._params.address;
+                }
+            }
+            this.run();
+        }
+
+        changeCaptcha() {
+            let selections = [...document.querySelectorAll('div.text-center b')];
+            if (selections.length == 0) {
+                return false;
+            }
+            if (selections.filter(x => x.innerText.toLowerCase().includes('hcaptcha')).length != 1) {
+                location.href = location.href.includes('?') ? (location.href + '&cc=hCaptcha') : (location.href + '?cc=hCaptcha');
+                return true;
+            }
+            return false;
+        }
+
+        hasErrorMessage(searchTerm) {
+            return document.body.innerText.toLowerCase().includes(searchTerm);
+        }
+
+        readNextRoll() {
+            try {
+                let p = document.querySelector('p.alert.alert-success');
+                if (p && p.innerText.toLowerCase().includes('daily')) {
+                    p = p.innerText.split('\n')[1];
+                    p = +p.split(' daily')[0];
+
+                    if (p > 0) {
+                        return helpers.addMinutes(helpers.randomInt(3, 9));
+                    } else {
+                        return helpers.addMinutes(60 * 8 + helpers.randomInt(15, 40));
+                    }
+                }
+                return helpers.addMinutes(helpers.randomInt(3, 9));
+            } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
+            return helpers.addMinutes(60 * 8 + helpers.randomInt(15, 40));
         }
     }
 
@@ -6581,6 +6685,8 @@
             let navUrl = this.currentSite.url;
             try {
                 let params = this.currentSite.params || {};
+                params.siteParams = this.currentSite.siteParams || { "test": "test_value" };
+
                 if(promoCodes) {
                     navUrl = new URL('promotion/' + promoCodes[0], this.currentSite.url.origin);
                     ui.log({ schedule: this.uuid, siteName: this.currentSite.name, msg: `Opening ${this.currentSite.name} with ${promoCodes.length} Promo Codes [${promoCodes.join(',')}]`});
@@ -6642,7 +6748,7 @@
                 }
 
                 this.timer.startCheck(this.currentSite.type);
-                let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP, K.WebType.AUTOCML ];
+                let noSignUpList = [ K.WebType.BESTCHANGE, K.WebType.CBG, K.WebType.G8, K.WebType.O24, K.WebType.CDIVERSITY, K.WebType.CTOP, K.WebType.AUTOCML, K.WebType.CCLICKS ];
                 let hrefOpener = navUrl.href;
                 if (noSignUpList.includes(this.currentSite.type)) {
                     hrefOpener = (new URL(this.currentSite.clId, 'https://criptologico.com/goto/')).href;
@@ -6972,9 +7078,22 @@
             { id: '103', name: 'FMonster', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('https://faucet.monster/'), rf: '', type: K.WebType.O24, clId: 246 },
             { id: '104', name: 'Auto-C BNB', cmc: '1839', wallet: K.WalletType.FP_BNB, url: new URL('https://auto-crypto.ml/'), rf: ['?r=0x1e8CB8A79E347C54aaF21C0502892B58F97CC07A'], type: K.WebType.AUTOCML, clId: 247 },
             { id: '105', name: 'Auto-C DOGE', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://auto-crypto.ml/doge/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.AUTOCML, clId: 248 },
+            { id: '106', name: 'ClClicks DOGE', cmc: '74', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/doge/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 61 },
+            { id: '107', name: 'ClClicks LTC', cmc: '2', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/ltc/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 62 },
+            { id: '108', name: 'ClClicks TRX', cmc: '1958', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/trx/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 63 },
+            { id: '109', name: 'ClClicks BTC', cmc: '1', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/btc/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 252 },
+            { id: '110', name: 'ClClicks SOL', cmc: '5426', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/sol/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 253 },
+            { id: '111', name: 'ClClicks BNB', cmc: '1839', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/bnb/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 254 },
+            { id: '112', name: 'CrClicks DOGE', cmc: '74', wallet: K.WalletType.FP_USERNAME, url: new URL('https://cryptoclicks.net/doge/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 257 },
+            { id: '113', name: 'CrClicks LTC', cmc: '2', wallet: K.WalletType.FP_USERNAME, url: new URL('https://cryptoclicks.net/ltc/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 258 },
+            { id: '114', name: 'CrClicks TRX', cmc: '1958', wallet: K.WalletType.FP_USERNAME, url: new URL('https://cryptoclicks.net/trx/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 259 },
+            { id: '115', name: 'CrClicks BTC', cmc: '1', wallet: K.WalletType.FP_USERNAME, url: new URL('https://cryptoclicks.net/btc/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 256 },
+            { id: '116', name: 'CrClicks SOL', cmc: '5426', wallet: K.WalletType.FP_USERNAME, url: new URL('https://cryptoclicks.net/sol/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 261 },
+            { id: '117', name: 'CrClicks BNB', cmc: '1839', wallet: K.WalletType.FP_USERNAME, url: new URL('https://cryptoclicks.net/bnb/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 260 },
         ];
 
         const wallet = [
+            { id: '99', name: 'FaucetPay Username', type: K.WalletType.FP_USERNAME },
             { id: '100', name: 'FaucetPay Email', type: K.WalletType.FP_MAIL },
             { id: '101', name: 'FaucetPay BTC (Bitcoin)', type: K.WalletType.FP_BTC },
             { id: '102', name: 'FaucetPay BNB (Binance Coin)', type: K.WalletType.FP_BNB },
@@ -6989,6 +7108,7 @@
             { id: '111', name: 'FaucetPay USDT (Tether TRC20)', type: K.WalletType.FP_USDT },
             { id: '112', name: 'FaucetPay ZEC (Zcash)', type: K.WalletType.FP_ZEC },
             { id: '113', name: 'FaucetPay SOL (Solana)', type: K.WalletType.FP_SOL },
+            { id: '114', name: 'FaucetPay MATIC (Polygon)', type: K.WalletType.FP_MATIC },
             { id: '200', name: 'ExpressCrypto (EC-UserId-XXXXXX)', type: K.WalletType.EC },
             { id: '1', name: 'BTC Alternative Address', type: K.WalletType.BTC }
         ];
@@ -7152,8 +7272,8 @@
                                 let newCode = {};
                                 newCode.code = item.code;
                                 newCode.oneTimeOnly = item.is_one_time == '1';
-                                newCode.expirationDate = item.expiration_date.replace(' ', 'T') + 'Z';
-                                newCode.expirationDate = new Date(newCode.expirationDate);
+                                newCode['expiration' + 'Date'] = item.expiration_date.replace(' ', 'T') + 'Z';
+                                newCode['expiration' + 'Date'] = new Date(newCode['expiration' + 'Date']);
                                 newCodes.push(newCode);
                             }
                             CFPromotions.includeNewCodes(newCodes);
@@ -7494,7 +7614,7 @@
                         });
                         if(updateObject.wallet.changed) {
                             document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
-                            uiRenderer.toast("Wallet will be updated as soon as possible");
+                            toastr["info"]("Wallet will be updated as soon as possible");
                         }
                     },
                     toggleJson: function(val) {
@@ -7550,7 +7670,7 @@
                         });
                         if(updateObject.config.changed) {
                             document.getElementById("update-data").innerHTML = JSON.stringify(updateObject);
-                            uiRenderer.toast("Config will be updated as soon as possible");
+                            toastr["info"]("Config will be updated as soon as possible");
                         }
                     },
                     cancel: function() {
@@ -7929,17 +8049,49 @@
             html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'wallet\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div></div>';
             html += '   </div>';
 
+            const tempRequirementsList = [
+                { id: '1', name: 'HCaptcha Solver', description: 'A solver for HCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+                { id: '2', name: 'Recaptcha Solver', description: 'A solver for ReCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+                { id: '3', name: 'Cloudflare Challenge Bypass', description: 'A solver for Cloudflare/Turnstile challenges', suggestion: `Auto clicker user script (free)<br><a  href="https://sharetext.me/knpmyolewq" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+                { id: '6', name: 'Active Tab/Window', description: 'The site requires the tab to be active.', suggestion: `<a  href="https://bit.ly/3Y28lpA" target="_blank"><i class="fa fa-external-link-alt"></i> User Script</a> or <a href="https://bit.ly/3q0H4Ht" target="_blank"><i class="fa fa-external-link-alt"></i> Extension</a>` },
+            ];
+            html += '  <div class="modal-content bg-beige d-none" id="modal-requirements">';
+            html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-exclamation-circle"></i> Other requirements</h5></div>';
+            html += '    <div class="modal-body">';
+            html += `<div class="callout callout-warning m-3"><p class="text-justify">Some sites might require specific tools like captcha solvers that are not including in the script.</p></div>`;
+            html += '     <div><table class="table custom-table-striped" id="requirements-table">';
+            for(let r=0; r< tempRequirementsList.length; r++) {
+                let req = tempRequirementsList[r];
+                html += `<tr><td>${req.name}</td><td>${req.description}</td><td>${req.suggestion}</td></tr>`;
+            }
+            html += '          <thead><tr><th class="">Name</th><th class="">Description</th><th class="">Suggestion</th></tr></thead>';
+            html += '          <tbody class="overflow-auto" id="requirements-table-body">';
+
+            html += '</tbody></table>';
+            html += '     </div>';
+            html += '    </div>';
+            html += '    <div class="modal-footer">';
+            html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
+            html += '    </div>';
+            html += '   </div>';
+
             html += '  <div class="modal-content bg-beige d-none" id="modal-info">';
             html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-info"></i> Info</h5></div>';
             html += '    <div class="modal-body">';
             html += '<ul>';
-            html += '<li>Almost all sites in the list require an external hCaptcha solver, you can find one in our <a href="https://discord.gg/23s9fDgHqe" target="_blank">discord</a>.</li>';
+            html += '<li>First of all, make sure you visit our <a href="https://discord.gg/23s9fDgHqe" target="_blank">discord</a> server for specific issues with the script.</li>';
+            html += `<li>The script comes with <b>2 schedules</b> (Default and CF). You can add more from <i>Settings > Schedules...</i><br>About the <i>Schedules</i>:`;
+            html += `<ul><li>Each schedule will open a new tab, so:<br>N schedules = N simultaneous tabs.</li>`;
+            html += `<li>Each schedule has it's own list of sites.<br>You can have N sites per schedule, but each site can be in just 1 schedule to avoid overlapping.</li>`;
+            html += `<li>We suggest you to test how many tabs you can run simultaneously before creating too many schedules.<br>Usually, with 4 or 5 it will run smoothly.</li></ul>`;
+            html += `</li>`;
+            html += '<li>Almost all sites in the list require an external hCaptcha solver or similar scripts/extensions. You can find our free suggestions in Settings > Other requirements...</li>';
             html += '<li>Stormgain requires a GeeTest solver. You can use <a href="https://greasyfork.org/en/scripts/444560" target="_blank">this script</a> to solve the captchas through 2Captcha API service.</li>';
-            html += '<li>You can set default configurations at Settings</li>';
-            html += '<li>You can override configurations for a specific site using the edit (<i class="fa fa-edit"></i>) buttons</li>';
-            html += '<li>Some sites might only work if the tab running it is on focus</li>';
+            html += `<li>Some sites pay directly to <a href="https://faucetpay.io/?r=freebtc" target="_blank"><i class="fa fa-external-link-alt"></i> FaucetPay</a>. You need to add your FP addresses at <i>Settings > Wallet...</i> to claim from those sites.</li>`;
+            html += `<li>You can set default configurations at <i>Settings > Defaults...</i></li>`;
+            html += `<li>At <i>Settings > Defaults</i>, you will also find <i>Site Specific</i> settings like credentials for auto login.</li>`;
+            html += '<li>You can override configurations for a specific site using the edit (<i class="fa fa-clock"></i>) buttons</li>';
             html += '<li>When enabling a new site, try it first with the tab on focus, to detect potential issues</li>';
-            html += '<li>You can enable the log in Settings to detect processing problems</li>';
             html += '</ul>';
             html += '    </div>';
             html += '<div class="modal-footer">';
@@ -8005,15 +8157,17 @@
             html += '</div>';
 
             html += '<div class="modal-content bg-beige" id="modal-site-parameters">';
-            html += '    <div class="modal-header py-2"><h5 class="modal-title"><i class="fa fa-edit"></i> Edit Site Parameters...</h5>';
+            html += '    <div class="modal-header py-2"><h5 class="modal-title"><i class="fa fa-edit"></i> Edit Site Arguments...</h5>';
             html += '    </div>';
             html += '    <div class="modal-body">';
             html += '      <div class="form-container"><form action="">';
+            html += `      <div>Soon you'll be able to edit the site's specific settings here (credentials, withdrawal configuration, etc.)<br>`;
+            html += `You'll also see the site specific requirements, like required captcha solvers.<br>Meanwhile, go to Settings > Defaults > Site Specifics.<br>If there's something to configurate for this site, it'll be listed there.`;
+            html += `<br>You can find a general requirements list in Settings > Other requirements...</div>`;
             html += '      </form></div>';
             html += '    </div>';
             html += '    <div class="modal-footer">';
-            html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
-            html += '    <a class="btn m-2 anchor btn-outline-success align-middle modal-save"><i class="fa fa-check-circle"></i> Save</a>';
+            html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
             html += '    </div>';
             html += '</div>';
 
@@ -8256,9 +8410,8 @@
             <div class="dropdown-divider"></div>
             <a class="dropdown-item btn-open-dialog" data-target="modal-schedules"><i class="fa fa-stopwatch"></i>&nbsp;Schedules...</a>
             <a class="dropdown-item btn-open-dialog" data-target="modal-wallet"><i class="fa fa-wallet"></i>&nbsp;Wallets...</a>
+            <a class="dropdown-item btn-open-dialog" data-target="modal-requirements"><i class="fa fa-exclamation-circle"></i>&nbsp;Other requirements...</a>
             <!-- <a class="dropdown-item btn-open-dialog" data-target="modal-sites"><i class="fa fa-window-restore"></i>&nbsp;Sites...</a> -->
-            <div class="dropdown-divider"></div>
-            <a class="dropdown-item btn-open-dialog" data-target="modal-ereport"><i class="fa fa-history"></i>&nbsp;Log...</a>
             <div class="dropdown-divider"></div>
             <a class="dropdown-item btn-open-dialog" data-target="modal-info"><i class="fa fa-info"></i>&nbsp;Help/Info...</a>
             </div>`;

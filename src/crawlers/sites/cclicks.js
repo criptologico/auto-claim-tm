@@ -1,10 +1,11 @@
-class AutoCMl extends Faucet {
+class CClicks extends Faucet {
     constructor() {
         let elements = {
-            claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.splitAndIdxTrimNaNs, options: { splitter: ' ', idx: 0} }),
+            claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.cbgClaimed}),
             captcha: new HCaptchaWidget(),
-            rollButton: new ButtonWidget({selector: 'input[type="submit"].claim-button'}),
-            addressInput: new TextboxWidget({ selector: 'form[role="form"] input[type="text"]'})
+            rollButton: new ButtonWidget({selector: '#myModal input[type="submit"].btnclaim'}),
+            addressInput: new TextboxWidget({ selector: '#myModal input[type="text"]'}),
+            openModalButton: new ButtonWidget({selector: 'button[data-target="#myModal"]'})
         };
         let actions = {
             readTimeLeft: false,
@@ -14,7 +15,11 @@ class AutoCMl extends Faucet {
         super(elements, actions);
     }
 
-    init() {
+    async init() {
+        if (this.hasCloudflare()) {
+            return;
+        }
+
         if(this.hasErrorMessage('suspicious activity')) {
             shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
             return;
@@ -23,10 +28,9 @@ class AutoCMl extends Faucet {
             shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
             return;
         }
-        
-        if(this.hasErrorMessage('reached the daily claim limit')) {
+        if(this.hasErrorMessage('reached the daily claim limit') || this.hasErrorMessage('reached the daily limit')) {
             let result = {
-                nextRoll: this.readNextRoll()
+                nextRoll: helpers.addMinutes(60 * 8 + helpers.randomInt(15, 40))
             };
             shared.closeWindow(result);
             return;
@@ -34,9 +38,6 @@ class AutoCMl extends Faucet {
 
         let claimed = this.readClaimed();
         if (claimed != 0) {
-            if (!location.href.includes('doge')) {
-                claimed = claimed/100000000;
-            }
             shared.devlog(`closing because claim was read`);
             let result = {
                 claimed: claimed,
@@ -46,19 +47,15 @@ class AutoCMl extends Faucet {
             return;
         }
 
-        let waitTime = this.hasWaitTime();
-        if (waitTime) {
-            let result = {
-                nextRoll: helpers.addMinutes(waitTime + 1)
-            };
-            shared.closeWindow(result);
-            return;
-        }
-
         if (this.changeCaptcha()) {
             return;
         }
-    
+
+        if (this._elements.openModalButton.isUserFriendly) {
+            this._elements.openModalButton.click();
+            await wait(helpers.randomInt(1000, 2000));
+        }
+
         if (this._elements.addressInput.isUserFriendly) {
             if (this._elements.addressInput.value != this._params.address) {
                 this._elements.addressInput.value = this._params.address;
@@ -83,31 +80,24 @@ class AutoCMl extends Faucet {
         return document.body.innerText.toLowerCase().includes(searchTerm);
     }
 
-    hasWaitTime() {
-        try {
-            let pInfos = [...document.querySelectorAll('p.alert.alert-info')].filter(x => x.innerText.toLowerCase().includes('you have to wait'));
-            if (pInfos.length == 1) {
-                let time = +pInfos[0].innerText.toLowerCase().replace('you have to wait ', '').split(' ')[0];
-                return time;
-            }
-        } catch (err) {}
-        return false;
-    }
-
     readNextRoll() {
         try {
-            let spans = [...document.querySelectorAll('div.row div.col-md-5ths span:not(.glyphicon)')];
-            let idxClaimsLeft = spans.findIndex(x => x.innerText.includes('daily claims left'));
-            if (idxClaimsLeft > -1) {
-                if (spans[idxClaimsLeft].innerText.includes('0')) {
-                    // need to wait a day
-                    return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+            let p = document.querySelector('p.alert.alert-success');
+            if (p && p.innerText.toLowerCase().includes('daily')) {
+                p = p.innerText.split('\n')[1];
+                p = +p.split(' daily')[0];
+
+                shared.devlog(`@readNextRoll: rolls left: ${p}`);
+                if (p > 0) {
+                    return helpers.addMinutes(helpers.randomInt(3, 9));
                 } else {
-                    return helpers.addMinutes(helpers.randomInt(5, 12));
+                    return helpers.addMinutes(60 * 8 + helpers.randomInt(15, 40));
                 }
             }
+            shared.devlog(`@readNextRoll: remaining rolls not found`);
+            return helpers.addMinutes(helpers.randomInt(3, 9));
         } catch (err) { shared.devlog(`@readNextRoll: ${err}`); }
         //return helpers.addMinutes(60);
-        return helpers.addMinutes(60 * 24 + helpers.randomInt(10, 160));
+        return helpers.addMinutes(60 * 8 + helpers.randomInt(15, 40));
     }
 }

@@ -34,7 +34,8 @@ const K = Object.freeze({
         CDIVERSITY: 26,
         BSCADS: 27,
         CTOP: 28,
-        AUTOCML: 29
+        AUTOCML: 29,
+        CCLICKS: 30
     },
     CF: {
         UrlType: {
@@ -69,6 +70,7 @@ const K = Object.freeze({
         HS_2_IN_MILLISECONDS: 7200000 //and 2hs gap retry when code is flagged as USEDBEFORE
     },
     WalletType: {
+        FP_USERNAME: 99,
         FP_MAIL: 100,
         FP_BTC: 101,
         FP_BNB: 102,
@@ -83,6 +85,8 @@ const K = Object.freeze({
         FP_USDT: 111,
         FP_ZEC: 112,
         FP_SOL: 113,
+        FP_MATIC: 114,
+        FP_XRP: 115,
         EC: 200,
         BTC: 1,
         LTC: 2

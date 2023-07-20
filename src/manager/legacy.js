@@ -8,6 +8,7 @@ function createManager() {
     {{manager/sites-list.js}}
 
     const wallet = [
+        { id: '99', name: 'FaucetPay Username', type: K.WalletType.FP_USERNAME },
         { id: '100', name: 'FaucetPay Email', type: K.WalletType.FP_MAIL },
         { id: '101', name: 'FaucetPay BTC (Bitcoin)', type: K.WalletType.FP_BTC },
         { id: '102', name: 'FaucetPay BNB (Binance Coin)', type: K.WalletType.FP_BNB },
@@ -22,6 +23,8 @@ function createManager() {
         { id: '111', name: 'FaucetPay USDT (Tether TRC20)', type: K.WalletType.FP_USDT },
         { id: '112', name: 'FaucetPay ZEC (Zcash)', type: K.WalletType.FP_ZEC },
         { id: '113', name: 'FaucetPay SOL (Solana)', type: K.WalletType.FP_SOL },
+        { id: '114', name: 'FaucetPay MATIC (Polygon)', type: K.WalletType.FP_MATIC },
+        // { id: '115', name: 'FaucetPay XRP (Ripple)', type: K.WalletType.FP_XRP }, // Define format... addr|tag?
         { id: '200', name: 'ExpressCrypto (EC-UserId-XXXXXX)', type: K.WalletType.EC },
         { id: '1', name: 'BTC Alternative Address', type: K.WalletType.BTC }
         //                { id: '2', name: 'LTC Address', type: K.WalletType.LTC }
@@ -202,8 +205,8 @@ function createManager() {
                             let newCode = {};
                             newCode.code = item.code;
                             newCode.oneTimeOnly = item.is_one_time == '1';
-                            newCode.expirationDate = item.expiration_date.replace(' ', 'T') + 'Z';
-                            newCode.expirationDate = new Date(newCode.expirationDate);
+                            newCode['expiration' + 'Date'] = item.expiration_date.replace(' ', 'T') + 'Z';
+                            newCode['expiration' + 'Date'] = new Date(newCode['expiration' + 'Date']);
                             newCodes.push(newCode);
                         }
                         CFPromotions.includeNewCodes(newCodes);

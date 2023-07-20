@@ -10,7 +10,7 @@ class BscAds extends Faucet {
                 inputUser: new TextboxWidget({ selector: 'input[name="username"]' }),
                 inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
                 inputSubmit: new ButtonWidget({ selector: 'button.btn' }),
-                setCredantials: false
+                setCredentials: false
             }
         }
 
