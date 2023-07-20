@@ -311,6 +311,9 @@ class Schedule {
                 //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
                 try {
                     params.address = manager.userWallet.find(x => x.type == this.currentSite.wallet).address;
+                    if (!params.address) {
+                        throw new Error('Address is not defined.');
+                    }
                 } catch {
                     shared.addError(K.ErrorType.NO_ADDRESS, 'You need to add your address to the wallet before claiming this faucet.', this.uuid);
                     ui.log({ schedule: this.uuid, siteName: this.currentSite.name, msg: `Unable to launch ${this.currentSite.name}: Address not detected > add it to the wallet.`});

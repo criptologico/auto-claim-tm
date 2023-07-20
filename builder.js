@@ -108,7 +108,7 @@ if (defaults.removeSharedDevLog) {
   // Remove all lines that contain shared.devlog
   filteredLines = filteredLines.filter((line, index) => {
     let tempLine = line.trim();
-    if (tempLine.startsWith('shared.devlog') && tempLine.includes(');')) {
+    if ((tempLine.startsWith('shared.devlog') || tempLine.startsWith('shared.addError')) && tempLine.includes(');')) {
       return false;
     } else {
       return true;
