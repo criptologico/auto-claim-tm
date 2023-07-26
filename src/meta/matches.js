@@ -60,3 +60,4 @@
 // @match        https://claimclicks.com/*
 // @match        https://cryptoclicks.net/*
 // @match        https://freeshiba.cf/*
+// @match        https://auto-crypto.click/*
