@@ -103,7 +103,7 @@ const sites = [
     { id: '102', name: 'Top Zec', cmc: '1437', wallet: K.WalletType.FP_ZEC, url: new URL('https://zecfaucet.net/'), rf: ['?r=t1erPs9qw3SgnX7kJPmR4uKFnLaoVww2jCy'], type: K.WebType.CTOP, clId: 245 },
     { id: '103', name: 'FMonster', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('https://faucet.monster/'), rf: '', type: K.WebType.O24, clId: 246 },
     { id: '104', name: 'Auto-C BNB', cmc: '1839', wallet: K.WalletType.FP_BNB, url: new URL('https://auto-crypto.ml/'), rf: ['?r=0x1e8CB8A79E347C54aaF21C0502892B58F97CC07A'], type: K.WebType.AUTOCML, clId: 247 },
-    { id: '105', name: 'Auto-C DOGE', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://auto-crypto.ml/doge/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.AUTOCML, clId: 248 },
+    { id: '105', name: 'Auto-C DOGE', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://freeshiba.cf/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.AUTOCML, clId: 248 },
     { id: '106', name: 'ClClicks DOGE', cmc: '74', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/doge/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 61 },
     { id: '107', name: 'ClClicks LTC', cmc: '2', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/ltc/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 62 },
     { id: '108', name: 'ClClicks TRX', cmc: '1958', wallet: K.WalletType.FP_USERNAME, url: new URL('https://claimclicks.com/trx/'), rf: ['?r=corecrafting'], type: K.WebType.CCLICKS, clId: 63 },
