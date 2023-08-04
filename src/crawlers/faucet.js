@@ -132,6 +132,7 @@ class Faucet {
     clickRoll() {
         try {
             shared.devlog('Clicking roll button');
+            this._elements.rollButton.scrollIntoView(false);
             this._elements.rollButton.click();
             this.validateRun();
             // setTimeout(() => { this.validateRun() }, helpers.randomMs(10000, 12000));
