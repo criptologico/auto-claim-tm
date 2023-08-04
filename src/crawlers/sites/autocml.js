@@ -15,6 +15,7 @@ class AutoCMl extends Faucet {
     }
 
     init() {
+        this.hideAdBlocker();
         if(this.hasErrorMessage('suspicious activity')) {
             shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
             return;
@@ -58,7 +59,9 @@ class AutoCMl extends Faucet {
         if (this.changeCaptcha()) {
             return;
         }
-    
+
+        this.setCurrentCaptcha();
+
         if (this._elements.addressInput.isUserFriendly) {
             if (this._elements.addressInput.value != this._params.address) {
                 this._elements.addressInput.value = this._params.address;
@@ -66,6 +69,27 @@ class AutoCMl extends Faucet {
         }
         this.run();
     }
+
+    hideAdBlocker() {
+        try {
+            document.getElementById("page-body").style.display = "block";
+            document.getElementById("blocker-enabled").style.display = "none";
+        } catch (err) {}
+        setInterval(() => {
+            try {
+                document.getElementById("page-body").style.display = "block";
+                document.getElementById("blocker-enabled").style.display = "none";
+            } catch (err) {}
+        }, 3000);
+    }
+
+    setCurrentCaptcha() {
+        if ([...document.querySelectorAll('iframe')].map(x => x.src || '').filter(x => x.includes('hcaptcha.com')).length > 0) {
+            // hcaptcha
+            return;
+        }
+        this._elements.captcha = new RecaptchaWidget();
+}
 
     changeCaptcha() {
         let selections = [...document.querySelectorAll('div.text-center b')];

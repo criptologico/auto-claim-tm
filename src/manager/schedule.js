@@ -310,7 +310,7 @@ class Schedule {
             if (this.currentSite.wallet) {
                 //TODO: VALIDATE THAT ADDRESS EXISTS AND IS VALID!!!
                 try {
-                    params.address = manager.userWallet.find(x => x.type == this.currentSite.wallet).address;
+                    params.address = manager.userWallet.find(x => x.type == this.currentSite.wallet)?.address;
                     if (!params.address) {
                         throw new Error('Address is not defined.');
                     }
@@ -499,6 +499,12 @@ class Schedule {
     waitOrMoveNext() {
         // ui.log(`[${this.uuid}] @waitOrMoveNext`);
         // No visited flag
+        if (this.currentSite.isExternal) {
+            if (!this.tab || (this.tab && this.tab.closed)) {
+                console.log('Tab not found. Emulating timeout');
+                this.timeWaiting = this.getCustomOrDefaultVal('defaults.timeout', this.useOverride('defaults.timeout')) * 60 + 9999;
+            }
+        }
         if (!shared.hasErrors(this.currentSite.id) && !this.hasTimedOut()) {
             ui.log({ schedule: this.uuid, 
                 siteName: this.currentSite.name,

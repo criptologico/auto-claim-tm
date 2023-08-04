@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.38
+// @version      3.0.39
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -3797,7 +3797,7 @@
                         return;
                     }
                 }
-                if (this._elements.success.isUserFriendly) {
+                if (this._elements.success?.isUserFriendly) {
                     return this.updateResult();
                 } else if(this._actions.altValidation) {
                     if(this.altValidation()) {
@@ -5953,6 +5953,7 @@
         }
 
         init() {
+            this.hideAdBlocker();
             if(this.hasErrorMessage('suspicious activity')) {
                 shared.closeWithError(K.ErrorType.ERROR, 'Suspicious Activity Message Displayed');
                 return;
@@ -5996,6 +5997,8 @@
                 return;
             }
 
+            this.setCurrentCaptcha();
+
             if (this._elements.addressInput.isUserFriendly) {
                 if (this._elements.addressInput.value != this._params.address) {
                     this._elements.addressInput.value = this._params.address;
@@ -6003,6 +6006,26 @@
             }
             this.run();
         }
+
+        hideAdBlocker() {
+            try {
+                document.getElementById("page-body").style.display = "block";
+                document.getElementById("blocker-enabled").style.display = "none";
+            } catch (err) {}
+            setInterval(() => {
+                try {
+                    document.getElementById("page-body").style.display = "block";
+                    document.getElementById("blocker-enabled").style.display = "none";
+                } catch (err) {}
+            }, 3000);
+        }
+
+        setCurrentCaptcha() {
+            if ([...document.querySelectorAll('iframe')].map(x => x.src || '').filter(x => x.includes('hcaptcha.com')).length > 0) {
+                return;
+            }
+            this._elements.captcha = new RecaptchaWidget();
+    }
 
         changeCaptcha() {
             let selections = [...document.querySelectorAll('div.text-center b')];
@@ -6703,7 +6726,7 @@
 
                 if (this.currentSite.wallet) {
                     try {
-                        params.address = manager.userWallet.find(x => x.type == this.currentSite.wallet).address;
+                        params.address = manager.userWallet.find(x => x.type == this.currentSite.wallet)?.address;
                         if (!params.address) {
                             throw new Error('Address is not defined.');
                         }
@@ -6823,6 +6846,11 @@
         }
 
         waitOrMoveNext() {
+            if (this.currentSite.isExternal) {
+                if (!this.tab || (this.tab && this.tab.closed)) {
+                    this.timeWaiting = this.getCustomOrDefaultVal('defaults.timeout', this.useOverride('defaults.timeout')) * 60 + 9999;
+                }
+            }
             if (!shared.hasErrors(this.currentSite.id) && !this.hasTimedOut()) {
                 ui.log({ schedule: this.uuid, 
                     siteName: this.currentSite.name,
@@ -7057,7 +7085,7 @@
             { id: '17', name: 'FreeBitco.in', cmc: '1', url: new URL('https://freebitco.in/'), rf: '?r=41092365', type: K.WebType.FREEBITCOIN, clId: 36 },
             { id: '18', name: 'FaucetPay PTC', cmc: '825', url: new URL('https://faucetpay.io/ptc'), rf: '?r=41092365', type: K.WebType.FAUCETPAY, clId: 159 },
             { id: '52', name: 'BigBtc', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://bigbtc.win/'), rf: '?id=39255652', type: K.WebType.BIGBTC, clId: 200 },
-            { id: '53', name: 'BestChange', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.bestchange.com/'), rf: ['index.php?nt=bonus&p=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.BESTCHANGE, clId: 163 },
+            { id: '53', name: 'BestChange', cmc: '1', url: new URL('https://www.bestchange.com/'), rf: ['index.php?nt=bonus&p=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.BESTCHANGE, clId: 163 },
             { id: '58', name: 'BF BTC', cmc: '1', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
             { id: '61', name: 'Dutchy', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
             { id: '62', name: 'Dutchy Monthly Coin', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/coin_roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
@@ -7069,7 +7097,7 @@
             { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
             { id: '87', name: 'CF BTT', cmc: '16086', coinRef: 'BTT', url: new URL('https://freebittorrent.com/free'), rf: '?ref=2050', type: K.WebType.CRYPTOSFAUCETS, clId: 218 },
             { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
-            { id: '93', name: 'YCoin', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
+            { id: '93', name: 'YCoin', cmc: '1', url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
             { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
             { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 },
             { id: '96', name: 'Top Ltc', cmc: '2', wallet: K.WalletType.FP_LTC, url: new URL('https://ltcfaucet.top/'), rf: ['?r=MWSsGAQTYD7GH5o4oAehC8Et5PyMBfhnKK'], type: K.WebType.CTOP, clId: 239 },
@@ -7214,7 +7242,6 @@
                     try {
                         mig00200799 = shared.getConfig().migrations.find(x => x.version == '00200799' && !x.applied);
                     } catch (err) {}
-                    console.info(`Migration 00200799: ${mig00200799 ? 'APPLYING' : 'previously applied or not needed'}`);
 
                     let allCFs = manager.getFaucetsForPromotion().map( cf => cf.id );
                     storedData.forEach( function (element, idx, arr) {

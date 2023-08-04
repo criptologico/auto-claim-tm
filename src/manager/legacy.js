@@ -139,7 +139,7 @@ function createManager() {
                 try {
                     mig00200799 = shared.getConfig().migrations.find(x => x.version == '00200799' && !x.applied);
                 } catch (err) {}
-                console.info(`Migration 00200799: ${mig00200799 ? 'APPLYING' : 'previously applied or not needed'}`);
+                // console.info(`Migration 00200799: ${mig00200799 ? 'APPLYING' : 'previously applied or not needed'}`);
 
                 let allCFs = manager.getFaucetsForPromotion().map( cf => cf.id );
                 storedData.forEach( function (element, idx, arr) {

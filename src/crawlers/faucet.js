@@ -153,7 +153,7 @@ class Faucet {
                     return;
                 }
             }
-            if (this._elements.success.isUserFriendly) {
+            if (this._elements.success?.isUserFriendly) {
                 shared.devlog('Successful run');
                 return this.updateResult();
             } else if(this._actions.altValidation) {

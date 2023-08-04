@@ -51,7 +51,7 @@ const sites = [
     // { id: '50', name: 'OK Ltc', cmc: '2', wallet: K.WalletType.FP_LTC, url: new URL('https://ltc-ok.net/'), rf: 'index.php?r=MEmxLqYzZdMsEswUQkqL5aawT5UsqYwYgr', type: K.WebType.OKFAUCET },
     // { id: '51', name: 'OK Trx', cmc: '1958', wallet: K.WalletType.FP_TRX, url: new URL('https://trx-ok.net/'), rf: 'index.php?r=TSocuzJ6ADUoQ49v28BXN2jo3By6awwHvj', type: K.WebType.OKFAUCET },
     { id: '52', name: 'BigBtc', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://bigbtc.win/'), rf: '?id=39255652', type: K.WebType.BIGBTC, clId: 200 },
-    { id: '53', name: 'BestChange', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.bestchange.com/'), rf: ['index.php?nt=bonus&p=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.BESTCHANGE, clId: 163 },
+    { id: '53', name: 'BestChange', cmc: '1', url: new URL('https://www.bestchange.com/'), rf: ['index.php?nt=bonus&p=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.BESTCHANGE, clId: 163 },
     // { id: '54', name: 'Litking.biz', cmc: '2', url: new URL('https://litking.biz/'), rf: 'signup?r=159189', type: K.WebType.KINGBIZ, clId: 164 },
     // { id: '55', name: 'Bitking.biz', cmc: '1', url: new URL('https://bitking.biz/'), rf: 'signup?r=90003', type: K.WebType.KINGBIZ, clId: 165 },
     // { id: '56', name: 'OK Bch', cmc: '1831', wallet: K.WalletType.FP_BCH, url: new URL('https://faucetok.net/bch/'), rf: '?r=qz742nf2c30ktehlmn0pg6quqe8yuwp3evd75y8c0k', type: K.WebType.OKFAUCET }
@@ -91,7 +91,7 @@ const sites = [
     // { id: '90', name: 'Keran.co', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('https://keran.co/'), rf: ['?ref=91'], type: K.WebType.BAGIKERAN, clId: 220 },
     // { id: '91', name: 'Bagi.co.in', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('https://bagi.co.in/'), rf: ['?ref=64'], type: K.WebType.BAGIKERAN, clId: 221 },
     // { id: '92', name: 'SatoHost', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('http://sato.host/page/dashboard'), rf: ['?r=corecrafting'], type: K.WebType.FPB, clId: 233 },
-    { id: '93', name: 'YCoin', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
+    { id: '93', name: 'YCoin', cmc: '1', url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
     { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
     { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 },
     { id: '96', name: 'Top Ltc', cmc: '2', wallet: K.WalletType.FP_LTC, url: new URL('https://ltcfaucet.top/'), rf: ['?r=MWSsGAQTYD7GH5o4oAehC8Et5PyMBfhnKK'], type: K.WebType.CTOP, clId: 239 },
