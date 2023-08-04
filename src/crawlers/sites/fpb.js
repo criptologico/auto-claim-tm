@@ -101,7 +101,6 @@ class FPB extends Faucet {
             shared.devlog(`@clickRoll custom`);
             try {
                 window.scrollTo(0, document.body.scrollHeight);
-                this._elements.rollButton.scrollIntoView(false);
             } catch (err) { }
             this._elements.rollButton.click();
             setTimeout( () => { this._elements.rollButton.click(); }, 5000);

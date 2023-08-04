@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.41
+// @version      3.0.42
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -284,6 +284,24 @@
         }
         return output;
     };
+    String.prototype.formatUnicorn =  function () {
+        "use strict";
+        var str = this.toString();
+        if (arguments.length) {
+            var t = typeof arguments[0];
+            var key;
+            var args = ("string" === t || "number" === t) ?
+                Array.prototype.slice.call(arguments)
+                : arguments[0];
+
+            for (key in args) {
+                str = str.replace(new RegExp("\\{" + key + "\\}", "gi"), args[key]);
+            }
+        }
+
+        return str;
+    };
+
     Array.prototype.shuffle = function () {
         let currentIndex = this.length, temporaryValue, randomIndex;
 
@@ -1468,6 +1486,13 @@
         if (funcToRun)scriptNode.textContent = '(' + funcToRun.toString() + ')()';
         var element = document.getElementsByTagName ('head')[0] || document.body || document.documentElement;
         element.appendChild (scriptNode);
+    }
+    function addTemplateTag(templateId, content) {
+        let templateTag = document.createElement('template');
+        templateTag.id = templateId;
+        templateTag.textContent = content;
+        let container = document.body || document.documentElement;
+        container.appendChild(templateTag);
     }
 
     function isExpectedPtc() {
@@ -3779,7 +3804,7 @@
 
         clickRoll() {
             try {
-                this._elements.rollButton.scrollIntoView(false);
+                this._elements.rollButton.element.scrollIntoView(false);
                 this._elements.rollButton.click();
                 this.validateRun();
             } catch (err) {
@@ -4758,7 +4783,6 @@
             try {
                 try {
                     window.scrollTo(0, document.body.scrollHeight);
-                    this._elements.rollButton.scrollIntoView(false);
                 } catch (err) { }
                 this._elements.rollButton.click();
                 setTimeout( () => { this._elements.rollButton.click(); }, 5000);

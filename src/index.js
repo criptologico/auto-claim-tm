@@ -1292,6 +1292,13 @@
         var element = document.getElementsByTagName ('head')[0] || document.body || document.documentElement;
         element.appendChild (scriptNode);
     }
+    function addTemplateTag(templateId, content) {
+        let templateTag = document.createElement('template');
+        templateTag.id = templateId;
+        templateTag.textContent = content;
+        let container = document.body || document.documentElement;
+        container.appendChild(templateTag);
+    }
 
     function isExpectedPtc() {
         let runningList = shared.getRunningSites();
