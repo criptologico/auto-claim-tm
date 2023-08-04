@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.39
+// @version      3.0.40
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -3890,6 +3890,13 @@
                 }
             });
         }
+
+        setCurrentCaptcha() {
+            if ([...document.querySelectorAll('iframe')].map(x => x.src || '').filter(x => x.includes('hcaptcha.com')).length > 0) {
+                return;
+            }
+            this._elements.captcha = new RecaptchaWidget();
+        }
     }
 
     class BFRoll extends Faucet {
@@ -4068,7 +4075,9 @@
                 }
                 return true;
             } else {
-                return wait().preRun();
+                this.setCurrentCaptcha();
+                await wait();
+                return this.preRun();
             }
         }
     }
@@ -6019,13 +6028,6 @@
                 } catch (err) {}
             }, 3000);
         }
-
-        setCurrentCaptcha() {
-            if ([...document.querySelectorAll('iframe')].map(x => x.src || '').filter(x => x.includes('hcaptcha.com')).length > 0) {
-                return;
-            }
-            this._elements.captcha = new RecaptchaWidget();
-    }
 
         changeCaptcha() {
             let selections = [...document.querySelectorAll('div.text-center b')];

@@ -83,14 +83,6 @@ class AutoCMl extends Faucet {
         }, 3000);
     }
 
-    setCurrentCaptcha() {
-        if ([...document.querySelectorAll('iframe')].map(x => x.src || '').filter(x => x.includes('hcaptcha.com')).length > 0) {
-            // hcaptcha
-            return;
-        }
-        this._elements.captcha = new RecaptchaWidget();
-}
-
     changeCaptcha() {
         let selections = [...document.querySelectorAll('div.text-center b')];
         if (selections.length == 0) {

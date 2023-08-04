@@ -261,5 +261,13 @@ class Faucet {
             }
         });
     }
+
+    setCurrentCaptcha() {
+        if ([...document.querySelectorAll('iframe')].map(x => x.src || '').filter(x => x.includes('hcaptcha.com')).length > 0) {
+            // hcaptcha
+            return;
+        }
+        this._elements.captcha = new RecaptchaWidget();
+    }
 }
 

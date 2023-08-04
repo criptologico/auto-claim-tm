@@ -59,7 +59,9 @@ class DutchyRoll extends Faucet {
             }
             return true;
         } else {
-            return wait().preRun();
+            this.setCurrentCaptcha();
+            await wait();
+            return this.preRun();
             // if (document.readyState === 'complete') {
             //     shared.closeWithError(K.ErrorType.Error, `You need to set hCaptcha as default at ${(new URL('account.php', this._url)).href}`);
             // } else {
