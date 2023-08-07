@@ -14,7 +14,7 @@ We don't have a tutorial/documentation/how-to yet, but you can [join the discord
 
 To run this user script, you'll need an extension like [Tampermonkey](https://www.tampermonkey.net/).
 
-You can install the latest working version of the auto claim [HERE](raw/master/dist/autoclaim-dist.js).
+You can install the latest working version of the auto claim [HERE](raw/master/dist/autoclaim-dist.user.js).
 
 If you don't have an automated solver for captchas, [check our discord](https://discord.gg/23s9fDgHqe), where you can find some great free options.
 
