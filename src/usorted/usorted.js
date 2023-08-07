@@ -98,7 +98,7 @@ class Timer {
 
     isAlive() {
         return;
-        // Temporary disabled: mullfunctioning
+        // Temporary disabled: malfunctioning
         // if(!useTimer) {
         //     return;
         // }
