@@ -59,7 +59,13 @@ String.prototype.replacePlaceholders = function() {
     return str.replace(phRegex, (_, indentation, fName) => mixer(fName.trim(), indentation.length));
 };
 
-
+String.prototype.replaceHtmlPlaceholders = function() {
+  console.log('@replaceHtmlPlaceholders');
+  let str = this;
+  const phRegex = /([ \t]*)\/\*\*([^*]+)\*\*\//g;
+  console.log(phRegex);
+  return str.replace(phRegex, (_, indentation, fName) => htmlReader(fName.trim(), indentation.length));
+};
 
 /**
  * mixer: Reads the content of file, trims it, 
@@ -68,7 +74,12 @@ String.prototype.replacePlaceholders = function() {
  */
 const mixer = (file, indentation) => fs.readFileSync(workDir + file, 'utf-8').trim().removeTrailingLines().addIndentation(indentation).replacePlaceholders();
 
+// const htmlReader = (file, indentation) => `\`${fs.readFileSync(workDir + 'ui/html/' + file, 'utf-8').trim().removeTrailingLines().addIndentation(indentation)}\``;
+const htmlReader = (file, indentation) => `${fs.readFileSync(workDir + 'ui/html/' + file, 'utf-8').trim().removeTrailingLines().addIndentation(indentation)}`;
+
 let contents = mixer(mainFile);
+contents = contents.replaceHtmlPlaceholders();
+
 let filteredLines = contents.split('\n');
 
 if (defaults.removeComments) {

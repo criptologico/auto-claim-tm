@@ -1292,12 +1292,25 @@
         var element = document.getElementsByTagName ('head')[0] || document.body || document.documentElement;
         element.appendChild (scriptNode);
     }
-    function addTemplateTag(templateId, content) {
+    function addHtml(data) { // data = { target: '', where: '', content: '' }
+        document.querySelector(data.target).insertAdjacentHTML(data.where, data.content);
+    }
+    function addTemplateTag(data) {
         let templateTag = document.createElement('template');
-        templateTag.id = templateId;
-        templateTag.textContent = content;
+        templateTag.id = data.id;
+        templateTag.innerHTML = data.content;
         let container = document.body || document.documentElement;
         container.appendChild(templateTag);
+    }
+    function useTemplate(data) { // data = { templateId: '', target: '', where: '', replacements: {} }
+        let template = document.querySelector(`#${data.templateId}`).innerHTML;
+        let content = template.formatUnicorn(data.replacements);
+        addHtml({
+            target: data.target,
+            where: data.where,
+            content: content
+        });
+        // let template = document.querySelector('#tpl-requirement-row').innerHTML;
     }
 
     function isExpectedPtc() {

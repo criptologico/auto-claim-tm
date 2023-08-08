@@ -520,6 +520,12 @@ function createUi() {
     function appendHtml(schedules) {
         let html ='';
         // html = await GM_getResourceText("r_html")
+        let tgt = document.querySelector('div.row.py-3');
+        if (tgt) {
+            let rowDiv = document.createElement('div');
+            rowDiv.innerHTML = '<div class="row py-3 ac-log"><div class="col-12 justify-content-center"><div class="card"><div class="card-body" id="referral-table"></div></div></div></div>';
+            tgt.after(rowDiv);
+        }
 
         html += '<div class="modal fade" id="confirmable-modal" tabindex="-1" role="dialog" aria-hidden="true">';
         html += '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">';
@@ -568,35 +574,28 @@ function createUi() {
         html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'wallet\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div></div>';
         html += '   </div>';
 
-        //Requirements
-        const tempRequirementsList = [
-            { id: '1', name: 'HCaptcha Solver', description: 'A solver for HCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
-            { id: '2', name: 'Recaptcha Solver', description: 'A solver for ReCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
-            { id: '3', name: 'Cloudflare Challenge Bypass', description: 'A solver for Cloudflare/Turnstile challenges', suggestion: `Auto clicker user script (free)<br><a  href="https://sharetext.me/knpmyolewq" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
-            // { id: '4', name: 'Antibot Solver', description: 'A solver for Antibot/AB word challenges', suggestion: 'Latest AB Links Solver user script (free)' },
-            // { id: '5', name: 'GPCaptcha Solver', description: 'A solver for GP Captcha challenges', suggestion: 'Latest GP Captcha solver user script (free)' },
-            { id: '6', name: 'Active Tab/Window', description: 'The site requires the tab to be active.', suggestion: `<a  href="https://bit.ly/3Y28lpA" target="_blank"><i class="fa fa-external-link-alt"></i> User Script</a> or <a href="https://bit.ly/3q0H4Ht" target="_blank"><i class="fa fa-external-link-alt"></i> Extension</a>` },
-            // { id: '7', name: 'GeeTest Solver', description: 'A solver for GeeTest challenges.', suggestion: 'MB Solver (paid service), GeeTest User Script (free, solves only the puzzles, requires the tab to be active)' },
-        ];
-        html += '  <div class="modal-content bg-beige d-none" id="modal-requirements">';
-        html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-exclamation-circle"></i> Other requirements</h5></div>';
-        html += '    <div class="modal-body">';
-        html += `<div class="callout callout-warning m-3"><p class="text-justify">Some sites might require specific tools like captcha solvers that are not including in the script.</p></div>`;
-        html += '     <div><table class="table custom-table-striped" id="requirements-table">';
-        for(let r=0; r< tempRequirementsList.length; r++) {
-            let req = tempRequirementsList[r];
-            html += `<tr><td>${req.name}</td><td>${req.description}</td><td>${req.suggestion}</td></tr>`;
-        }
-        html += '          <thead><tr><th class="">Name</th><th class="">Description</th><th class="">Suggestion</th></tr></thead>';
-        html += '          <tbody class="overflow-auto" id="requirements-table-body">';
+        // document.body.appendChild(document.querySelector('#tpl-modal').content);
+      
+        //Requirements (old)
+        // html += '  <div class="modal-content bg-beige d-none" id="modal-requirements">';
+        // html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-exclamation-circle"></i> Other requirements</h5></div>';
+        // html += '    <div class="modal-body">';
+        // html += `<div class="callout callout-warning m-3"><p class="text-justify">Some sites might require specific tools like captcha solvers that are not including in the script.</p></div>`;
+        // html += '     <div><table class="table custom-table-striped" id="requirements-table">';
+        // for(let r=0; r< tempRequirementsList.length; r++) {
+        //     let req = tempRequirementsList[r];
+        //     html += `<tr><td>${req.name}</td><td>${req.description}</td><td>${req.suggestion}</td></tr>`;
+        // }
+        // html += '          <thead><tr><th class="">Name</th><th class="">Description</th><th class="">Suggestion</th></tr></thead>';
+        // html += '          <tbody class="overflow-auto" id="requirements-table-body">';
     
-        html += '</tbody></table>';
-        html += '     </div>';
-        html += '    </div>';
-        html += '    <div class="modal-footer">';
-        html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
-        html += '    </div>';
-        html += '   </div>';
+        // html += '</tbody></table>';
+        // html += '     </div>';
+        // html += '    </div>';
+        // html += '    <div class="modal-footer">';
+        // html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
+        // html += '    </div>';
+        // html += '   </div>';
 
         //Info
         html += '  <div class="modal-content bg-beige d-none" id="modal-info">';
@@ -1031,13 +1030,6 @@ function createUi() {
         let wrapper = document.createElement('div');
         wrapper.innerHTML = html.trim();
 
-        let tgt = document.querySelector('div.row.py-3');
-        if (tgt) {
-            let rowDiv = document.createElement('div');
-            rowDiv.innerHTML = '<div class="row py-3 ac-log"><div class="col-12 justify-content-center"><div class="card"><div class="card-body" id="referral-table"></div></div></div></div>';
-            tgt.after(rowDiv);
-        }
-
         let target = document.getElementById('referral-table');
         target.parentNode.insertBefore(wrapper, target);
         document.getElementById('schedule-container').appendChild( createScheduleTable() );
@@ -1051,6 +1043,36 @@ function createUi() {
             let discord = document.createElement('div');
             discord.innerHTML = '<a class="btn m-2 btn-primary" href="https://discord.gg/23s9fDgHqe" target="_blank"><div class="">discord</div></a>';
             document.querySelector('.navbar-nav').prepend(discord);
+        }
+        // Requirements (new)
+        addHtml({
+            target: '#modal-dlg .modal-dialog',
+            where: 'afterbegin',
+            content: `/**other-requirements.html**/`
+        });
+        addTemplateTag({
+            id: 'tpl-requirement-row',
+            content: `/**tpl-requirement-row.html**/`
+        });
+        const tempRequirementsList = [
+            { id: '1', name: 'HCaptcha Solver', description: 'A solver for HCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+            { id: '2', name: 'Recaptcha Solver', description: 'A solver for ReCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+            { id: '3', name: 'Cloudflare Challenge Bypass', description: 'A solver for Cloudflare/Turnstile challenges', suggestion: `Auto clicker user script (free)<br><a  href="https://sharetext.me/knpmyolewq" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+            // { id: '4', name: 'Antibot Solver', description: 'A solver for Antibot/AB word challenges', suggestion: 'Latest AB Links Solver user script (free)' },
+            // { id: '5', name: 'GPCaptcha Solver', description: 'A solver for GP Captcha challenges', suggestion: 'Latest GP Captcha solver user script (free)' },
+            { id: '6', name: 'Active Tab/Window', description: 'The site requires the tab to be active. A good option is Tab Revolver Extension, which will loop the tabs opened in a specific window.', suggestion: `<a  href="https://bit.ly/3Y28lpA" target="_blank"><i class="fa fa-external-link-alt"></i> User Script</a> or <a href="https://bit.ly/3q0H4Ht" target="_blank"><i class="fa fa-external-link-alt"></i> Extension</a>` },
+            // { id: '7', name: 'GeeTest Solver', description: 'A solver for GeeTest challenges.', suggestion: 'MB Solver (paid service), GeeTest User Script (free, solves only the puzzles, requires the tab to be active)' },
+        ];
+        for(let r=0; r< tempRequirementsList.length; r++) {
+            let req = tempRequirementsList[r];
+            useTemplate({
+                templateId: 'tpl-requirement-row',
+                target: '#requirements-table-body',
+                where: 'afterbegin',
+                replacements: req
+            });
+            // data = { templateId: '', target: '', where: '', replacements: {} }
+            // html += `<tr><td>${req.name}</td><td>${req.description}</td><td>${req.suggestion}</td></tr>`;
         }
     };
     function createPromoTable(faucets) {
