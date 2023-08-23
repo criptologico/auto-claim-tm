@@ -546,8 +546,10 @@
             };
             function closeWithError(errorType, errorMessage) {
                 addError(errorType, errorMessage);
-                shared.devlog(`${window.location.href} closing with error msg`);
                 window.close();
+                setInterval(() => {
+                    window.close();
+                }, 15000);
             };
             function clearFlowControl(schedule) {
                 shared.devlog(`[${schedule}] clearFlowControl for ${schedule}`);

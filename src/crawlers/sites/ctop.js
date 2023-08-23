@@ -23,6 +23,10 @@ class CTop extends Faucet {
             shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Out of Funds');
             return;
         }
+        if(this.hasErrorMessage('faucet is currently disabled')) {
+            shared.closeWithError(K.ErrorType.FAUCET_EMPTY, 'Faucet is disabled');
+            return;
+        }
 
         let claimed = this.readClaimed();
         if (claimed != 0) {
