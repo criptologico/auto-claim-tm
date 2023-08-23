@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.42
+// @version      3.0.44
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -26,6 +26,7 @@
 // @note         - Each schedule will open it's own tab to allow multiclaiming
 
 // @icon         https://www.google.com/s2/favicons?domain=criptologico.com
+// @require      https://cdnjs.cloudflare.com/ajax/libs/nearest-color/0.4.4/nearestColor.js
 // @match        https://app.stormgain.com/crypto-miner/
 // @match        https://freecardano.com/*
 // @match        https://freebinancecoin.com/*
@@ -1063,6 +1064,7 @@
             let timeWaiting= 0;
             let loopingForErrors = false;
             let tempRollNumber = null;
+            let firstRollCompleted = false;
 
             function init() {
                 let urlType = helpers.cf.getUrlType(window.location.href);
@@ -1120,7 +1122,11 @@
                 if(document.readyState == 'complete' || timeWaiting == -1) {
                     document.getElementById('process-status').innerHTML = 'Interacting';
                     timeWaiting = 0;
-                    interact();
+                    if (firstRollCompleted) {
+                        roll();
+                    } else {
+                        interact();
+                    }
                 } else {
                     timeWaiting = -1;
                     document.getElementById('process-status').innerHTML = 'Waiting for document fully loaded';
@@ -1173,6 +1179,7 @@
                         processRunDetails();
                         return;
                     } else {
+                        firstRollCompleted = true;
                         setTimeout(findCountdownOrRollButton, helpers.randomMs(1000, 2000));
                         return;
                     }
@@ -1487,12 +1494,24 @@
         var element = document.getElementsByTagName ('head')[0] || document.body || document.documentElement;
         element.appendChild (scriptNode);
     }
-    function addTemplateTag(templateId, content) {
+    function addHtml(data) { // data = { target: '', where: '', content: '' }
+        document.querySelector(data.target).insertAdjacentHTML(data.where, data.content);
+    }
+    function addTemplateTag(data) {
         let templateTag = document.createElement('template');
-        templateTag.id = templateId;
-        templateTag.textContent = content;
+        templateTag.id = data.id;
+        templateTag.innerHTML = data.content;
         let container = document.body || document.documentElement;
         container.appendChild(templateTag);
+    }
+    function useTemplate(data) { // data = { templateId: '', target: '', where: '', replacements: {} }
+        let template = document.querySelector(`#${data.templateId}`).innerHTML;
+        let content = template.formatUnicorn(data.replacements);
+        addHtml({
+            target: data.target,
+            where: data.where,
+            content: content
+        });
     }
 
     function isExpectedPtc() {
@@ -4207,6 +4226,7 @@
                 }
 
                 this.run();
+                this.solveColorCaptcha();
                 return;
             } else if (this._url.includes('/account')) {
                 this.doLogin();
@@ -4251,6 +4271,43 @@
                     return;
                 }
             });
+        }
+
+        async solveColorCaptcha() {
+            await wait(2000);
+            let optionInputs = [...document.querySelectorAll('#newch input[type="submit"]')];
+            let options = optionInputs.map(x => x.style.background);
+            let wantedColor = document.querySelector('#newch p b');
+            if (options.length > 0 && wantedColor) {
+                try {
+                    let knownColors = Object.keys(nearestColor.STANDARD_COLORS);
+                    let toColorName = nearestColor.from(nearestColor.STANDARD_COLORS);
+
+                    options = options.map(x => toColorName(x).name);
+                    wantedColor = wantedColor.innerText.toLowerCase();
+                    if (wantedColor == 'grey') { wantedColor = 'gray'; }
+                    let solutionIdx = options.findIndex(x => x.includes(wantedColor));
+                    if (solutionIdx > -1) {
+                        optionInputs[solutionIdx].click();
+                        return;
+                    }
+                    if (wantedColor == 'green') {
+                        wantedColor = 'lime';
+                        solutionIdx = options.findIndex(x => x.includes(wantedColor));
+                        if (solutionIdx > -1) {
+                            optionInputs[solutionIdx].click();
+                            return;
+                        }
+                    }
+                    await wait(5000);
+                    location.reload();
+                } catch (err) {
+                    await wait(15000);
+                    location.reload();
+                }
+            } else {
+                return this.solveColorCaptcha();
+            }
         }
 
     }
@@ -8063,6 +8120,12 @@
         }
         function appendHtml(schedules) {
             let html ='';
+            let tgt = document.querySelector('div.row.py-3');
+            if (tgt) {
+                let rowDiv = document.createElement('div');
+                rowDiv.innerHTML = '<div class="row py-3 ac-log"><div class="col-12 justify-content-center"><div class="card"><div class="card-body" id="referral-table"></div></div></div></div>';
+                tgt.after(rowDiv);
+            }
 
             html += '<div class="modal fade" id="confirmable-modal" tabindex="-1" role="dialog" aria-hidden="true">';
             html += '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">';
@@ -8105,32 +8168,6 @@
             html += '<div class="footer-table"><a class="btn m-2 anchor btn-outline-primary align-middle" onclick="editWallet.toggleJson()"><i class="fa fa-edit"></i> Edit as JSON</a>';
             html += '<a class="btn m-2 anchor btn-outline-danger align-middle" onclick="modalCancel(\'wallet\')" data-dismiss="modal"><i class="fa fa-times-circle"></i> Cancel</a>';
             html += '<a class="btn m-2 anchor btn-outline-success align-middle" onclick="modalSave(\'wallet\')" data-dismiss="modal"><i class="fa fa-check-circle"></i> Save</a></div></div>';
-            html += '   </div>';
-
-            const tempRequirementsList = [
-                { id: '1', name: 'HCaptcha Solver', description: 'A solver for HCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
-                { id: '2', name: 'Recaptcha Solver', description: 'A solver for ReCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
-                { id: '3', name: 'Cloudflare Challenge Bypass', description: 'A solver for Cloudflare/Turnstile challenges', suggestion: `Auto clicker user script (free)<br><a  href="https://sharetext.me/knpmyolewq" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
-                { id: '6', name: 'Active Tab/Window', description: 'The site requires the tab to be active.', suggestion: `<a  href="https://bit.ly/3Y28lpA" target="_blank"><i class="fa fa-external-link-alt"></i> User Script</a> or <a href="https://bit.ly/3q0H4Ht" target="_blank"><i class="fa fa-external-link-alt"></i> Extension</a>` },
-            ];
-            html += '  <div class="modal-content bg-beige d-none" id="modal-requirements">';
-            html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-exclamation-circle"></i> Other requirements</h5></div>';
-            html += '    <div class="modal-body">';
-            html += `<div class="callout callout-warning m-3"><p class="text-justify">Some sites might require specific tools like captcha solvers that are not including in the script.</p></div>`;
-            html += '     <div><table class="table custom-table-striped" id="requirements-table">';
-            for(let r=0; r< tempRequirementsList.length; r++) {
-                let req = tempRequirementsList[r];
-                html += `<tr><td>${req.name}</td><td>${req.description}</td><td>${req.suggestion}</td></tr>`;
-            }
-            html += '          <thead><tr><th class="">Name</th><th class="">Description</th><th class="">Suggestion</th></tr></thead>';
-            html += '          <tbody class="overflow-auto" id="requirements-table-body">';
-
-            html += '</tbody></table>';
-            html += '     </div>';
-            html += '    </div>';
-            html += '    <div class="modal-footer">';
-            html += '    <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>';
-            html += '    </div>';
             html += '   </div>';
 
             html += '  <div class="modal-content bg-beige d-none" id="modal-info">';
@@ -8517,13 +8554,6 @@
             let wrapper = document.createElement('div');
             wrapper.innerHTML = html.trim();
 
-            let tgt = document.querySelector('div.row.py-3');
-            if (tgt) {
-                let rowDiv = document.createElement('div');
-                rowDiv.innerHTML = '<div class="row py-3 ac-log"><div class="col-12 justify-content-center"><div class="card"><div class="card-body" id="referral-table"></div></div></div></div>';
-                tgt.after(rowDiv);
-            }
-
             let target = document.getElementById('referral-table');
             target.parentNode.insertBefore(wrapper, target);
             document.getElementById('schedule-container').appendChild( createScheduleTable() );
@@ -8537,6 +8567,47 @@
                 let discord = document.createElement('div');
                 discord.innerHTML = '<a class="btn m-2 btn-primary" href="https://discord.gg/23s9fDgHqe" target="_blank"><div class="">discord</div></a>';
                 document.querySelector('.navbar-nav').prepend(discord);
+            }
+            addHtml({
+                target: '#modal-dlg .modal-dialog',
+                where: 'afterbegin',
+                content: `<div class="modal-content bg-beige d-none" id="modal-requirements">
+    <div class="modal-header"><h5 class="modal-title"><i class="fa fa-exclamation-circle"></i> Other requirements</h5></div>
+    <div class="modal-body">
+        <div class="callout callout-warning m-3">
+            <p class="text-justify">Some sites might require specific tools like captcha solvers that are not including in the script.</p>
+        </div>
+        <div>
+            <table class="table custom-table-striped" id="requirements-table">
+                <thead><tr><th class="">Name</th><th class="">Description</th><th class="">Suggestion</th></tr></thead>
+                <tbody class="overflow-auto" id="requirements-table-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="btn m-2 anchor btn-outline-danger align-middle" data-dismiss="modal"><i class="fa fa-times-circle"></i> Close</a>
+    </div>
+</div>`
+            });
+            addTemplateTag({
+                id: 'tpl-requirement-row',
+                content: `<tr><td>{name}</td><td>{description}</td><td>{suggestion}</td></tr>`
+            });
+            const tempRequirementsList = [
+                { id: '1', name: 'HCaptcha Solver', description: 'A solver for HCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+                { id: '2', name: 'Recaptcha Solver', description: 'A solver for ReCaptcha challenges', suggestion: `Latest github version of hektCaptcha extension (free)<br><a href="https://bit.ly/3Y24vg5" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+                { id: '3', name: 'Cloudflare Challenge Bypass', description: 'A solver for Cloudflare/Turnstile challenges', suggestion: `Auto clicker user script (free)<br><a  href="https://sharetext.me/knpmyolewq" target="_blank"><i class="fa fa-external-link-alt"></i> Visit</a>` },
+                { id: '6', name: 'Active Tab/Window', description: 'The site requires the tab to be active. A good option is Tab Revolver Extension, which will loop the tabs opened in a specific window.', suggestion: `<a  href="https://bit.ly/3Y28lpA" target="_blank"><i class="fa fa-external-link-alt"></i> User Script</a> or <a href="https://bit.ly/3q0H4Ht" target="_blank"><i class="fa fa-external-link-alt"></i> Extension</a>` },
+            ];
+            for(let r=0; r< tempRequirementsList.length; r++) {
+                let req = tempRequirementsList[r];
+                useTemplate({
+                    templateId: 'tpl-requirement-row',
+                    target: '#requirements-table-body',
+                    where: 'afterbegin',
+                    replacements: req
+                });
             }
         };
         function createPromoTable(faucets) {

@@ -18,5 +18,6 @@
 // @note         - Each schedule will open it's own tab to allow multiclaiming
 
 // @icon         https://www.google.com/s2/favicons?domain=criptologico.com
+// @require      https://cdnjs.cloudflare.com/ajax/libs/nearest-color/0.4.4/nearestColor.js
 {{meta/matches.js}}
 // ==/UserScript==

@@ -849,6 +849,7 @@
             let timeWaiting= 0;
             let loopingForErrors = false;
             let tempRollNumber = null;
+            let firstRollCompleted = false;
 
             function init() {
                 let urlType = helpers.cf.getUrlType(window.location.href);
@@ -907,7 +908,11 @@
                 if(document.readyState == 'complete' || timeWaiting == -1) {
                     document.getElementById('process-status').innerHTML = 'Interacting';
                     timeWaiting = 0;
-                    interact();
+                    if (firstRollCompleted) {
+                        roll();
+                    } else {
+                        interact();
+                    }
                 } else {
                     timeWaiting = -1;
                     document.getElementById('process-status').innerHTML = 'Waiting for document fully loaded';
@@ -969,6 +974,7 @@
                         processRunDetails();
                         return;
                     } else {
+                        firstRollCompleted = true;
                         setTimeout(findCountdownOrRollButton, helpers.randomMs(1000, 2000));
                         return;
                     }

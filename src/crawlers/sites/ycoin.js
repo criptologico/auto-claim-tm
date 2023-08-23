@@ -108,6 +108,7 @@ class YCoin extends Faucet {
             }
 
             this.run();
+            this.solveColorCaptcha();
             return;
         } else if (this._url.includes('/account')) {
             this.doLogin();
@@ -156,6 +157,47 @@ class YCoin extends Faucet {
                 return;
             }
         });
+    }
+
+    async solveColorCaptcha() {
+        await wait(2000);
+        let optionInputs = [...document.querySelectorAll('#newch input[type="submit"]')];
+        let options = optionInputs.map(x => x.style.background);
+        let wantedColor = document.querySelector('#newch p b');
+        if (options.length > 0 && wantedColor) {
+            try {
+                let knownColors = Object.keys(nearestColor.STANDARD_COLORS);
+                let toColorName = nearestColor.from(nearestColor.STANDARD_COLORS);
+
+                options = options.map(x => toColorName(x).name);
+                wantedColor = wantedColor.innerText.toLowerCase();
+                if (wantedColor == 'grey') { wantedColor = 'gray'; }
+                let solutionIdx = options.findIndex(x => x.includes(wantedColor));
+                if (solutionIdx > -1) {
+                    console.log('about to click #' + solutionIdx);
+                    optionInputs[solutionIdx].click();
+                    return;
+                }
+                if (wantedColor == 'green') {
+                    wantedColor = 'lime';
+                    solutionIdx = options.findIndex(x => x.includes(wantedColor));
+                    if (solutionIdx > -1) {
+                        console.log('about to click #' + solutionIdx);
+                        optionInputs[solutionIdx].click();
+                        return;
+                    }
+                }
+                shared.devlog('No matching color found');
+                await wait(5000);
+                location.reload();
+            } catch (err) {
+                shared.devlog('Error looking for color to click');
+                await wait(15000);
+                location.reload();
+            }
+        } else {
+            return this.solveColorCaptcha();
+        }
     }
 
 }
