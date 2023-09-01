@@ -87,6 +87,7 @@ const K = Object.freeze({
         FP_SOL: 113,
         FP_MATIC: 114,
         FP_XRP: 115,
+        FP_ADA: 116,
         EC: 200,
         BTC: 1,
         LTC: 2

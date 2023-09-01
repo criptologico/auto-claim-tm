@@ -25,6 +25,7 @@ function createManager() {
         { id: '113', name: 'FaucetPay SOL (Solana)', type: K.WalletType.FP_SOL },
         { id: '114', name: 'FaucetPay MATIC (Polygon)', type: K.WalletType.FP_MATIC },
         // { id: '115', name: 'FaucetPay XRP (Ripple)', type: K.WalletType.FP_XRP }, // Define format... addr|tag?
+        { id: '116', name: 'FaucetPay ADA (Cardano)', type: K.WalletType.FP_ADA },
         { id: '200', name: 'ExpressCrypto (EC-UserId-XXXXXX)', type: K.WalletType.EC },
         { id: '1', name: 'BTC Alternative Address', type: K.WalletType.BTC }
         //                { id: '2', name: 'LTC Address', type: K.WalletType.LTC }

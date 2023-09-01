@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.45
+// @version      3.0.46
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -192,6 +192,7 @@
             FP_SOL: 113,
             FP_MATIC: 114,
             FP_XRP: 115,
+            FP_ADA: 116,
             EC: 200,
             BTC: 1,
             LTC: 2
@@ -6914,7 +6915,7 @@
                 }
 
                 if (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
-                    let promoCode = CFPromotions.hasPromoAvailable(this.currentSite.id);
+                    let promoCode = false;
                     if (promoCode) {
                         this.timeWaiting = 0;
 
@@ -7232,6 +7233,7 @@
             { id: '112', name: 'FaucetPay ZEC (Zcash)', type: K.WalletType.FP_ZEC },
             { id: '113', name: 'FaucetPay SOL (Solana)', type: K.WalletType.FP_SOL },
             { id: '114', name: 'FaucetPay MATIC (Polygon)', type: K.WalletType.FP_MATIC },
+            { id: '116', name: 'FaucetPay ADA (Cardano)', type: K.WalletType.FP_ADA },
             { id: '200', name: 'ExpressCrypto (EC-UserId-XXXXXX)', type: K.WalletType.EC },
             { id: '1', name: 'BTC Alternative Address', type: K.WalletType.BTC }
         ];
