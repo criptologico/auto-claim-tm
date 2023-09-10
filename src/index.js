@@ -1102,7 +1102,18 @@
                 }
                 return false;
             };
+            function hasToWaitForPromotionCaptcha() {
+                let captchaTag = document.querySelector('#instructions');
+                if (captchaTag && captchaTag.innerText.toLowerCase().includes('complete the captcha')) {
+                    return true;
+                }
+                return false;
+            };
             function findPromotionTag() {
+                if (hasToWaitForPromotionCaptcha()) {
+                    setTimeout(findPromotionTag, helpers.randomMs(2000, 5000));
+                    return;
+                }
                 if( isPromotionTagVisible() ) {
                     processRunDetails();
                 } else {

@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.46
+// @version      3.0.47
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -1305,7 +1305,18 @@
                 }
                 return false;
             };
+            function hasToWaitForPromotionCaptcha() {
+                let captchaTag = document.querySelector('#instructions');
+                if (captchaTag && captchaTag.innerText.toLowerCase().includes('complete the captcha')) {
+                    return true;
+                }
+                return false;
+            };
             function findPromotionTag() {
+                if (hasToWaitForPromotionCaptcha()) {
+                    setTimeout(findPromotionTag, helpers.randomMs(2000, 5000));
+                    return;
+                }
                 if( isPromotionTagVisible() ) {
                     processRunDetails();
                 } else {
@@ -6915,7 +6926,7 @@
                 }
 
                 if (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
-                    let promoCode = false;
+                    let promoCode = CFPromotions.hasPromoAvailable(this.currentSite.id);
                     if (promoCode) {
                         this.timeWaiting = 0;
 
