@@ -1461,10 +1461,10 @@
                 SiteProcessor = new CDiversity();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
                 break;
-            case K.WebType.BSCADS:
-                SiteProcessor = new BscAds();
-                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
-                break;
+            // case K.WebType.BSCADS:
+            //     SiteProcessor = new BscAds();
+            //     setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
+            //     break;
             case K.WebType.CTOP:
                 SiteProcessor = new CTop();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));

@@ -93,7 +93,7 @@ const sites = [
     // { id: '92', name: 'SatoHost', cmc: '825', wallet: K.WalletType.FP_USDT, url: new URL('http://sato.host/page/dashboard'), rf: ['?r=corecrafting'], type: K.WebType.FPB, clId: 233 },
     { id: '93', name: 'YCoin', cmc: '1', url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
     { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
-    { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 },
+    // { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 },
     { id: '96', name: 'Top Ltc', cmc: '2', wallet: K.WalletType.FP_LTC, url: new URL('https://ltcfaucet.top/'), rf: ['?r=MWSsGAQTYD7GH5o4oAehC8Et5PyMBfhnKK'], type: K.WebType.CTOP, clId: 239 },
     { id: '97', name: 'Top Bnb', cmc: '1839', wallet: K.WalletType.FP_BNB, url: new URL('https://bnbfaucet.top/'), rf: ['?r=0x1e8CB8A79E347C54aaF21C0502892B58F97CC07A'], type: K.WebType.CTOP, clId: 240 },
     { id: '98', name: 'Top Doge', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://dogecoinfaucet.top/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.CTOP, clId: 241 },
