@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.47
+// @version      3.0.48
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -67,8 +67,6 @@
 // @match        https://freepancake.com/*
 // @match        https://freegridco.in/*
 // @match        https://freematic.com/*
-// @match        https://freebch.fun/page/dashboard*
-// @match        https://freebch.fun/account/login/not-logged-in
 // @match        https://james-trussy.com/*
 // @match        https://www.only1024.com/f*
 // @match        https://criptologico.com/tools/cc*
@@ -76,7 +74,6 @@
 // @match        https://freebfg.com/*
 // @match        https://yescoiner.com/*
 // @match        https://coindiversity.io/*
-// @match        https://bscads.com/*
 // @match        https://ltcfaucet.top/*
 // @match        https://bnbfaucet.top/*
 // @match        https://dogecoinfaucet.top/*
@@ -504,6 +501,7 @@
                     'defaults.sleepMode.min': "00:00",
                     'defaults.sleepMode.max': "01:00",
                     'cf.tryGetCodes': false,
+                    'cf.usePromoCodes': true,
                     'cf.rollOnce': false,
                     'cf.autologin': false,
                     'cf.credentials.mode': 1,
@@ -518,27 +516,15 @@
                     'bk.sleepMinutesIfIpBan': 75,
                     'bestchange.address': '101',
                     'ui.runtime': 0,
-                    'fpb.credentials.mode': 2,
-                    'fpb.credentials.username': 'YOUR_USERNAME',
-                    'fpb.credentials.password': 'YOURPASSWORD',
                     'bigbtc.postponeMinutes': '0',
-                    'fbch.credentials.mode': 2,
-                    'fbch.credentials.username': 'YOUR_USERNAME',
-                    'fbch.credentials.password': 'YOURPASSWORD',
                     'jtfey.credentials.mode': 2,
                     'jtfey.credentials.username': 'YOUR_USERNAME',
                     'jtfey.credentials.password': 'YOURPASSWORD',
-                    'shost.credentials.mode': 2,
-                    'shost.credentials.username': 'YOUR_USERNAME',
-                    'shost.credentials.password': 'YOURPASSWORD',
                     'ycoin.credentials.mode': 2,
                     'ycoin.credentials.username': 'YOUR_ACCOUNT_NUMBER',
                     'ycoin.credentials.password': 'YOURPASSWORD',
                     'bkclass.coin': 'LTC',
                     'bkclass.bcoin': 'LTC',
-                    'bscads.credentials.mode': 2,
-                    'bscads.credentials.username': 'YOUR_USERNAME',
-                    'bscads.credentials.password': 'YOURPASSWORD',
                     'migrations': [
                         {version: '00200799', applied: false} // migration to change pcodes status from error to usable due to ui changes
                     ]
@@ -1624,10 +1610,6 @@
                 SiteProcessor = new CDiversity();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
                 break;
-            case K.WebType.BSCADS:
-                SiteProcessor = new BscAds();
-                setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
-                break;
             case K.WebType.CTOP:
                 SiteProcessor = new CTop();
                 setTimeout(() => { SiteProcessor.init() }, helpers.randomMs(3000, 5000));
@@ -2180,24 +2162,12 @@
             let elCredentialsPassword = document.querySelector('[data-prop="cf.credentials.password"]');
             let elDevlogEnabled = document.querySelector('[data-prop="devlog.enabled"]');
             let elDevlogMaxLines = document.querySelector('[data-prop="devlog.maxLines"]');
-            let elFpigCredentialsMode = document.querySelector('[data-prop="fpb.credentials.mode"]');
-            let elFpigCredentialsUsername = document.querySelector('[data-prop="fpb.credentials.username"]');
-            let elFpigCredentialsPassword = document.querySelector('[data-prop="fpb.credentials.password"]');
-            let elFBchCredentialsMode = document.querySelector('[data-prop="fbch.credentials.mode"]');
-            let elFBchCredentialsUsername = document.querySelector('[data-prop="fbch.credentials.username"]');
-            let elFBchCredentialsPassword = document.querySelector('[data-prop="fbch.credentials.password"]');
-            let elSHostCredentialsMode = document.querySelector('[data-prop="shost.credentials.mode"]');
-            let elSHostCredentialsUsername = document.querySelector('[data-prop="shost.credentials.username"]');
-            let elSHostCredentialsPassword = document.querySelector('[data-prop="shost.credentials.password"]');
             let elJtfeyCredentialsMode = document.querySelector('[data-prop="jtfey.credentials.mode"]');
             let elJtfeyCredentialsUsername = document.querySelector('[data-prop="jtfey.credentials.username"]');
             let elJtfeyCredentialsPassword = document.querySelector('[data-prop="jtfey.credentials.password"]');
             let elYCoinCredentialsMode = document.querySelector('[data-prop="ycoin.credentials.mode"]');
             let elYCoinCredentialsUsername = document.querySelector('[data-prop="ycoin.credentials.username"]');
             let elYCoinCredentialsPassword = document.querySelector('[data-prop="ycoin.credentials.password"]');
-            let elBscadsCredentialsMode = document.querySelector('[data-prop="bscads.credentials.mode"]');
-            let elBscadsCredentialsUsername = document.querySelector('[data-prop="bscads.credentials.username"]');
-            let elBscadsCredentialsPassword = document.querySelector('[data-prop="bscads.credentials.password"]');
 
             let elPostpone = document.querySelector('[data-prop="defaults.postponeMinutes"]');
             let elPostponeMin = document.querySelector('[data-prop="defaults.postponeMinutes.min"]');
@@ -2272,30 +2242,6 @@
                 }
             }
 
-            elFpigCredentialsUsername.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
-            elFpigCredentialsPassword.disabled = ( (elFpigCredentialsMode.value == "2") ? true : false);
-            elFpigCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="fpb.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="fpb.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="fpb.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="fpb.credentials.password"]').disabled = false;
-                }
-            }
-
-            elSHostCredentialsUsername.disabled = ( (elSHostCredentialsMode.value == "2") ? true : false);
-            elSHostCredentialsPassword.disabled = ( (elSHostCredentialsMode.value == "2") ? true : false);
-            elSHostCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="shost.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="shost.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="shost.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="shost.credentials.password"]').disabled = false;
-                }
-            }
-
             elYCoinCredentialsUsername.disabled = ( (elYCoinCredentialsMode.value == "2") ? true : false);
             elYCoinCredentialsPassword.disabled = ( (elYCoinCredentialsMode.value == "2") ? true : false);
             elYCoinCredentialsMode.onchange = function (e) {
@@ -2308,18 +2254,6 @@
                 }
             }
 
-            elFBchCredentialsUsername.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
-            elFBchCredentialsPassword.disabled = ( (elFBchCredentialsMode.value == "2") ? true : false);
-            elFBchCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="fbch.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="fbch.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="fbch.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="fbch.credentials.password"]').disabled = false;
-                }
-            }
-
             elJtfeyCredentialsUsername.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
             elJtfeyCredentialsPassword.disabled = ( (elJtfeyCredentialsMode.value == "2") ? true : false);
             elJtfeyCredentialsMode.onchange = function (e) {
@@ -2329,18 +2263,6 @@
                 } else {
                     document.querySelector('[data-prop="jtfey.credentials.username"]').disabled = false;
                     document.querySelector('[data-prop="jtfey.credentials.password"]').disabled = false;
-                }
-            }
-
-            elBscadsCredentialsUsername.disabled = ( (elBscadsCredentialsMode.value == "2") ? true : false);
-            elBscadsCredentialsPassword.disabled = ( (elBscadsCredentialsMode.value == "2") ? true : false);
-            elBscadsCredentialsMode.onchange = function (e) {
-                if (e.target.value == "2") {
-                    document.querySelector('[data-prop="bscads.credentials.username"]').disabled = true;
-                    document.querySelector('[data-prop="bsdads.credentials.password"]').disabled = true;
-                } else {
-                    document.querySelector('[data-prop="bscads.credentials.username"]').disabled = false;
-                    document.querySelector('[data-prop="bscads.credentials.password"]').disabled = false;
                 }
             }
 
@@ -4662,109 +4584,6 @@
         }
     }
 
-    class BscAds extends Faucet {
-        constructor() {
-            let elements = {
-                rollButton: new ButtonWidget({selector: 'button.btn.btn-primary.btn-lg'}),
-                claimed: new ReadableWidget({selector: 'div.alert.alert-success', parser: Parsers.trimNaNs}),
-                captcha: new HCaptchaWidget(),
-                countdownMinutes: new CountdownWidget({selector: '#faucet_timer', parser: Parsers.fromTextTimer }), // 0 hours 15 minutes 36 seconds
-                success: new ReadableWidget({selector: 'div.alert.alert-success'}),
-                login: {
-                    inputUser: new TextboxWidget({ selector: 'input[name="username"]' }),
-                    inputPass: new TextboxWidget({ selector: 'input[name="password"]' }),
-                    inputSubmit: new ButtonWidget({ selector: 'button.btn' }),
-                    setCredentials: false
-                }
-            }
-
-            if(shared.getConfig()['bscads.credentials.mode'] == 1) {
-                elements.login.setCredentials = {
-                    username: shared.getConfig()['bscads.credentials.username'],
-                    password: shared.getConfig()['bscads.credentials.password']
-                };
-            }
-
-            let actions = {
-                readClaimed: true,
-                readBalance: false,
-                readRolledNumber: false
-            };
-            super(elements, actions);
-        }
-
-        init() {
-            if (this._url.includes('/faucet/access')) {
-                this.run();
-                return;
-            } else if (this._url.includes('/faucet')) {
-                this.doPrePostFaucet();
-                return;
-            } else if (this._url.includes('/login')) {
-                this.doLogin();
-                return;
-            } else {
-                location.replace('faucet');
-                return;
-            }
-        }
-
-        async doPrePostFaucet() {
-            return wait(10000).then( () => {
-                let button = document.querySelector('button.btn.btn-primary.btn-lg');
-                if (button) {
-                    button.click();
-                    return;
-                }
-                if (!button) {
-                    return this.run();
-
-                }
-            });
-        }
-
-        async doLogin() {
-            if (document.body.innerText.toLowerCase().includes('please wait during')) {
-                return wait(8000).then( () => {
-                    location.replace('faucet');
-                });
-            }
-            return wait().then( () => {
-                if (!this._elements.login.inputUser.isUserFriendly || !this._elements.login.inputPass.isUserFriendly || !this._elements.login.inputSubmit.isUserFriendly) {
-                    return this.doLogin();
-                }
-
-                let loginErrorDiv = document.querySelector('div.alert.alert-danger');
-                if (loginErrorDiv && loginErrorDiv.innerText.toLowerCase().includes('invalid')) {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, loginErrorDiv.innerText);
-                    return;
-                }
-
-                if (this._elements.login.setCredentials != false) {
-                    this._elements.login.inputUser.value = this._elements.login.setCredentials.username;
-                    this._elements.login.inputPass.value = this._elements.login.setCredentials.password;
-                }
-
-                try {
-                    this._elements.login.rememberMe.isUserFriendly.checked = true;
-                } catch (err) {}
-
-                if (this._elements.login.inputUser.value != '' && this._elements.login.inputPass.value != '' ) {
-                    this._elements.captcha.isSolved().then(() => {
-                        this._elements.login.inputSubmit.click();
-                        return;
-                    });
-                } else {
-                    shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
-                    return;
-                }
-            });
-        }
-
-        async preRun() {
-        }
-    }
-
     class FPB extends Faucet {
         constructor(sitePrefix = null) {
             let elements = {
@@ -6925,7 +6744,7 @@
                     this.closeTab();
                 }
 
-                if (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
+                if (shared.getConfig()['cf.usePromoCodes'] && this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
                     let promoCode = CFPromotions.hasPromoAvailable(this.currentSite.id);
                     if (promoCode) {
                         this.timeWaiting = 0;
@@ -7202,7 +7021,6 @@
             { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
             { id: '93', name: 'YCoin', cmc: '1', url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
             { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
-            { id: '95', name: 'BscAds', cmc: '1839', url: new URL('https://bscads.com/'), rf: ['ref/corecrafting'], type: K.WebType.BSCADS, clId: 226 },
             { id: '96', name: 'Top Ltc', cmc: '2', wallet: K.WalletType.FP_LTC, url: new URL('https://ltcfaucet.top/'), rf: ['?r=MWSsGAQTYD7GH5o4oAehC8Et5PyMBfhnKK'], type: K.WebType.CTOP, clId: 239 },
             { id: '97', name: 'Top Bnb', cmc: '1839', wallet: K.WalletType.FP_BNB, url: new URL('https://bnbfaucet.top/'), rf: ['?r=0x1e8CB8A79E347C54aaF21C0502892B58F97CC07A'], type: K.WebType.CTOP, clId: 240 },
             { id: '98', name: 'Top Doge', cmc: '74', wallet: K.WalletType.FP_DOGE, url: new URL('https://dogecoinfaucet.top/'), rf: ['?r=D8Xgghu5gCryukwmxidFpSmw8aAKon2mEQ'], type: K.WebType.CTOP, clId: 241 },
@@ -8382,8 +8200,9 @@
 
             html += '         <div class="card m-1 collapsed-card"><div class="card-header">CryptosFaucets<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
             html += '           <div class="card-body px-4" style="display: none;">';
-            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
             html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.rollOnce" ><span class="slider round"></span></label> Roll once per round </div>';
+            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.usePromoCodes" ><span class="slider round"></span></label> Try to use promo codes every day (disable it if you are facing too many captcha timeouts) </div>';
+            html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
             html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.autologin" ><span class="slider round"></span></label> Autologin when necessary</div>';
             html += '           <select class="form-control" data-prop="cf.credentials.mode">';
             html += '            <option value="1">Use Email and Password</option><option value="2">Filled by 3rd party software/extension</option>';
@@ -8398,30 +8217,6 @@
             html += '           </select>';
             html += '       </div></div>';
 
-            html += '         <div class="card m-1 collapsed-card"><div class="card-header">FPig<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-            html += '           <div class="card-body px-4" style="display: none;">';
-            html += '           <label class="control-label">Login Mode</label>';
-            html += '           <select class="form-control" data-prop="fpb.credentials.mode">';
-            html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-            html += '           </select>';
-            html += '           <label class="control-label">E-Mail</label>';
-            html += '           <input maxlength="200" type="text" data-prop="fpb.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
-            html += '           <label class="control-label">Password</label>';
-            html += '           <input maxlength="200" type="password" data-prop="fpb.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-            html += '       </div></div>';
-
-            html += '         <div class="card m-1 collapsed-card"><div class="card-header">FreeBCH<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-            html += '           <div class="card-body px-4" style="display: none;">';
-            html += '           <label class="control-label">Login Mode</label>';
-            html += '           <select class="form-control" data-prop="fbch.credentials.mode">';
-            html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-            html += '           </select>';
-            html += '           <label class="control-label">E-Mail</label>';
-            html += '           <input maxlength="200" type="text" data-prop="fbch.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
-            html += '           <label class="control-label">Password</label>';
-            html += '           <input maxlength="200" type="password" data-prop="fbch.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-            html += '       </div></div>';
-
             html += '         <div class="card m-1 collapsed-card"><div class="card-header">JTFey<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
             html += '           <div class="card-body px-4" style="display: none;">';
             html += '           <label class="control-label">Login Mode</label>';
@@ -8432,18 +8227,6 @@
             html += '           <input maxlength="200" type="text" data-prop="jtfey.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
             html += '           <label class="control-label">Password</label>';
             html += '           <input maxlength="200" type="password" data-prop="jtfey.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-            html += '       </div></div>';
-
-            html += '         <div class="card m-1 collapsed-card"><div class="card-header">BscAds<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-            html += '           <div class="card-body px-4" style="display: none;">';
-            html += '           <label class="control-label">Login Mode</label>';
-            html += '           <select class="form-control" data-prop="bscads.credentials.mode">';
-            html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-            html += '           </select>';
-            html += '           <label class="control-label">E-Mail</label>';
-            html += '           <input maxlength="200" type="text" data-prop="bscads.credentials.username" required="required" class="form-control" placeholder="Username..."/>';
-            html += '           <label class="control-label">Password</label>';
-            html += '           <input maxlength="200" type="password" data-prop="bscads.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
             html += '       </div></div>';
 
             html += '         <div class="card m-1 collapsed-card"><div class="card-header">FaucetPay PTC<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
@@ -8466,18 +8249,6 @@
             html += '           <select class="form-control" data-prop="bestchange.address">';
             html += '            <option value="101">Faucet Pay BTC</option><option value="1">BTC Alt Address</option>';
             html += '           </select>';
-            html += '       </div></div>';
-
-            html += '         <div class="card m-1 collapsed-card"><div class="card-header">SatoHost<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-            html += '           <div class="card-body px-4" style="display: none;">';
-            html += '           <label class="control-label">Login Mode</label>';
-            html += '           <select class="form-control" data-prop="shost.credentials.mode">';
-            html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-            html += '           </select>';
-            html += '           <label class="control-label">E-Mail</label>';
-            html += '           <input maxlength="200" type="text" data-prop="shost.credentials.username" required="required" class="form-control" placeholder="Username..."/>';
-            html += '           <label class="control-label">Password</label>';
-            html += '           <input maxlength="200" type="password" data-prop="shost.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
             html += '       </div></div>';
 
             html += '         <div class="card m-1 collapsed-card"><div class="card-header">Yes Coiner<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';

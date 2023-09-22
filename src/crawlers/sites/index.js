@@ -8,8 +8,6 @@
 
 {{crawlers/sites/ctop.js}}
 
-// {{crawlers/sites/bscads.js}}
-
 {{crawlers/sites/fpb.js}}
 
 {{crawlers/sites/vieroll.js}}

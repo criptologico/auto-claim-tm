@@ -802,8 +802,9 @@ function createUi() {
 
         html += '         <div class="card m-1 collapsed-card"><div class="card-header">CryptosFaucets<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
         html += '           <div class="card-body px-4" style="display: none;">';
-        html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
         html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.rollOnce" ><span class="slider round"></span></label> Roll once per round </div>';
+        html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.usePromoCodes" ><span class="slider round"></span></label> Try to use promo codes every day (disable it if you are facing too many captcha timeouts) </div>';
+        html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.tryGetCodes" ><span class="slider round"></span></label> Auto update promo codes </div>';
         html += '          <div><label class="switch"><input type="checkbox" data-prop="cf.autologin" ><span class="slider round"></span></label> Autologin when necessary</div>';
         html += '           <select class="form-control" data-prop="cf.credentials.mode">';
         html += '            <option value="1">Use Email and Password</option><option value="2">Filled by 3rd party software/extension</option>';
@@ -818,29 +819,29 @@ function createUi() {
         html += '           </select>';
         html += '       </div></div>';
 
-        html += '         <div class="card m-1 collapsed-card"><div class="card-header">FPig<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-        html += '           <div class="card-body px-4" style="display: none;">';
-        html += '           <label class="control-label">Login Mode</label>';
-        html += '           <select class="form-control" data-prop="fpb.credentials.mode">';
-        html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-        html += '           </select>';
-        html += '           <label class="control-label">E-Mail</label>';
-        html += '           <input maxlength="200" type="text" data-prop="fpb.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
-        html += '           <label class="control-label">Password</label>';
-        html += '           <input maxlength="200" type="password" data-prop="fpb.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-        html += '       </div></div>';
+        // html += '         <div class="card m-1 collapsed-card"><div class="card-header">FPig<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
+        // html += '           <div class="card-body px-4" style="display: none;">';
+        // html += '           <label class="control-label">Login Mode</label>';
+        // html += '           <select class="form-control" data-prop="fpb.credentials.mode">';
+        // html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
+        // html += '           </select>';
+        // html += '           <label class="control-label">E-Mail</label>';
+        // html += '           <input maxlength="200" type="text" data-prop="fpb.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
+        // html += '           <label class="control-label">Password</label>';
+        // html += '           <input maxlength="200" type="password" data-prop="fpb.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
+        // html += '       </div></div>';
 
-        html += '         <div class="card m-1 collapsed-card"><div class="card-header">FreeBCH<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-        html += '           <div class="card-body px-4" style="display: none;">';
-        html += '           <label class="control-label">Login Mode</label>';
-        html += '           <select class="form-control" data-prop="fbch.credentials.mode">';
-        html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-        html += '           </select>';
-        html += '           <label class="control-label">E-Mail</label>';
-        html += '           <input maxlength="200" type="text" data-prop="fbch.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
-        html += '           <label class="control-label">Password</label>';
-        html += '           <input maxlength="200" type="password" data-prop="fbch.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-        html += '       </div></div>';
+        // html += '         <div class="card m-1 collapsed-card"><div class="card-header">FreeBCH<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
+        // html += '           <div class="card-body px-4" style="display: none;">';
+        // html += '           <label class="control-label">Login Mode</label>';
+        // html += '           <select class="form-control" data-prop="fbch.credentials.mode">';
+        // html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
+        // html += '           </select>';
+        // html += '           <label class="control-label">E-Mail</label>';
+        // html += '           <input maxlength="200" type="text" data-prop="fbch.credentials.username" required="required" class="form-control" placeholder="Email address..."/>';
+        // html += '           <label class="control-label">Password</label>';
+        // html += '           <input maxlength="200" type="password" data-prop="fbch.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
+        // html += '       </div></div>';
 
         html += '         <div class="card m-1 collapsed-card"><div class="card-header">JTFey<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
         html += '           <div class="card-body px-4" style="display: none;">';
@@ -854,17 +855,17 @@ function createUi() {
         html += '           <input maxlength="200" type="password" data-prop="jtfey.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
         html += '       </div></div>';
 
-        html += '         <div class="card m-1 collapsed-card"><div class="card-header">BscAds<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-        html += '           <div class="card-body px-4" style="display: none;">';
-        html += '           <label class="control-label">Login Mode</label>';
-        html += '           <select class="form-control" data-prop="bscads.credentials.mode">';
-        html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-        html += '           </select>';
-        html += '           <label class="control-label">E-Mail</label>';
-        html += '           <input maxlength="200" type="text" data-prop="bscads.credentials.username" required="required" class="form-control" placeholder="Username..."/>';
-        html += '           <label class="control-label">Password</label>';
-        html += '           <input maxlength="200" type="password" data-prop="bscads.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-        html += '       </div></div>';
+        // html += '         <div class="card m-1 collapsed-card"><div class="card-header">BscAds<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
+        // html += '           <div class="card-body px-4" style="display: none;">';
+        // html += '           <label class="control-label">Login Mode</label>';
+        // html += '           <select class="form-control" data-prop="bscads.credentials.mode">';
+        // html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
+        // html += '           </select>';
+        // html += '           <label class="control-label">E-Mail</label>';
+        // html += '           <input maxlength="200" type="text" data-prop="bscads.credentials.username" required="required" class="form-control" placeholder="Username..."/>';
+        // html += '           <label class="control-label">Password</label>';
+        // html += '           <input maxlength="200" type="password" data-prop="bscads.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
+        // html += '       </div></div>';
 
         html += '         <div class="card m-1 collapsed-card"><div class="card-header">FaucetPay PTC<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
         html += '           <div class="card-body px-4" style="display: none;">';
@@ -912,17 +913,17 @@ function createUi() {
         // html += '           </select>';
         // html += '       </div></div>';
 
-        html += '         <div class="card m-1 collapsed-card"><div class="card-header">SatoHost<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
-        html += '           <div class="card-body px-4" style="display: none;">';
-        html += '           <label class="control-label">Login Mode</label>';
-        html += '           <select class="form-control" data-prop="shost.credentials.mode">';
-        html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
-        html += '           </select>';
-        html += '           <label class="control-label">E-Mail</label>';
-        html += '           <input maxlength="200" type="text" data-prop="shost.credentials.username" required="required" class="form-control" placeholder="Username..."/>';
-        html += '           <label class="control-label">Password</label>';
-        html += '           <input maxlength="200" type="password" data-prop="shost.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
-        html += '       </div></div>';
+        // html += '         <div class="card m-1 collapsed-card"><div class="card-header">SatoHost<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
+        // html += '           <div class="card-body px-4" style="display: none;">';
+        // html += '           <label class="control-label">Login Mode</label>';
+        // html += '           <select class="form-control" data-prop="shost.credentials.mode">';
+        // html += '            <option value="1">Use Username and Password</option><option value="2">Filled by 3rd party software/extension</option>';
+        // html += '           </select>';
+        // html += '           <label class="control-label">E-Mail</label>';
+        // html += '           <input maxlength="200" type="text" data-prop="shost.credentials.username" required="required" class="form-control" placeholder="Username..."/>';
+        // html += '           <label class="control-label">Password</label>';
+        // html += '           <input maxlength="200" type="password" data-prop="shost.credentials.password" required="required" class="form-control" placeholder="Password..."/>';
+        // html += '       </div></div>';
 
         html += '         <div class="card m-1 collapsed-card"><div class="card-header">Yes Coiner<div class="card-tools"><button type="button" class="btn btn-white btn-sm" data-card-widget="collapse" title="Collapse"><i class="fas fa-plus"></i></button></div></div>';
         html += '           <div class="card-body px-4" style="display: none;">';

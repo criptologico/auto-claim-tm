@@ -471,7 +471,7 @@ class Schedule {
 
             // if ( (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) &&
             //     ( (result.claimed) || (result.promoStatus && result.promoStatus != K.CF.PromoStatus.ACCEPTED) )) {
-            if (this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
+            if (shared.getConfig()['cf.usePromoCodes'] && this.currentSite.type == K.WebType.CRYPTOSFAUCETS) {
                 let promoCode = CFPromotions.hasPromoAvailable(this.currentSite.id);
                 // let promoCode = false;
                 if (promoCode) {

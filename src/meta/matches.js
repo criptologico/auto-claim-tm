@@ -38,8 +38,6 @@
 // @match        https://freepancake.com/*
 // @match        https://freegridco.in/*
 // @match        https://freematic.com/*
-// @match        https://freebch.fun/page/dashboard*
-// @match        https://freebch.fun/account/login/not-logged-in
 // @match        https://james-trussy.com/*
 // @match        https://www.only1024.com/f*
 // @match        https://criptologico.com/tools/cc*
@@ -47,7 +45,6 @@
 // @match        https://freebfg.com/*
 // @match        https://yescoiner.com/*
 // @match        https://coindiversity.io/*
-// @match        https://bscads.com/*
 // @match        https://ltcfaucet.top/*
 // @match        https://bnbfaucet.top/*
 // @match        https://dogecoinfaucet.top/*
