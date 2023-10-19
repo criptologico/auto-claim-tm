@@ -286,9 +286,7 @@ function createUi() {
                             sp.querySelector('span').innerText = timeVal.msToCountdown();
                             if (timeVal < -60000) {
                                 // TODO: trigger a resync!
-                                // Forcing refresh
-                                location.reload();
-                                // console.warn(`HITTING RELOAD: ${timeVal}`);
+                                console.info(`Resync required: ${timeVal}`);
                                 // console.info(sp);
                                 // location.reload();
                             }
