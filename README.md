@@ -6,17 +6,13 @@ Auto Claim is a user script that allows the user to claim from a list of faucet 
 
 It was tested using Tampermonkey, but we'd appreciate feedback on how it performs using other extensions.
 
-We don't have a tutorial/documentation/how-to yet, but you can [join the discord server](https://discord.gg/23s9fDgHqe) to find some insights, feedback and help from the community.
-
-[![](https://dcbadge.vercel.app/api/server/23s9fDgHqe)](https://discord.gg/23s9fDgHqe)
+We don't have a tutorial/documentation/how-to yet, and our original discord server with +1200 users was disabled. We are searching for a less centralized alternative right now.
 
 ## First time users
 
 To run this user script, you'll need an extension like [Tampermonkey](https://www.tampermonkey.net/).
 
 You can install the latest working version of the auto claim [HERE](https://github.com/criptologico/auto-claim-tm/raw/master/dist/autoclaim-dist.user.js).
-
-If you don't have an automated solver for captchas, [check our discord](https://discord.gg/23s9fDgHqe), where you can find some great free options.
 
 ## For developers
 

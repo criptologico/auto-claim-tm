@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.49
+// @version      3.0.50
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -8012,7 +8012,7 @@
             html += '   <div class="modal-header"><h5 class="modal-title"><i class="fa fa-info"></i> Info</h5></div>';
             html += '    <div class="modal-body">';
             html += '<ul>';
-            html += '<li>First of all, make sure you visit our <a href="https://discord.gg/23s9fDgHqe" target="_blank">discord</a> server for specific issues with the script.</li>';
+            html += '<li>First of all, make sure you visit our <a href="https://discord.gg/w46N4Bbm" target="_blank">discord</a> server for specific issues with the script. Unfortunately, our original server and user account was disabled after +2 years. We are trying to bring the community together in a new one now.</li>';
             html += `<li>The script comes with <b>2 schedules</b> (Default and CF). You can add more from <i>Settings > Schedules...</i><br>About the <i>Schedules</i>:`;
             html += `<ul><li>Each schedule will open a new tab, so:<br>N schedules = N simultaneous tabs.</li>`;
             html += `<li>Each schedule has it's own list of sites.<br>You can have N sites per schedule, but each site can be in just 1 schedule to avoid overlapping.</li>`;
@@ -8352,11 +8352,11 @@
             if (document.querySelector('.main-header .navbar-nav.ml-auto')) {
                 let discord = document.createElement('li');
                 discord.classList.add('nav-item');
-                discord.innerHTML = '<a class="btn btn-primary btn-sm m-1" href="https://discord.gg/23s9fDgHqe" target="_blank"><div class="">discord</div></a>';
+                discord.innerHTML = '<a class="btn btn-primary btn-sm m-1" href="https://discord.gg/w46N4Bbm" target="_blank"><div class=""><span class="badge badge-pill badge-warning mr-2" title="">(new)</span>discord</div></a>';
                 document.querySelector('.main-header .navbar-nav.ml-auto').prepend(discord);
             } else {
                 let discord = document.createElement('div');
-                discord.innerHTML = '<a class="btn m-2 btn-primary" href="https://discord.gg/23s9fDgHqe" target="_blank"><div class="">discord</div></a>';
+                discord.innerHTML = '<a class="btn m-2 btn-primary" href="https://discord.gg/w46N4Bbm" target="_blank"><div class=""><span class="badge badge-pill badge-warning mr-2" title="">(new)</span>discord</div></a>';
                 document.querySelector('.navbar-nav').prepend(discord);
             }
             addHtml({
