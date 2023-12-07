@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.50
+// @version      3.0.52
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -28,22 +28,26 @@
 // @icon         https://www.google.com/s2/favicons?domain=criptologico.com
 // @require      https://cdnjs.cloudflare.com/ajax/libs/nearest-color/0.4.4/nearestColor.js
 // @match        https://app.stormgain.com/crypto-miner/
-// @match        https://freecardano.com/*
-// @match        https://freebinancecoin.com/*
-// @match        https://freebitcoin.io/*
-// @match        https://freedash.io/*
-// @match        https://free-doge.com/*
-// @match        https://freeethereum.com/*
-// @match        https://freecryptom.com/*
-// @match        https://free-ltc.com/*
-// @match        https://freeneo.io/*
-// @match        https://freesteam.io/*
-// @match        https://free-tron.com/*
-// @match        https://freeusdcoin.com/*
-// @match        https://freetether.com/*
-// @match        https://freenem.com/*
-// @match        https://freeshibainu.com/*
-// @match        https://coinfaucet.io/*
+// @match        https://app.freecardano.com/*
+// @match        https://app.freebinancecoin.com/*
+// @match        https://app.freebitcoin.io/*
+// @match        https://app.freedash.io/*
+// @match        https://app.free-doge.com/*
+// @match        https://app.freeethereum.com/*
+// @match        https://app.freecryptom.com/*
+// @match        https://app.free-ltc.com/*
+// @match        https://app.freeneo.io/*
+// @match        https://app.freesteam.io/*
+// @match        https://app.free-tron.com/*
+// @match        https://app.freeusdcoin.com/*
+// @match        https://app.freetether.com/*
+// @match        https://app.freenem.com/*
+// @match        https://app.freeshibainu.com/*
+// @match        https://app.coinfaucet.io/*
+// @match        https://app.freepancake.com/*
+// @match        https://app.freematic.com/*
+// @match        https://app.freebittorrent.com/*
+// @match        https://app.freebfg.com/*
 // @match        https://freebitco.in/*
 // @match        https://faucetpay.io/*
 // @match        https://bigbtc.win/*
@@ -64,14 +68,10 @@
 // @match        https://faucetcrypto.com/task/ptc-advertisement/*
 // @match        https://faupig-bit.online/page/dashboard*
 // @match        https://faupig-bit.online/account/login/not-logged-in
-// @match        https://freepancake.com/*
 // @match        https://freegridco.in/*
-// @match        https://freematic.com/*
 // @match        https://james-trussy.com/*
 // @match        https://www.only1024.com/f*
 // @match        https://criptologico.com/tools/cc*
-// @match        https://freebittorrent.com/*
-// @match        https://freebfg.com/*
 // @match        https://yescoiner.com/*
 // @match        https://coindiversity.io/*
 // @match        https://ltcfaucet.top/*
@@ -149,6 +149,7 @@
                 STATS: 4,
                 SETTINGS: 5,
                 FREEROLLS: 6,
+                LOGIN: 7,
                 IGNORE: 99
             },
             PromoStatus: {
@@ -438,6 +439,9 @@
                     if (url == helpers.getHost(url, true)) {
                         return K.CF.UrlType.HOME;
                     }
+                }
+                if (url.endsWith('/login')) {
+                    return K.CF.UrlType.LOGIN;
                 }
 
                 return K.CF.UrlType.IGNORE;
@@ -967,14 +971,6 @@
             let actions = {
                 available: [
                     function() {
-                        $('html, body').animate({
-                            scrollTop: helpers.randomInt(0, $('html, body').get(0).scrollHeight)
-                        }, {
-                            complete: setTimeout(interactions.addPerformed, helpers.randomMs(100, 3000)),
-                            duration: helpers.randomMs(100, 1500)
-                        });
-                    },
-                    function() {
                         let element = interactions.selectableElements[helpers.randomInt(0, interactions.selectableElements.length - 1)];
 
                         try {
@@ -1058,13 +1054,14 @@
 
             function init() {
                 let urlType = helpers.cf.getUrlType(window.location.href);
+                console.log('URL TYPE:', urlType)
                 switch(urlType) {
                     case K.CF.UrlType.FREE:
                         if(localeConfig.setToEnglish) {
-                            let refValue = document.querySelectorAll('.nav-item a')[4].innerHTML;
-                            if (refValue != 'Settings') {
-                                window.location.href = '/set-language/en';
-                            }
+                            document.querySelector('.locale-changer .p-dropdown-trigger')?.click();
+                            setTimeout(() => {
+                                document.querySelector("#pv_id_3_3")?.click();
+                            }, 1000);
                         }
                         addJS_Node (null, null, overrideSelectNativeJS_Functions);
                         interactions = objectGenerator.createInteractions();
@@ -1077,7 +1074,8 @@
                         break;
 
                     case K.CF.UrlType.HOME:
-                        if (shared.getConfig()['cf.autologin']) {
+                    case K.CF.UrlType.LOGIN:
+                            if (shared.getConfig()['cf.autologin']) {
                             addJS_Node (null, null, overrideSelectNativeJS_Functions);
                             doLogin();
                         } else {
@@ -1096,21 +1094,18 @@
 
             function run() {
                 navigationProcess = NavigationProcess.ROLLING;
-                displayStatusUi();
                 setInterval(tryClosePopup, helpers.randomMs(3000, 6000));
                 setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
             };
 
             function doLogin() {
                 navigationProcess = NavigationProcess.LOGIN;
-                displayStatusUi();
 
                 setTimeout(findLoginForm, helpers.randomMs(2000, 5000));
             };
 
             function isFullyLoaded() { //Waits 55 seconds max
                 if(document.readyState == 'complete' || timeWaiting == -1) {
-                    document.getElementById('process-status').innerHTML = 'Interacting';
                     timeWaiting = 0;
                     if (firstRollCompleted) {
                         roll();
@@ -1119,17 +1114,15 @@
                     }
                 } else {
                     timeWaiting = -1;
-                    document.getElementById('process-status').innerHTML = 'Waiting for document fully loaded';
                     setTimeout(isFullyLoaded, helpers.randomMs(15000, 25000));
                 }
             };
             function runPromotion() {
                 navigationProcess = NavigationProcess.PROCESSING_PROMOTION
-                displayStatusUi();
                 setTimeout(findPromotionTag, helpers.randomMs(1000, 3000));
             };
             function tryClosePopup() {
-                let popupBtn = document.querySelector('.popup-close');
+                let popupBtn = document.querySelector('.p-dialog .p-dialog-header-close');
                 if (popupBtn && popupBtn.isVisible()) {
                     popupBtn.click();
                 }
@@ -1140,10 +1133,13 @@
                 }
             };
             let waitRollNumberCount = 0;
+            function closeToast() {
+                document.querySelector('.p-toast-icon-close')?.click();
+            }
             async function waitForRollNumber() {
                 let newNumber = -1;
                 try { // intento leer el rolled number
-                    newNumber = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
+                    newNumber = [...document.querySelectorAll('.lucky-number-wrapper img')].map(x => x.src.split('/').slice(-1)[0].split('.').slice(-3)[0]).join('');
                     newNumber = parseInt(newNumber)
                 } catch(err) {
                     newNumber = null;
@@ -1170,6 +1166,7 @@
                         return;
                     } else {
                         firstRollCompleted = true;
+                        closeToast();
                         setTimeout(findCountdownOrRollButton, helpers.randomMs(1000, 2000));
                         return;
                     }
@@ -1200,7 +1197,7 @@
                             timeWaiting = 0;
                             setTimeout(isFullyLoaded, helpers.randomMs(1000, 5000));
                         }
-                    } catch (err) { shared.devlog(`Error on alt logic of CF roll: ${err}`); }
+                    } catch (err) { console.log(`Error on alt logic of CF roll: ${err}`); }
                 } else {
                     if (timeWaiting/1000 > shared.getConfig()['defaults.timeout'] * 60) {
                         shared.closeWithError(K.ErrorType.TIMEOUT, '');
@@ -1212,7 +1209,7 @@
                 }
             };
             function findLoginForm() {
-                if ( document.querySelector('div.login-wrapper').isVisible() ) {
+                if ( document.querySelector('#email')?.isVisible() && document.querySelector('#password')?.isVisible() ) {
                     let errElement = document.querySelector('.login-wrapper .error');
                     if( errElement && errElement.innerHTML != '') {
                         let errorMessage = errElement.innerText;
@@ -1222,17 +1219,15 @@
                     if(!loopingForErrors) {
                         if(shared.getConfig()['cf.credentials.mode'] == 1) {
                             timeWaiting = 0;
-                            document.querySelector('.login-wrapper input[name="email"]').value = shared.getConfig()['cf.credentials.email'];
-                            document.querySelector('.login-wrapper input[name="password"]').value = shared.getConfig()['cf.credentials.password'];
-                            document.querySelector('.login-wrapper button.login').click();
+                            document.querySelector('.login-wrapper input[name="email"],#email').value = shared.getConfig()['cf.credentials.email'];
+                            document.querySelector('.login-wrapper input[name="password"],#password').value = shared.getConfig()['cf.credentials.password'];
+                            document.querySelector('#password')?.closest('div')?.querySelector('button')?.click();
                             loopingForErrors = true;
                         } else {
-                            if(document.querySelector('.login-wrapper input[name="email"]').value != '' && document.querySelector('.login-wrapper input[name="password"]').value != '') {
-                                document.querySelector('.login-wrapper button.login').click();
-                                document.getElementById('process-status').innerHTML = 'Processing';
+                            if(document.querySelector('.login-wrapper input[name="email"],#email').value != '' && document.querySelector('.login-wrapper input[name="password"],#password').value != '') {
+                                document.querySelector('#password')?.closest('div')?.querySelector('button')?.click();
                                 loopingForErrors = true;
                             } else {
-                                document.getElementById('process-status').innerHTML = 'Waiting for credentials...';
                                 if (timeWaiting/1000 > (shared.getConfig()['defaults.timeout'] / 1.5) * 60) {
                                     shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
                                     return;
@@ -1264,24 +1259,27 @@
                 }
             }
             function isCountdownVisible() {
-                countdown = document.querySelectorAll('.timeout-wrapper');
+                countdown = document.querySelectorAll('.minutes .digits');
                 return (countdown.length > 0 && countdown[0].isVisible());
             };
             function isRollButtonVisible() {
-                rollButton = document.querySelectorAll('.main-button-2.roll-button.bg-2');
-                return (rollButton.length > 0 && rollButton[0].isVisible());
+                let rollButtonIcon = document.querySelector('.p-button .pi-gift');
+                if (!rollButtonIcon) {
+                    return false;
+                }
+                rollButton = rollButtonIcon.closest('button');
+                return rollButton && !rollButton.disabled && rollButton.isVisible();
             };
             function roll() {
-                document.getElementById('process-status').innerHTML = 'Roll triggered';
-                rollButton[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-                rollButton[0].click();
+                rollButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+                rollButton.click();
                 tempRollNumber = -1;
                 setTimeout(waitForRollNumber, helpers.randomMs(4000, 7000));
             }
             function isPromotionTagVisible() {
                 let pTag;
                 try {
-                    pTag = document.querySelectorAll('div.header-wrapper')[0];
+                    pTag = document.querySelectorAll('.p-message-text.p-message-text')[0];
                 } catch(err) {
                     return false;
                 }
@@ -1291,18 +1289,7 @@
                 }
                 return false;
             };
-            function hasToWaitForPromotionCaptcha() {
-                let captchaTag = document.querySelector('#instructions');
-                if (captchaTag && captchaTag.innerText.toLowerCase().includes('complete the captcha')) {
-                    return true;
-                }
-                return false;
-            };
             function findPromotionTag() {
-                if (hasToWaitForPromotionCaptcha()) {
-                    setTimeout(findPromotionTag, helpers.randomMs(2000, 5000));
-                    return;
-                }
                 if( isPromotionTagVisible() ) {
                     processRunDetails();
                 } else {
@@ -1352,7 +1339,7 @@
                 window.location.href = '/promotion/' + codes[pcIdx + 1];
             };
             function readCountdown(minOneHour = false) {
-                let minsElement = document.querySelector('.timeout-container .minutes .digits');
+                let minsElement = document.querySelector('.minutes .digits');
                 let mins = "0";
                 if (minsElement) {
                     mins = minsElement.innerHTML;
@@ -1371,16 +1358,16 @@
             function readClaimed() {
                 let claimed = 0;
                 try {
-                    claimed = document.querySelector('.result').innerHTML;
+                    claimed = document.querySelector('.p-toast-message-text .p-toast-detail').innerHTML;
                     claimed = claimed.trim();
-                    claimed = claimed.slice(claimed.lastIndexOf(" ") + 1);
+                    claimed = claimed.split(' ').slice(-2)[0]
                 } catch(err) { }
                 return claimed;
             };
             function readRolledNumber() {
                 let number = 0;
                 try {
-                    number = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
+                    number = [...document.querySelectorAll('.lucky-number-wrapper img')].map(x => x.src.split('/').slice(-1)[0].split('.').slice(-3)[0]).join('');
                     number = parseInt(number);
                 } catch(err) { }
                 return number;
@@ -1388,7 +1375,7 @@
             function readBalance() {
                 let balance = "";
                 try {
-                    balance = document.querySelector('.navbar-coins.bg-1 a').innerText;
+                    balance = document.querySelectorAll('header div div div > span')[0].innerText.trim().split(' ')[0];
                 } catch(err) { }
                 return balance;
             };
@@ -6988,22 +6975,22 @@
         let userWallet = [];
 
         const sites = [
-            { id: '1', name: 'CF ADA', cmc: '2010', coinRef: 'ADA', url: new URL('https://freecardano.com/free'), rf: '?ref=335463', type: K.WebType.CRYPTOSFAUCETS, clId: 45 },
-            { id: '2', name: 'CF BNB', cmc: '1839', coinRef: 'BNB', url: new URL('https://freebinancecoin.com/free'), rf: '?ref=161127', type: K.WebType.CRYPTOSFAUCETS, clId: 42 },
-            { id: '3', name: 'CF BTC', cmc: '1', coinRef: 'BTC', url: new URL('https://freebitcoin.io/free'), rf: '?ref=490252', type: K.WebType.CRYPTOSFAUCETS, clId: 40 },
-            { id: '4', name: 'CF DASH', cmc: '131', coinRef: 'DASH', url: new URL('https://freedash.io/free'), rf: '?ref=124083', type: K.WebType.CRYPTOSFAUCETS, clId: 156 },
-            { id: '5', name: 'CF ETH', cmc: '1027', coinRef: 'ETH', url: new URL('https://freeethereum.com/free'), rf: '?ref=204076', type: K.WebType.CRYPTOSFAUCETS, clId: 44 },
-            { id: '6', name: 'CF LINK', cmc: '1975', coinRef: 'LINK', url: new URL('https://freecryptom.com/free'), rf: '?ref=78652', type: K.WebType.CRYPTOSFAUCETS, clId: 157 },
-            { id: '7', name: 'CF LTC', cmc: '2', coinRef: 'LTC', url: new URL('https://free-ltc.com/free'), rf: '?ref=117042', type: K.WebType.CRYPTOSFAUCETS, clId: 47 },
-            { id: '8', name: 'CF NEO', cmc: '1376', coinRef: 'NEO', url: new URL('https://freeneo.io/free'), rf: '?ref=100529', type: K.WebType.CRYPTOSFAUCETS, clId: 158 },
-            { id: '9', name: 'CF STEAM', cmc: '825', coinRef: 'STEEM', url: new URL('https://freesteam.io/free'), rf: '?ref=117686', type: K.WebType.CRYPTOSFAUCETS, clId: 49 },
-            { id: '10', name: 'CF TRX', cmc: '1958', coinRef: 'TRX', url: new URL('https://free-tron.com/free'), rf: '?ref=145047', type: K.WebType.CRYPTOSFAUCETS, clId: 41 },
-            { id: '11', name: 'CF USDC', cmc: '3408', coinRef: 'USDC', url: new URL('https://freeusdcoin.com/free'), rf: '?ref=100434', type: K.WebType.CRYPTOSFAUCETS, clId: 51 },
-            { id: '12', name: 'CF USDT', cmc: '825', coinRef: 'USDT', url: new URL('https://freetether.com/free'), rf: '?ref=181230', type: K.WebType.CRYPTOSFAUCETS, clId: 43 },
-            { id: '13', name: 'CF XEM', cmc: '873', coinRef: 'XEM', url: new URL('https://freenem.com/free'), rf: '?ref=295274', type: K.WebType.CRYPTOSFAUCETS, clId: 46 },
-            { id: '14', name: 'CF XRP', cmc: '52', coinRef: 'XRP', url: new URL('https://coinfaucet.io/free'), rf: '?ref=808298', type: K.WebType.CRYPTOSFAUCETS, clId: 48 },
+            { id: '1', name: 'CF ADA', cmc: '2010', coinRef: 'ADA', url: new URL('https://app.freecardano.com/free'), rf: '?ref=335463', type: K.WebType.CRYPTOSFAUCETS, clId: 45 },
+            { id: '2', name: 'CF BNB', cmc: '1839', coinRef: 'BNB', url: new URL('https://app.freebinancecoin.com/free'), rf: '?ref=161127', type: K.WebType.CRYPTOSFAUCETS, clId: 42 },
+            { id: '3', name: 'CF BTC', cmc: '1', coinRef: 'BTC', url: new URL('https://app.freebitcoin.io/free'), rf: '?ref=490252', type: K.WebType.CRYPTOSFAUCETS, clId: 40 },
+            { id: '4', name: 'CF DASH', cmc: '131', coinRef: 'DASH', url: new URL('https://app.freedash.io/free'), rf: '?ref=124083', type: K.WebType.CRYPTOSFAUCETS, clId: 156 },
+            { id: '5', name: 'CF ETH', cmc: '1027', coinRef: 'ETH', url: new URL('https://app.freeethereum.com/free'), rf: '?ref=204076', type: K.WebType.CRYPTOSFAUCETS, clId: 44 },
+            { id: '6', name: 'CF LINK', cmc: '1975', coinRef: 'LINK', url: new URL('https://app.freecryptom.com/free'), rf: '?ref=78652', type: K.WebType.CRYPTOSFAUCETS, clId: 157 },
+            { id: '7', name: 'CF LTC', cmc: '2', coinRef: 'LTC', url: new URL('https://app.free-ltc.com/free'), rf: '?ref=117042', type: K.WebType.CRYPTOSFAUCETS, clId: 47 },
+            { id: '8', name: 'CF NEO', cmc: '1376', coinRef: 'NEO', url: new URL('https://app.freeneo.io/free'), rf: '?ref=100529', type: K.WebType.CRYPTOSFAUCETS, clId: 158 },
+            { id: '9', name: 'CF STEAM', cmc: '825', coinRef: 'STEEM', url: new URL('https://app.freesteam.io/free'), rf: '?ref=117686', type: K.WebType.CRYPTOSFAUCETS, clId: 49 },
+            { id: '10', name: 'CF TRX', cmc: '1958', coinRef: 'TRX', url: new URL('https://app.free-tron.com/free'), rf: '?ref=145047', type: K.WebType.CRYPTOSFAUCETS, clId: 41 },
+            { id: '11', name: 'CF USDC', cmc: '3408', coinRef: 'USDC', url: new URL('https://app.freeusdcoin.com/free'), rf: '?ref=100434', type: K.WebType.CRYPTOSFAUCETS, clId: 51 },
+            { id: '12', name: 'CF USDT', cmc: '825', coinRef: 'USDT', url: new URL('https://app.freetether.com/free'), rf: '?ref=181230', type: K.WebType.CRYPTOSFAUCETS, clId: 43 },
+            { id: '13', name: 'CF XEM', cmc: '873', coinRef: 'XEM', url: new URL('https://app.freenem.com/free'), rf: '?ref=295274', type: K.WebType.CRYPTOSFAUCETS, clId: 46 },
+            { id: '14', name: 'CF XRP', cmc: '52', coinRef: 'XRP', url: new URL('https://app.coinfaucet.io/free'), rf: '?ref=808298', type: K.WebType.CRYPTOSFAUCETS, clId: 48 },
             { id: '15', name: 'StormGain', cmc: '1', url: new URL('https://app.stormgain.com/crypto-miner/'), rf: 'friend/BNS27140552', type: K.WebType.STORMGAIN, clId: 35 },
-            { id: '16', name: 'CF DOGE', cmc: '74', coinRef: 'DOGE', url: new URL('https://free-doge.com/free'), rf: '?ref=97166', type: K.WebType.CRYPTOSFAUCETS, clId: 50 },
+            { id: '16', name: 'CF DOGE', cmc: '74', coinRef: 'DOGE', url: new URL('https://app.free-doge.com/free'), rf: '?ref=97166', type: K.WebType.CRYPTOSFAUCETS, clId: 50 },
             { id: '17', name: 'FreeBitco.in', cmc: '1', url: new URL('https://freebitco.in/'), rf: '?r=41092365', type: K.WebType.FREEBITCOIN, clId: 36 },
             { id: '18', name: 'FaucetPay PTC', cmc: '825', url: new URL('https://faucetpay.io/ptc'), rf: '?r=41092365', type: K.WebType.FAUCETPAY, clId: 159 },
             { id: '52', name: 'BigBtc', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://bigbtc.win/'), rf: '?id=39255652', type: K.WebType.BIGBTC, clId: 200 },
@@ -7011,14 +6998,14 @@
             { id: '58', name: 'BF BTC', cmc: '1', url: new URL('https://betfury.io/boxes/all'), rf: ['?r=608c5cfcd91e762043540fd9'], type: K.WebType.BFBOX, clId: 1 },
             { id: '61', name: 'Dutchy', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
             { id: '62', name: 'Dutchy Monthly Coin', cmc: '-1', url: new URL('https://autofaucet.dutchycorp.space/coin_roll.php'), rf: '?r=corecrafting', type: K.WebType.DUTCHYROLL, clId: 141 },
-            { id: '68', name: 'CF SHIBA', cmc: '5994', coinRef: 'SHIBA', url: new URL('https://freeshibainu.com/free'), rf: '?ref=18226', type: K.WebType.CRYPTOSFAUCETS, clId: 167 },
-            { id: '78', name: 'CF Cake', cmc: '7186', coinRef: 'CAKE', url: new URL('https://freepancake.com/free'), rf: '?ref=699', type: K.WebType.CRYPTOSFAUCETS, clId: 197 },
+            { id: '68', name: 'CF SHIBA', cmc: '5994', coinRef: 'SHIBA', url: new URL('https://app.freeshibainu.com/free'), rf: '?ref=18226', type: K.WebType.CRYPTOSFAUCETS, clId: 167 },
+            { id: '78', name: 'CF Cake', cmc: '7186', coinRef: 'CAKE', url: new URL('https://app.freepancake.com/free'), rf: '?ref=699', type: K.WebType.CRYPTOSFAUCETS, clId: 197 },
             { id: '80', name: 'FreeGRC', cmc: '833', url: new URL('https://freegridco.in/#free_roll'), rf: '', type: K.WebType.FREEGRC, clId: 207 },
-            { id: '81', name: 'CF Matic', cmc: '3890', coinRef: 'MATIC', url: new URL('https://freematic.com/free'), rf: '?ref=6435', type: K.WebType.CRYPTOSFAUCETS, clId: 210 },
+            { id: '81', name: 'CF Matic', cmc: '3890', coinRef: 'MATIC', url: new URL('https://app.freematic.com/free'), rf: '?ref=6435', type: K.WebType.CRYPTOSFAUCETS, clId: 210 },
             { id: '84', name: 'JTFey', cmc: '-1', url: new URL('https://james-trussy.com/faucet'), rf: ['?r=corecrafting'], type: K.WebType.VIE, clId: 213 },
             { id: '85', name: 'O24', cmc: '1', wallet: K.WalletType.FP_BTC, url: new URL('https://www.only1024.com/f'), rf: ['?r=1QCD6cWJNVH4Cdnz85SQ2qtTkAwGr9fvUk'], type: K.WebType.O24, clId: 97 },
-            { id: '87', name: 'CF BTT', cmc: '16086', coinRef: 'BTT', url: new URL('https://freebittorrent.com/free'), rf: '?ref=2050', type: K.WebType.CRYPTOSFAUCETS, clId: 218 },
-            { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
+            { id: '87', name: 'CF BTT', cmc: '16086', coinRef: 'BTT', url: new URL('https://app.freebittorrent.com/free'), rf: '?ref=2050', type: K.WebType.CRYPTOSFAUCETS, clId: 218 },
+            { id: '89', name: 'CF BFG', cmc: '11038', coinRef: 'BFG', url: new URL('https://app.freebfg.com/free'), rf: '?ref=117', type: K.WebType.CRYPTOSFAUCETS, clId: 219 },
             { id: '93', name: 'YCoin', cmc: '1', url: new URL('https://yescoiner.com/faucet'), rf: ['?ref=4729452'], type: K.WebType.YCOIN, clId: 234 },
             { id: '94', name: 'CDiversity', cmc: '-1', wallet: K.WalletType.FP_MAIL, url: new URL('http://coindiversity.io/free-coins'), rf: ['?r=1J3sLBZAvY5Vk9x4RY2qSFyL7UHUszJ4DJ'], type: K.WebType.CDIVERSITY, clId: 235 },
             { id: '96', name: 'Top Ltc', cmc: '2', wallet: K.WalletType.FP_LTC, url: new URL('https://ltcfaucet.top/'), rf: ['?r=MWSsGAQTYD7GH5o4oAehC8Et5PyMBfhnKK'], type: K.WebType.CTOP, clId: 239 },
@@ -8352,11 +8339,11 @@
             if (document.querySelector('.main-header .navbar-nav.ml-auto')) {
                 let discord = document.createElement('li');
                 discord.classList.add('nav-item');
-                discord.innerHTML = '<a class="btn btn-warning btn-sm m-1" href="https://discord.gg/gaYYBjJUhP" target="_blank"><div class="">discord</div></a>';
+                discord.innerHTML = '<a class="btn btn-primary btn-sm m-1" href="https://discord.gg/gaYYBjJUhP" target="_blank"><div class=""><span class="badge badge-pill badge-warning mr-2" title="">(new)</span>discord</div></a>';
                 document.querySelector('.main-header .navbar-nav.ml-auto').prepend(discord);
             } else {
                 let discord = document.createElement('div');
-                discord.innerHTML = '<a class="btn m-2 btn-warning" href="https://discord.gg/gaYYBjJUhP" target="_blank"><div class="">discord</div></a>';
+                discord.innerHTML = '<a class="btn m-2 btn-primary" href="https://discord.gg/gaYYBjJUhP" target="_blank"><div class=""><span class="badge badge-pill badge-warning mr-2" title="">(new)</span>discord</div></a>';
                 document.querySelector('.navbar-nav').prepend(discord);
             }
             addHtml({

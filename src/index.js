@@ -764,14 +764,14 @@
             let selectableElements;
             let actions = {
                 available: [
-                    function() {
-                        $('html, body').animate({
-                            scrollTop: helpers.randomInt(0, $('html, body').get(0).scrollHeight)
-                        }, {
-                            complete: setTimeout(interactions.addPerformed, helpers.randomMs(100, 3000)),
-                            duration: helpers.randomMs(100, 1500)
-                        });
-                    },
+                    // function() {
+                    //     $('html, body').animate({
+                    //         scrollTop: helpers.randomInt(0, $('html, body').get(0).scrollHeight)
+                    //     }, {
+                    //         complete: setTimeout(interactions.addPerformed, helpers.randomMs(100, 3000)),
+                    //         duration: helpers.randomMs(100, 1500)
+                    //     });
+                    // },
                     function() {
                         let element = interactions.selectableElements[helpers.randomInt(0, interactions.selectableElements.length - 1)];
 
@@ -856,13 +856,18 @@
 
             function init() {
                 let urlType = helpers.cf.getUrlType(window.location.href);
+                console.log('URL TYPE:', urlType)
                 switch(urlType) {
                     case K.CF.UrlType.FREE:
                         if(localeConfig.setToEnglish) {
-                            let refValue = document.querySelectorAll('.nav-item a')[4].innerHTML;
-                            if (refValue != 'Settings') {
-                                window.location.href = '/set-language/en';
-                            }
+                            document.querySelector('.locale-changer .p-dropdown-trigger')?.click();
+                            setTimeout(() => {
+                                document.querySelector("#pv_id_3_3")?.click();
+                            }, 1000);
+                            // let refValue = document.querySelectorAll('.nav-item a')[4].innerHTML;
+                            // if (refValue != 'Settings') {
+                            //     window.location.href = '/set-language/en';
+                            // }
                         }
                         addJS_Node (null, null, overrideSelectNativeJS_Functions);
                         interactions = objectGenerator.createInteractions();
@@ -875,7 +880,8 @@
                         break;
 
                     case K.CF.UrlType.HOME:
-                        if (shared.getConfig()['cf.autologin']) {
+                    case K.CF.UrlType.LOGIN:
+                            if (shared.getConfig()['cf.autologin']) {
                             addJS_Node (null, null, overrideSelectNativeJS_Functions);
                             doLogin();
                         } else {
@@ -893,23 +899,25 @@
             }
 
             function run() {
+                console.log('@run');
                 navigationProcess = NavigationProcess.ROLLING;
                 // To close without rolling: if (maxRollsPerVisit == 0) shared.closeWindow({});
-                displayStatusUi();
+                // displayStatusUi();
                 setInterval(tryClosePopup, helpers.randomMs(3000, 6000));
                 setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
             };
 
             function doLogin() {
+                console.log('@doLogin');
                 navigationProcess = NavigationProcess.LOGIN;
-                displayStatusUi();
+                // displayStatusUi();
 
                 setTimeout(findLoginForm, helpers.randomMs(2000, 5000));
             };
 
             function isFullyLoaded() { //Waits 55 seconds max
                 if(document.readyState == 'complete' || timeWaiting == -1) {
-                    document.getElementById('process-status').innerHTML = 'Interacting';
+                    // document.getElementById('process-status').innerHTML = 'Interacting';
                     timeWaiting = 0;
                     if (firstRollCompleted) {
                         roll();
@@ -918,19 +926,19 @@
                     }
                 } else {
                     timeWaiting = -1;
-                    document.getElementById('process-status').innerHTML = 'Waiting for document fully loaded';
+                    // document.getElementById('process-status').innerHTML = 'Waiting for document fully loaded';
                     setTimeout(isFullyLoaded, helpers.randomMs(15000, 25000));
                 }
             };
             function runPromotion() {
                 navigationProcess = NavigationProcess.PROCESSING_PROMOTION
-                displayStatusUi();
+                // displayStatusUi();
                 setTimeout(findPromotionTag, helpers.randomMs(1000, 3000));
             };
             function tryClosePopup() {
-                let popupBtn = document.querySelector('.popup-close');
+                let popupBtn = document.querySelector('.p-dialog .p-dialog-header-close');
                 if (popupBtn && popupBtn.isVisible()) {
-                    shared.devlog(`Closing popup`);
+                    console.log(`Closing popup`);
                     popupBtn.click();
                 }
             };
@@ -940,25 +948,30 @@
                 }
             };
             let waitRollNumberCount = 0;
+            function closeToast() {
+                document.querySelector('.p-toast-icon-close')?.click();
+            }
             async function waitForRollNumber() {
+                console.log('Waiting for rolled number');
                 shared.devlog(`Waiting for rolled number`);
                 let newNumber = -1;
                 try { // intento leer el rolled number
-                    newNumber = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
+                    newNumber = [...document.querySelectorAll('.lucky-number-wrapper img')].map(x => x.src.split('/').slice(-1)[0].split('.').slice(-3)[0]).join('');
+                    // newNumber = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
                     newNumber = parseInt(newNumber)
-                    shared.devlog(`Roll #: ${newNumber}`);
+                    console.log(`Roll #: ${newNumber}`);
                 } catch(err) {
-                    shared.devlog(`Roll #: error reading it`);
+                    console.log(`Roll #: error reading it`);
                     newNumber = null;
                 }
                 if (newNumber === null) { // si no logro leerlo, bajo 1 en tempRollNumber
-                    shared.devlog(`Roll # is null`);
+                    console.log(`Roll # is null`);
                     if (tempRollNumber < 0) {
                         tempRollNumber -= 1;
                     } else {
                         tempRollNumber = -1;
                     }
-                    shared.devlog(`Temp Roll Reads: ${tempRollNumber}`);
+                    console.log(`Temp Roll Reads: ${tempRollNumber}`);
                     if (tempRollNumber < -5) {
                         // something might be wrong, it's taking too much time. Closing
                         processRunDetails();
@@ -978,13 +991,14 @@
                         return;
                     } else {
                         firstRollCompleted = true;
+                        closeToast();
                         setTimeout(findCountdownOrRollButton, helpers.randomMs(1000, 2000));
                         return;
                     }
                 } else {
                     waitRollNumberCount++;
                     if (waitRollNumberCount > 15) {
-                        shared.devlog(`Waited too much for the rolls to stop. Forcing refresh}`);
+                        console.log(`Waited too much for the rolls to stop. Forcing refresh}`);
                         setTimeout(() => { location.reload(); }, 5000);
                         return;
                     }
@@ -997,6 +1011,7 @@
 
             };
             function findCountdownOrRollButton() {
+                console.log(`findCountdownOrRollButton`);
                 if( isCountdownVisible() && !isRollButtonVisible() ) {
                     timeWaiting = 0;
                     processRunDetails();
@@ -1011,7 +1026,7 @@
                             timeWaiting = 0;
                             setTimeout(isFullyLoaded, helpers.randomMs(1000, 5000));
                         }
-                    } catch (err) { shared.devlog(`Error on alt logic of CF roll: ${err}`); }
+                    } catch (err) { console.log(`Error on alt logic of CF roll: ${err}`); }
                 } else {
                     if (timeWaiting/1000 > shared.getConfig()['defaults.timeout'] * 60) {
                         shared.closeWithError(K.ErrorType.TIMEOUT, '');
@@ -1023,7 +1038,9 @@
                 }
             };
             function findLoginForm() {
-                if ( document.querySelector('div.login-wrapper').isVisible() ) {
+                console.log('@findLoginForm');
+                // if ( document.querySelector('div.login-wrapper').isVisible() ) {
+                if ( document.querySelector('#email')?.isVisible() && document.querySelector('#password')?.isVisible() ) {
                     //Other possible error is if recaptcha did not load yet... so maybe wait til the web is fully loaded for low connection issues
                     let errElement = document.querySelector('.login-wrapper .error');
                     if( errElement && errElement.innerHTML != '') {
@@ -1034,17 +1051,18 @@
                     if(!loopingForErrors) {
                         if(shared.getConfig()['cf.credentials.mode'] == 1) {
                             timeWaiting = 0;
-                            document.querySelector('.login-wrapper input[name="email"]').value = shared.getConfig()['cf.credentials.email'];
-                            document.querySelector('.login-wrapper input[name="password"]').value = shared.getConfig()['cf.credentials.password'];
-                            document.querySelector('.login-wrapper button.login').click();
+                            document.querySelector('.login-wrapper input[name="email"],#email').value = shared.getConfig()['cf.credentials.email'];
+                            document.querySelector('.login-wrapper input[name="password"],#password').value = shared.getConfig()['cf.credentials.password'];
+                            // document.querySelector('.login-wrapper button.login').click();
+                            document.querySelector('#password')?.closest('div')?.querySelector('button')?.click();
                             loopingForErrors = true;
                         } else {
-                            if(document.querySelector('.login-wrapper input[name="email"]').value != '' && document.querySelector('.login-wrapper input[name="password"]').value != '') {
-                                document.querySelector('.login-wrapper button.login').click();
-                                document.getElementById('process-status').innerHTML = 'Processing';
+                            if(document.querySelector('.login-wrapper input[name="email"],#email').value != '' && document.querySelector('.login-wrapper input[name="password"],#password').value != '') {
+                                document.querySelector('#password')?.closest('div')?.querySelector('button')?.click();
+                                // document.getElementById('process-status').innerHTML = 'Processing';
                                 loopingForErrors = true;
                             } else {
-                                document.getElementById('process-status').innerHTML = 'Waiting for credentials...';
+                                // document.getElementById('process-status').innerHTML = 'Waiting for credentials...';
                                 if (timeWaiting/1000 > (shared.getConfig()['defaults.timeout'] / 1.5) * 60) {
                                     shared.closeWithError(K.ErrorType.LOGIN_ERROR, 'No credentials were provided');
                                     return;
@@ -1076,24 +1094,31 @@
                 }
             }
             function isCountdownVisible() {
-                countdown = document.querySelectorAll('.timeout-wrapper');
+                countdown = document.querySelectorAll('.minutes .digits');
+                // countdown = document.querySelectorAll('.timeout-wrapper');
                 return (countdown.length > 0 && countdown[0].isVisible());
             };
             function isRollButtonVisible() {
-                rollButton = document.querySelectorAll('.main-button-2.roll-button.bg-2');
-                return (rollButton.length > 0 && rollButton[0].isVisible());
+                let rollButtonIcon = document.querySelector('.p-button .pi-gift');
+                if (!rollButtonIcon) {
+                    return false;
+                }
+                rollButton = rollButtonIcon.closest('button');
+                return rollButton && !rollButton.disabled && rollButton.isVisible();
+                // rollButton = document.querySelectorAll('.main-button-2.roll-button.bg-2');
+                // return (rollButton.length > 0 && rollButton[0].isVisible());
             };
             function roll() {
-                document.getElementById('process-status').innerHTML = 'Roll triggered';
-                rollButton[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-                rollButton[0].click();
+                // document.getElementById('process-status').innerHTML = 'Roll triggered';
+                rollButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+                rollButton.click();
                 tempRollNumber = -1;
                 setTimeout(waitForRollNumber, helpers.randomMs(4000, 7000));
             }
             function isPromotionTagVisible() {
                 let pTag;
                 try {
-                    pTag = document.querySelectorAll('div.header-wrapper')[0];
+                    pTag = document.querySelectorAll('.p-message-text.p-message-text')[0];
                 } catch(err) {
                     return false;
                 }
@@ -1103,18 +1128,18 @@
                 }
                 return false;
             };
-            function hasToWaitForPromotionCaptcha() {
-                let captchaTag = document.querySelector('#instructions');
-                if (captchaTag && captchaTag.innerText.toLowerCase().includes('complete the captcha')) {
-                    return true;
-                }
-                return false;
-            };
+            // function hasToWaitForPromotionCaptcha() {
+            //     let captchaTag = document.querySelector('#instructions');
+            //     if (captchaTag && captchaTag.innerText.toLowerCase().includes('complete the captcha')) {
+            //         return true;
+            //     }
+            //     return false;
+            // };
             function findPromotionTag() {
-                if (hasToWaitForPromotionCaptcha()) {
-                    setTimeout(findPromotionTag, helpers.randomMs(2000, 5000));
-                    return;
-                }
+                // if (hasToWaitForPromotionCaptcha()) {
+                //     setTimeout(findPromotionTag, helpers.randomMs(2000, 5000));
+                //     return;
+                // }
                 if( isPromotionTagVisible() ) {
                     processRunDetails();
                 } else {
@@ -1168,7 +1193,8 @@
                 window.location.href = '/promotion/' + codes[pcIdx + 1];
             };
             function readCountdown(minOneHour = false) {
-                let minsElement = document.querySelector('.timeout-container .minutes .digits');
+                // let minsElement = document.querySelector('.timeout-container .minutes .digits');
+                let minsElement = document.querySelector('.minutes .digits');
                 let mins = "0";
                 if (minsElement) {
                     mins = minsElement.innerHTML;
@@ -1187,16 +1213,19 @@
             function readClaimed() {
                 let claimed = 0;
                 try {
-                    claimed = document.querySelector('.result').innerHTML;
+                    // claimed = document.querySelector('.result').innerHTML;
+                    claimed = document.querySelector('.p-toast-message-text .p-toast-detail').innerHTML;
                     claimed = claimed.trim();
-                    claimed = claimed.slice(claimed.lastIndexOf(" ") + 1);
+                    claimed = claimed.split(' ').slice(-2)[0]
+                    // claimed = claimed.slice(claimed.lastIndexOf(" "));
                 } catch(err) { }
                 return claimed;
             };
             function readRolledNumber() {
                 let number = 0;
                 try {
-                    number = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
+                    // number = [...document.querySelectorAll('.lucky-number')].map(x => x.innerText).join('');
+                    number = [...document.querySelectorAll('.lucky-number-wrapper img')].map(x => x.src.split('/').slice(-1)[0].split('.').slice(-3)[0]).join('');
                     number = parseInt(number);
                 } catch(err) { }
                 return number;
@@ -1204,7 +1233,8 @@
             function readBalance() {
                 let balance = "";
                 try {
-                    balance = document.querySelector('.navbar-coins.bg-1 a').innerText;
+                    // balance = document.querySelector('.navbar-coins.bg-1 a').innerText;
+                    balance = document.querySelectorAll('header div div div > span')[0].innerText.trim().split(' ')[0];
                 } catch(err) { }
                 return balance;
             };

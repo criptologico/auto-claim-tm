@@ -122,6 +122,13 @@ let helpers = {
                     return K.CF.UrlType.HOME;
                 }
             }
+            if (url.endsWith('/login')) {
+                return K.CF.UrlType.LOGIN;
+                // url = url.slice(0, -1);
+                // if (url == helpers.getHost(url, true)) {
+                //     return K.CF.UrlType.HOME;
+                // }
+            }
 
             return K.CF.UrlType.IGNORE;
         }
