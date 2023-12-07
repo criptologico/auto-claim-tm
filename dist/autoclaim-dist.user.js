@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.52
+// @version      3.0.53
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -317,6 +317,18 @@
     };
 
     let helpers = {
+        typer: function(inputElm, value) {
+            let lastValue = inputElm.value;
+            inputElm.value = value;
+            let event = new Event('input', { bubbles: true });
+            event.simulated = true;
+            let tracker = inputElm._valueTracker;
+            if (tracker) {
+                tracker.setValue(lastValue);
+            }
+            inputElm.dispatchEvent(event);
+        },
+
         hasValue: function (val) {
             return val !== null && val !== undefined;
         },
@@ -1208,8 +1220,19 @@
                     setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
                 }
             };
+            function addUrlChangeListener() {
+                if (window.onurlchange === null) {
+                    window.addEventListener('urlchange', (data) => {
+                        if (navigationProcess == NavigationProcess.LOGIN && !window.location.href.includes('/login')) {
+                            loopingForErrors = false;
+                            init();
+                        }
+                    });
+                }    
+            };
             function findLoginForm() {
                 if ( document.querySelector('#email')?.isVisible() && document.querySelector('#password')?.isVisible() ) {
+                    addUrlChangeListener();
                     let errElement = document.querySelector('.login-wrapper .error');
                     if( errElement && errElement.innerHTML != '') {
                         let errorMessage = errElement.innerText;
@@ -1219,8 +1242,8 @@
                     if(!loopingForErrors) {
                         if(shared.getConfig()['cf.credentials.mode'] == 1) {
                             timeWaiting = 0;
-                            document.querySelector('.login-wrapper input[name="email"],#email').value = shared.getConfig()['cf.credentials.email'];
-                            document.querySelector('.login-wrapper input[name="password"],#password').value = shared.getConfig()['cf.credentials.password'];
+                            helpers.typer(document.querySelector('.login-wrapper input[name="email"],#email'), shared.getConfig()['cf.credentials.email']);
+                            helpers.typer(document.querySelector('.login-wrapper input[name="password"],#password'), shared.getConfig()['cf.credentials.password']);
                             document.querySelector('#password')?.closest('div')?.querySelector('button')?.click();
                             loopingForErrors = true;
                         } else {

@@ -1,4 +1,16 @@
 let helpers = {
+    typer: function(inputElm, value) {
+        let lastValue = inputElm.value;
+        inputElm.value = value;
+        let event = new Event('input', { bubbles: true });
+        event.simulated = true;
+        let tracker = inputElm._valueTracker;
+        if (tracker) {
+            tracker.setValue(lastValue);
+        }
+        inputElm.dispatchEvent(event);
+    },
+
     hasValue: function (val) {
         return val !== null && val !== undefined;
     },

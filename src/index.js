@@ -1037,10 +1037,21 @@
                     setTimeout(findCountdownOrRollButton, helpers.randomMs(2000, 5000));
                 }
             };
+            function addUrlChangeListener() {
+                if (window.onurlchange === null) {
+                    window.addEventListener('urlchange', (data) => {
+                        if (navigationProcess == NavigationProcess.LOGIN && !window.location.href.includes('/login')) {
+                            loopingForErrors = false;
+                            init();
+                        }
+                    });
+                }    
+            };
             function findLoginForm() {
                 console.log('@findLoginForm');
                 // if ( document.querySelector('div.login-wrapper').isVisible() ) {
                 if ( document.querySelector('#email')?.isVisible() && document.querySelector('#password')?.isVisible() ) {
+                    addUrlChangeListener();
                     //Other possible error is if recaptcha did not load yet... so maybe wait til the web is fully loaded for low connection issues
                     let errElement = document.querySelector('.login-wrapper .error');
                     if( errElement && errElement.innerHTML != '') {
@@ -1051,8 +1062,10 @@
                     if(!loopingForErrors) {
                         if(shared.getConfig()['cf.credentials.mode'] == 1) {
                             timeWaiting = 0;
-                            document.querySelector('.login-wrapper input[name="email"],#email').value = shared.getConfig()['cf.credentials.email'];
-                            document.querySelector('.login-wrapper input[name="password"],#password').value = shared.getConfig()['cf.credentials.password'];
+                            helpers.typer(document.querySelector('.login-wrapper input[name="email"],#email'), shared.getConfig()['cf.credentials.email']);
+                            helpers.typer(document.querySelector('.login-wrapper input[name="password"],#password'), shared.getConfig()['cf.credentials.password']);
+                            // document.querySelector('.login-wrapper input[name="email"],#email').value = shared.getConfig()['cf.credentials.email'];
+                            // document.querySelector('.login-wrapper input[name="password"],#password').value = shared.getConfig()['cf.credentials.password'];
                             // document.querySelector('.login-wrapper button.login').click();
                             document.querySelector('#password')?.closest('div')?.querySelector('button')?.click();
                             loopingForErrors = true;
