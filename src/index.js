@@ -1010,7 +1010,14 @@
                 }
 
             };
+            function isLoggedIn() {
+                return !!document.querySelector('.pi-user');
+            }
+
             function findCountdownOrRollButton() {
+                if (!isLoggedIn()) {
+                    location.reload();
+                }
                 console.log(`findCountdownOrRollButton`);
                 if( isCountdownVisible() && !isRollButtonVisible() ) {
                     timeWaiting = 0;
