@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.54
+// @version      3.0.55
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -1087,7 +1087,7 @@
 
                     case K.CF.UrlType.HOME:
                     case K.CF.UrlType.LOGIN:
-                            if (shared.getConfig()['cf.autologin']) {
+                        if (shared.getConfig()['cf.autologin']) {
                             addJS_Node (null, null, overrideSelectNativeJS_Functions);
                             doLogin();
                         } else {
@@ -1196,7 +1196,7 @@
 
             };
             function isLoggedIn() {
-                return !!document.querySelector('.pi-user');
+                return !!document.querySelector('[data-icon="user"]');
             }
 
             function findCountdownOrRollButton() {
@@ -1293,7 +1293,7 @@
                 return (countdown.length > 0 && countdown[0].isVisible());
             };
             function isRollButtonVisible() {
-                let rollButtonIcon = document.querySelector('.p-button .pi-gift');
+                let rollButtonIcon = document.querySelector('.p-button [data-icon="gift"]');
                 if (!rollButtonIcon) {
                     return false;
                 }

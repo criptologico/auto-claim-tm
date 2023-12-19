@@ -881,7 +881,7 @@
 
                     case K.CF.UrlType.HOME:
                     case K.CF.UrlType.LOGIN:
-                            if (shared.getConfig()['cf.autologin']) {
+                        if (shared.getConfig()['cf.autologin']) {
                             addJS_Node (null, null, overrideSelectNativeJS_Functions);
                             doLogin();
                         } else {
@@ -1011,7 +1011,8 @@
 
             };
             function isLoggedIn() {
-                return !!document.querySelector('.pi-user');
+                return !!document.querySelector('[data-icon="user"]');
+                // return !!document.querySelector('.pi-user');
             }
 
             function findCountdownOrRollButton() {
@@ -1119,7 +1120,8 @@
                 return (countdown.length > 0 && countdown[0].isVisible());
             };
             function isRollButtonVisible() {
-                let rollButtonIcon = document.querySelector('.p-button .pi-gift');
+                // let rollButtonIcon = document.querySelector('.p-button .pi-gift');
+                let rollButtonIcon = document.querySelector('.p-button [data-icon="gift"]');
                 if (!rollButtonIcon) {
                     return false;
                 }
