@@ -128,6 +128,9 @@ let helpers = {
             if (url.endsWith('/stats')) {
                 return K.CF.UrlType.STATS;
             }
+            if (url.endsWith('/games')) {
+                return K.CF.UrlType.GAMES;
+            }
             if (url.endsWith('/')) {
                 url = url.slice(0, -1);
                 if (url == helpers.getHost(url, true)) {

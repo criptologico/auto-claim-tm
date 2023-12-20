@@ -2,7 +2,7 @@
 // @name         [satology] Auto Claim Multiple Faucets with Monitor UI
 // @description  Automatic rolls and claims for 50+ crypto faucets/PTC/miners (Freebitco.in BTC, auto promo code for 16 CryptosFaucet, FaucetPay, StormGain, etc)
 // @description  Claim free ADA, BNB, BCH, BTC, DASH, DGB, DOGE, ETH, FEY, LINK, LTC, NEO, SHIB, STEAM, TRX, USDC, USDT, XEM, XRP, ZEC, ETC
-// @version      3.0.55
+// @version      3.0.56
 // @author       satology
 // @namespace    satology.onrender.com
 // @homepage     https://criptologico.com/tools/cc
@@ -150,6 +150,7 @@
                 SETTINGS: 5,
                 FREEROLLS: 6,
                 LOGIN: 7,
+                GAMES: 8,
                 IGNORE: 99
             },
             PromoStatus: {
@@ -445,6 +446,9 @@
                 }
                 if (url.endsWith('/stats')) {
                     return K.CF.UrlType.STATS;
+                }
+                if (url.endsWith('/games')) {
+                    return K.CF.UrlType.GAMES;
                 }
                 if (url.endsWith('/')) {
                     url = url.slice(0, -1);
@@ -1084,7 +1088,9 @@
                         interactions = objectGenerator.createInteractions();
                         runPromotion();
                         break;
-
+                    case K.CF.UrlType.GAMES:
+                        location.replace('/free');
+                        break;
                     case K.CF.UrlType.HOME:
                     case K.CF.UrlType.LOGIN:
                         if (shared.getConfig()['cf.autologin']) {

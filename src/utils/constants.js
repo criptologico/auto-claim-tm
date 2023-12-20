@@ -47,6 +47,7 @@ const K = Object.freeze({
             SETTINGS: 5,
             FREEROLLS: 6,
             LOGIN: 7,
+            GAMES: 8,
             IGNORE: 99
         },
         PromoStatus: {

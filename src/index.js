@@ -878,7 +878,9 @@
                         interactions = objectGenerator.createInteractions();
                         runPromotion();
                         break;
-
+                    case K.CF.UrlType.GAMES:
+                        location.replace('/free');
+                        break;
                     case K.CF.UrlType.HOME:
                     case K.CF.UrlType.LOGIN:
                         if (shared.getConfig()['cf.autologin']) {
