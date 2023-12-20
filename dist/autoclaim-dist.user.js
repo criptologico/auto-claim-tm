@@ -1405,7 +1405,7 @@
             function readBalance() {
                 let balance = "";
                 try {
-                    balance = document.querySelectorAll('header div div div > span')[0].innerText.trim().split(' ')[0];
+                    balance = document.querySelector('header div div div > span:last-child').innerText.trim();
                 } catch(err) { }
                 return balance;
             };
