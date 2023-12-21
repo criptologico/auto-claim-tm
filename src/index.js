@@ -1258,7 +1258,8 @@
                 let balance = "";
                 try {
                     // balance = document.querySelector('.navbar-coins.bg-1 a').innerText;
-                    balance = document.querySelectorAll('header div div div > span')[0].innerText.trim().split(' ')[0];
+                    // balance = document.querySelectorAll('header div div div > span')[0].innerText.trim().split(' ')[0];
+                    balance = document.querySelectorAll('header div div div > span span')[1].innerText.trim().split(' ')[0];
                 } catch(err) { }
                 return balance;
             };
